@@ -1,0 +1,24 @@
+{
+  "name": "apollo-personnel-db",
+  "version": "1.0.0",
+  "description": "Personnel database - initial input: Personnel History Statement",
+  "main": "main.js",
+  "scripts": {
+    "start": "npx --yes electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^22.3.27",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.apollo.personnel",
+    "productName": "APOLLO Personnel Database",
+    "win": {
+      "target": "nsis"
+    }
+  }
+}
