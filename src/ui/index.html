@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'" />
+  <title>Personnel Database</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <noscript style="padding:20px">JavaScript is required.</noscript>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navigation">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">HR</div>
+        <div class="sidebar-brand-text">Personnel DB</div>
+      </div>
+      <nav class="sidebar-nav">
+        <button type="button" class="nav-item active" data-tab="list">
+          <span class="nav-icon">1</span>
+          <span class="nav-text">List</span>
+        </button>
+        <button type="button" class="nav-item" data-tab="form">
+          <span class="nav-icon">2</span>
+          <span class="nav-text">Add / Edit</span>
+        </button>
+        <button type="button" class="nav-item" data-tab="analytics">
+          <span class="nav-icon">3</span>
+          <span class="nav-text">Analytics</span>
+        </button>
+      </nav>
+    </aside>
+
+    <div class="main-area">
+      <header class="topbar">
+        <div class="topbar-title">Personnel Database</div>
+      </header>
+
+      <main class="content">
+      <section id="list-view" class="view active">
+        <div class="toolbar">
+          <button type="button" class="btn primary" id="btn-new">Add person</button>
+          <input type="search" id="search" placeholder="Search by name..." class="search" />
+        </div>
+        <div class="table-wrap">
+          <table class="personnel-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Name</th>
+                <th>Position</th>
+                <th>Educational Background</th>
+                <th>Seminar and Trainings</th>
+                <th>Contact</th>
+                <th>Updated</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="personnel-tbody"></tbody>
+          </table>
+        </div>
+        <p class="empty-state" id="empty-state">No records yet. Click Add / Edit to add one.</p>
+      </section>
+
+      <section id="form-view" class="view">
+        <form id="phs-form" class="phs-form">
+          <input type="hidden" id="record-id" />
+          <h2>Personnel History Statement</h2>
+
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 20%"></div>
+          </div>
+          <div class="step-indicator" id="step-indicator">
+            <button type="button" class="step-dot active" data-page="1">1</button>
+            <button type="button" class="step-dot" data-page="2">2</button>
+            <button type="button" class="step-dot" data-page="3">3</button>
+            <button type="button" class="step-dot" data-page="4">4</button>
+            <button type="button" class="step-dot" data-page="5">5</button>
+          </div>
+
+          <div class="form-pages" id="form-pages"></div>
+
+          <div class="form-nav">
+            <button type="button" class="btn secondary" id="btn-prev" disabled>Previous</button>
+            <span class="page-indicator" id="page-indicator">Page 1 of 5</span>
+            <div class="nav-buttons">
+              <button type="button" class="btn secondary" id="btn-cancel">Cancel</button>
+              <button type="button" class="btn primary" id="btn-next">Next</button>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <section id="analytics-view" class="view">
+        <div id="analytics-content"></div>
+      </section>
+      </main>
+    </div>
+  </div>
+  <div id="summary-modal" class="summary-modal" aria-hidden="true">
+    <div class="summary-backdrop" id="summary-backdrop"></div>
+    <div class="summary-dialog" role="dialog" aria-modal="true" aria-label="Personnel summary">
+      <div class="summary-actions">
+        <button type="button" class="btn secondary btn-smallish" id="summary-print">Print</button>
+        <button type="button" class="btn secondary btn-smallish" id="summary-close">Close</button>
+      </div>
+      <div id="summary-content" class="summary-content"></div>
+    </div>
+  </div>
+  <script src="renderer.js"></script>
+</body>
+</html>

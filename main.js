@@ -15,6 +15,7 @@ app.commandLine.appendSwitch('disable-features', 'GPU');
 
 let mainWindow;
 const DATA_FILE = path.join(app.getPath('userData'), 'personnel-data.json');
+const REMOVED_FIELDS = new Set(['brOfSvc']);
 
 function ensureDataFile() {
   try {
@@ -50,7 +51,7 @@ function createWindow() {
     minWidth: 800,
     minHeight: 500,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'src', 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -59,7 +60,7 @@ function createWindow() {
       : undefined,
   });
 
-  const indexPath = path.join(__dirname, 'index.html');
+  const indexPath = path.join(__dirname, 'src', 'ui', 'index.html');
   mainWindow.loadURL(pathToFileURL(indexPath).href);
   mainWindow.on('closed', () => { mainWindow = null; });
   mainWindow.setTitle('Personnel Database');
@@ -83,7 +84,10 @@ ipcMain.handle('personnel:save', (_, record) => {
   const records = getData();
   const id = record.id || String(Date.now());
   const existing = records.findIndex((r) => r.id === id);
-  const toSave = { ...record, id, updatedAt: new Date().toISOString() };
+  const sanitizedRecord = Object.fromEntries(
+    Object.entries(record || {}).filter(([key]) => !REMOVED_FIELDS.has(key))
+  );
+  const toSave = { ...sanitizedRecord, id, updatedAt: new Date().toISOString() };
   if (existing >= 0) {
     records[existing] = toSave;
   } else {

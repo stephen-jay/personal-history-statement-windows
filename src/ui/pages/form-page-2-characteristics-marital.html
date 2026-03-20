@@ -1,0 +1,107 @@
+<!-- PAGE 2: II. PERSONAL CHARACTERISTICS + III. MARITAL HISTORY -->
+<div class="form-page" data-page="2">
+  <fieldset class="section">
+    <legend>II. PERSONAL CHARACTERISTICS</legend>
+    <div class="row four-cols">
+      <div>
+        <label>Sex</label>
+        <select id="sex"><option value="">—</option><option value="Male">Male</option><option value="Female">Female</option></select>
+      </div>
+      <div>
+        <label>Age</label>
+        <input type="number" id="age" min="1" max="120" placeholder="Age" />
+      </div>
+      <div>
+        <label>Height (m)</label>
+        <input type="text" id="height" placeholder="e.g. 1.70" />
+      </div>
+      <div>
+        <label>Weight (kgs)</label>
+        <input type="number" id="weight" min="0" placeholder="kgs" />
+      </div>
+    </div>
+    <div class="row four-cols">
+      <div>
+        <label>Build</label>
+        <select id="build"><option value="">—</option><option value="Heavy">Heavy</option><option value="Medium">Medium</option><option value="Light">Light</option></select>
+      </div>
+      <div>
+        <label>Complexion</label>
+        <select id="complexion"><option value="">—</option><option value="Dark">Dark</option><option value="Fair">Fair</option><option value="Light">Light</option></select>
+      </div>
+      <div>
+        <label>Color of Eyes</label>
+        <input type="text" id="colorEyes" placeholder="e.g. Brown" />
+      </div>
+      <div>
+        <label>Color of Hair</label>
+        <input type="text" id="colorHair" placeholder="e.g. Black" />
+      </div>
+    </div>
+    <div class="row">
+      <label>Scar or Marks and other distinguishing features</label>
+      <input type="text" id="scarMarks" placeholder="N/A if none" />
+    </div>
+    <div class="row three-cols">
+      <div>
+        <label>Present State of Health</label>
+        <select id="healthState"><option value="">—</option><option value="Excellent">Excellent</option><option value="Good">Good</option><option value="Poor">Poor</option></select>
+      </div>
+      <div>
+        <label>Recent Serious Illness</label>
+        <input type="text" id="recentIllness" placeholder="N/A if none" />
+      </div>
+      <div>
+        <label>Blood Type</label>
+        <select id="bloodType"><option value="">—</option><option value="A+">A+</option><option value="A-">A-</option><option value="B+">B+</option><option value="B-">B-</option><option value="AB+">AB+</option><option value="AB-">AB-</option><option value="O+">O+</option><option value="O-">O-</option></select>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset class="section">
+    <legend>III. MARITAL HISTORY</legend>
+    <div class="row">
+      <label>MARITAL STATUS</label>
+      <select id="maritalStatus"><option value="">—</option><option value="Single">Single</option><option value="Married">Married</option><option value="Separated">Separated</option><option value="Widow">Widow</option></select>
+    </div>
+    <div class="row">
+      <label>NAME OF SPOUSE (Full Name)</label>
+      <input type="text" id="spouseName" placeholder="N/A if single" />
+    </div>
+    <div class="row two-cols">
+      <div>
+        <label>Date and Place of Marriage</label>
+        <input type="text" id="marriageDatePlace" placeholder="Date, Place" />
+      </div>
+      <div>
+        <label>Spouse Date of Birth</label>
+        <input type="date" id="spouseDob" />
+      </div>
+    </div>
+    <div class="row two-cols">
+      <div>
+        <label>Spouse Place of Birth</label>
+        <input type="text" id="spousePlaceBirth" placeholder="City, Province" />
+      </div>
+      <div>
+        <label>Spouse Occupation/Employer/Place of Employment</label>
+        <input type="text" id="spouseOccupation" placeholder="Occupation details" />
+      </div>
+    </div>
+    <div class="row two-cols">
+      <div>
+        <label>Spouse Contact Number</label>
+        <input type="tel" id="spouseContact" placeholder="09xx xxx xxxx" />
+      </div>
+      <div>
+        <label>Spouse Citizenship (Other if dual)</label>
+        <input type="text" id="spouseCitizenship" placeholder="e.g. Filipino" />
+      </div>
+    </div>
+    <div class="row">
+      <label>CHILDREN (Name, Date of Birth, Citizenship/Address — one per line)</label>
+      <div id="children-rows"></div>
+      <button type="button" class="btn small secondary" id="add-child-row" style="margin-top:8px">Add Row</button>
+    </div>
+  </fieldset>
+</div>

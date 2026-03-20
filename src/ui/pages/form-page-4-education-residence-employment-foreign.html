@@ -1,0 +1,106 @@
+<!-- PAGE 4: V-VIII. EDUCATION, RESIDENCE, EMPLOYMENT, FOREIGN -->
+<div class="form-page" data-page="4">
+  <fieldset class="section">
+    <legend>V. EDUCATIONAL BACKGROUND</legend>
+    <div class="row three-cols">
+      <div>
+        <label>Elementary — Location</label>
+        <input type="text" id="elemLocation" placeholder="School name, address" />
+      </div>
+      <div>
+        <label>Elementary — Date of Attendance</label>
+        <input type="text" id="elemAttendance" placeholder="e.g. 1990-1996" />
+      </div>
+      <div>
+        <label>Elementary — Year Graduated</label>
+        <input type="text" id="elemGraduated" placeholder="e.g. 1996" />
+      </div>
+    </div>
+    <div class="row three-cols">
+      <div>
+        <label>High School — Location</label>
+        <input type="text" id="hsLocation" placeholder="School name, address" />
+      </div>
+      <div>
+        <label>High School — Date of Attendance</label>
+        <input type="text" id="hsAttendance" placeholder="e.g. 1996-2000" />
+      </div>
+      <div>
+        <label>High School — Year Graduated</label>
+        <input type="text" id="hsGraduated" placeholder="e.g. 2000" />
+      </div>
+    </div>
+    <div class="row three-cols">
+      <div>
+        <label>College — Location</label>
+        <input type="text" id="collegeLocation" placeholder="University, address" />
+      </div>
+      <div>
+        <label>College — Date of Attendance</label>
+        <input type="text" id="collegeAttendance" placeholder="e.g. 2000-2004" />
+      </div>
+      <div>
+        <label>College — Year Graduated</label>
+        <input type="text" id="collegeGraduated" placeholder="e.g. 2004" />
+      </div>
+    </div>
+    <div class="row three-cols">
+      <div>
+        <label>Post Graduate — Location</label>
+        <input type="text" id="pgLocation" placeholder="School, address" />
+      </div>
+      <div>
+        <label>Post Graduate — Course Taken, Date of Attendance</label>
+        <input type="text" id="pgCourseAttendance" placeholder="Course, dates" />
+      </div>
+      <div>
+        <label>Post Graduate — Year Graduated</label>
+        <input type="text" id="pgGraduated" placeholder="e.g. 2010" />
+      </div>
+    </div>
+    <div class="row">
+      <label>Other Schools/Training Attended and Date of Attendance</label>
+      <textarea id="otherSchools" rows="3" placeholder="School/training, dates"></textarea>
+    </div>
+    <div class="row">
+      <label>Civil Service Eligibility/Date acquired, if any and Other Similar Qualifications</label>
+      <input type="text" id="civilServiceEligibility" placeholder="N/A if none" />
+    </div>
+  </fieldset>
+
+  <fieldset class="section">
+    <legend>VI. PLACES OF RESIDENCE SINCE BIRTH</legend>
+    <div class="row">
+      <label>Inclusive Dates, Address</label>
+      <div id="places-of-residence-rows"></div>
+      <button type="button" class="btn small secondary" id="add-places-of-residence-row" style="margin-top:8px">Add Row</button>
+    </div>
+  </fieldset>
+
+  <fieldset class="section">
+    <legend>VII. EMPLOYMENT</legend>
+    <div class="row">
+      <label>Employment History (Inclusive Date, Type, Name & Address of Employer, Reason for Leaving)</label>
+      <div id="employment-history-rows"></div>
+      <button type="button" class="btn small secondary" id="add-employment-history-row" style="margin-top:8px">Add Row</button>
+    </div>
+    <div class="row">
+      <label>Seminars and Training (Inclusive Date, Name of Seminar/Training, Conducted By, Remarks)</label>
+      <div id="seminars-training-rows"></div>
+      <button type="button" class="btn small secondary" id="add-seminars-training-row" style="margin-top:8px">Add Row</button>
+    </div>
+    <div class="row">
+      <label>Dismissed or forced to resign? If YES, explain</label>
+      <input type="text" id="dismissedResign" placeholder="NO or explain if YES" />
+    </div>
+  </fieldset>
+
+  <fieldset class="section">
+    <legend>VIII. FOREIGN COUNTRIES VISITED (Chronological)</legend>
+    <div class="row">
+      <label>Date of Visit, Country, Purpose, Address Abroad</label>
+      <div id="foreign-countries-rows"></div>
+      <button type="button" class="btn small secondary" id="add-foreign-countries-row" style="margin-top:8px">Add Row</button>
+    </div>
+  </fieldset>
+</div>
