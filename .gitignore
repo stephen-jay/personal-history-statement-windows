@@ -3,3 +3,6 @@ dist/
 out/
 *.log
 .env
+_docx_extract/
+_test-out.docx
+_phs_temp.zip

@@ -60,13 +60,15 @@
 
   <fieldset class="section">
     <legend>III. MARITAL HISTORY</legend>
-    <div class="row">
-      <label>MARITAL STATUS</label>
-      <select id="maritalStatus"><option value="">—</option><option value="Single">Single</option><option value="Married">Married</option><option value="Separated">Separated</option><option value="Widow">Widow</option></select>
-    </div>
-    <div class="row">
-      <label>NAME OF SPOUSE (Full Name)</label>
-      <input type="text" id="spouseName" placeholder="N/A if single" />
+    <div class="row two-cols">
+      <div>
+        <label>MARITAL STATUS</label>
+        <select id="maritalStatus"><option value="">—</option><option value="Single">Single</option><option value="Married">Married</option><option value="Separated">Separated</option><option value="Widow">Widow</option></select>
+      </div>
+      <div>
+        <label>NAME OF SPOUSE (Full Name)</label>
+        <input type="text" id="spouseName" placeholder="N/A if single" />
+      </div>
     </div>
     <div class="row two-cols">
       <div>
@@ -101,7 +103,7 @@
     <div class="row">
       <label>CHILDREN (Name, Date of Birth, Citizenship/Address — one per line)</label>
       <div id="children-rows"></div>
-      <button type="button" class="btn small secondary" id="add-child-row" style="margin-top:8px">Add Row</button>
+      <button type="button" class="btn small secondary form-add-row" id="add-child-row">Add Row</button>
     </div>
   </fieldset>
 </div>
