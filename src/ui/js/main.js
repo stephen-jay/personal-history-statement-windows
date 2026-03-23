@@ -361,6 +361,13 @@ async function loadAnalyticsPage() {
     phsForm.addEventListener('submit', function (e) {
       e.preventDefault();
       const data = formData.getFormData();
+      var isUpdate = !!(data && data.id);
+      var confirmed = confirm(
+        isUpdate
+          ? 'Save changes to this personnel record?'
+          : 'Save this new personnel record?'
+      );
+      if (!confirmed) return;
       window.personnelApi.save(data).then(function () {
         showList({ forceCloseModal: true });
       }).catch(function (err) {

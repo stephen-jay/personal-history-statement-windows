@@ -179,8 +179,12 @@ export function renderList(records, deps) {
     btn.addEventListener('click', function () {
       const id = btn.getAttribute('data-id');
       if (id && confirm('Delete this personnel record?')) {
-        window.personnelApi.delete(id).then(function () {
+        const record = records.find(function (r) { return String(r.id) === String(id); });
+        const version = record && record.version != null ? Number(record.version) : null;
+        window.personnelApi.delete(id, version).then(function () {
           deps.loadList();
+        }).catch(function (err) {
+          alert('Delete failed.\n\n' + (err && err.message ? err.message : String(err)));
         });
       }
     });

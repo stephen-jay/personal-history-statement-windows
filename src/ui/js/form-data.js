@@ -2,6 +2,7 @@ import { FIELD_IDS, ROW_SECTIONS } from './constants.js';
 import { normalizeValue } from './escape.js';
 
 export { ROW_SECTIONS };
+let currentRecordVersion = null;
 
 export function setPhotoPreview(dataUrl) {
   const previewImg = document.getElementById('photo-preview');
@@ -180,6 +181,7 @@ export function getFormData() {
   ROW_SECTIONS.forEach(function (section) {
     data[section.key] = getStructuredRows(section);
   });
+  if (currentRecordVersion != null) data.version = currentRecordVersion;
   data.fullName = buildDisplayFullName(data.nameLast, data.nameFirst, data.nameMiddle);
   return data;
 }
@@ -187,6 +189,10 @@ export function getFormData() {
 export function setFormData(record) {
   const recordIdInput = document.getElementById('record-id');
   if (recordIdInput) recordIdInput.value = record.id || '';
+  currentRecordVersion =
+    record && record.version != null && Number.isFinite(Number(record.version))
+      ? Number(record.version)
+      : null;
   FIELD_IDS.forEach(function (id) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -205,5 +211,6 @@ export function setFormData(record) {
 }
 
 export function clearForm() {
+  currentRecordVersion = null;
   setFormData({});
 }

@@ -19,3 +19,12 @@ npm run dist
 ```
 
 Installer output will be in the `dist` folder.
+
+## PostgreSQL rollout artifacts
+
+- `config/postgres-server-hardening.md`
+- `config/apollo-postgres-schema.sql`
+- `config/json-to-postgres-mapping.md`
+- `config/postgres-cutover-controls.md`
+- `config/postgres-handover-checklist.md`
+- `scripts/import-json-to-postgres.js`
