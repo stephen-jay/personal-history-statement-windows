@@ -2,6 +2,7 @@ import { ROW_SECTIONS } from './constants.js';
 import * as formData from './form-data.js';
 import { renderAnalytics } from './analytics.js';
 import { buildSummaryHtml } from './summary.js';
+import { buildStandalonePhsHtml, suggestedExportBasename } from './phs-export-html.js';
 import { renderList } from './list.js';
 import { setActiveNav, setAppView, setTopbarSection } from './views.js';
 import { createFormNav } from './form-nav.js';
@@ -63,7 +64,12 @@ async function loadAnalyticsPage() {
     const summaryClose = document.getElementById('summary-close');
     const summaryBackdrop = document.getElementById('summary-backdrop');
     const summaryPrint = document.getElementById('summary-print');
+    const summaryExportPdf = document.getElementById('summary-export-pdf');
+    const summaryExportWord = document.getElementById('summary-export-word');
     const topbarSection = document.getElementById('topbar-section');
+
+    /** @type {object|null} */
+    var lastSummaryRecord = null;
 
     const { showPage, goNext, goPrev } = createFormNav(phsForm);
 
@@ -78,6 +84,7 @@ async function loadAnalyticsPage() {
 
     function openSummary(record) {
       if (!summaryModal || !summaryContent) return;
+      lastSummaryRecord = record || null;
       summaryContent.innerHTML = buildSummaryHtml(record);
       summaryModal.classList.add('open');
       summaryModal.setAttribute('aria-hidden', 'false');
@@ -85,8 +92,55 @@ async function loadAnalyticsPage() {
 
     function closeSummary() {
       if (!summaryModal) return;
+      lastSummaryRecord = null;
       summaryModal.classList.remove('open');
       summaryModal.setAttribute('aria-hidden', 'true');
+    }
+
+    function exportSummaryError(err) {
+      console.error(err);
+      alert('Export failed.\n\n' + (err && err.message ? err.message : String(err)));
+    }
+
+    if (summaryExportPdf) {
+      summaryExportPdf.addEventListener('click', async function () {
+        var rec = lastSummaryRecord;
+        if (!rec) return;
+        if (!window.exportApi) {
+          alert('Export is not available. Restart the application.');
+          return;
+        }
+        try {
+          var html = await buildStandalonePhsHtml(rec);
+          var base = suggestedExportBasename(rec);
+          await window.exportApi.savePhsPdf({ html: html, defaultName: base + '.pdf' });
+        } catch (err) {
+          exportSummaryError(err);
+        }
+      });
+    }
+
+    if (summaryExportWord) {
+      summaryExportWord.addEventListener('click', async function () {
+        var recW = lastSummaryRecord;
+        if (!recW) return;
+        if (!window.exportApi || !window.exportApi.savePhsDocx) {
+          alert('Export is not available. Restart the application.');
+          return;
+        }
+        try {
+          var baseW = suggestedExportBasename(recW);
+          var out = await window.exportApi.savePhsDocx({
+            record: recW,
+            defaultName: baseW + '.docx',
+          });
+          if (out && out.ok === false && out.error) {
+            throw new Error(out.error);
+          }
+        } catch (err) {
+          exportSummaryError(err);
+        }
+      });
     }
 
     /** @type {object} */
