@@ -9,22 +9,20 @@
     <div class="row">
       <label>Banks/Credit Institutions (Name, Address, Nature of Accounts)</label>
       <div id="banks-credit-rows"></div>
-      <button type="button" class="btn small secondary" id="add-banks-credit-row" style="margin-top:8px">Add Row</button>
+      <button type="button" class="btn small secondary form-add-row" id="add-banks-credit-row">Add Row</button>
     </div>
     <div class="row">
       <label>Filed Statement of Asset and Liabilities? Agency and when?</label>
       <input type="text" id="salFiled" placeholder="Yes/No, agency, date" />
     </div>
-    <div class="row two-cols">
-      <div>
-        <label>Filed last income tax return? Amount paid last Calendar Year</label>
-        <input type="text" id="incomeTaxFiled" placeholder="Yes/No, amount" />
-      </div>
+    <div class="row">
+      <label>Filed last income tax return? Amount paid last Calendar Year</label>
+      <input type="text" id="incomeTaxFiled" placeholder="Yes/No, amount" />
     </div>
     <div class="row">
       <label>Three (3) credit references in the Philippines (Name, Address)</label>
       <div id="credit-references-rows"></div>
-      <button type="button" class="btn small secondary" id="add-credit-references-row" style="margin-top:8px">Add Row</button>
+      <button type="button" class="btn small secondary form-add-row" id="add-credit-references-row">Add Row</button>
     </div>
   </fieldset>
 
@@ -57,12 +55,12 @@
     <div class="row">
       <label>Five (5) character references (not relatives, known 3+ years) — Name, Address</label>
       <div id="character-refs-rows"></div>
-      <button type="button" class="btn small secondary" id="add-character-refs-row" style="margin-top:8px">Add Row</button>
+      <button type="button" class="btn small secondary form-add-row" id="add-character-refs-row">Add Row</button>
     </div>
     <div class="row">
       <label>Three (3) neighbors at present residence — Name, Address</label>
       <div id="neighbors-rows"></div>
-      <button type="button" class="btn small secondary" id="add-neighbors-row" style="margin-top:8px">Add Row</button>
+      <button type="button" class="btn small secondary form-add-row" id="add-neighbors-row">Add Row</button>
     </div>
   </fieldset>
 
@@ -71,7 +69,7 @@
     <div class="row">
       <label>Organizations/social groups — Organization, Address, Date of Membership, Position Held</label>
       <div id="organizations-rows"></div>
-      <button type="button" class="btn small secondary" id="add-organizations-row" style="margin-top:8px">Add Row</button>
+      <button type="button" class="btn small secondary form-add-row" id="add-organizations-row">Add Row</button>
     </div>
   </fieldset>
 
@@ -84,7 +82,7 @@
     <div class="row">
       <label>Language / Dialect, Speak, Read, Write (indicate ability as fluent, fair or poor)</label>
       <div id="languages-rows"></div>
-      <button type="button" class="btn small secondary" id="add-languages-row" style="margin-top:8px">Add Row</button>
+      <button type="button" class="btn small secondary form-add-row" id="add-languages-row">Add Row</button>
     </div>
     <div class="row">
       <label>Willing to undergo periodic lie detector test?</label>
@@ -95,72 +93,90 @@
     </div>
 
     <div class="signature-grid">
-      <div>
-        <label>Signed at</label>
-        <input type="text" class="line-input" id="signedAtCert" />
-        <label>Date</label>
-        <input type="date" class="line-input" id="signedDateCert" />
+      <div class="signature-sign-col">
+        <div class="misc-field">
+          <label for="signedAtCert">Signed at</label>
+          <input type="text" class="line-input" id="signedAtCert" placeholder="City / office" autocomplete="address-level2" />
+        </div>
+        <div class="misc-field">
+          <label for="signedDateCert">Date</label>
+          <input type="date" class="line-input line-input--date" id="signedDateCert" />
+        </div>
       </div>
-      <div>
-        <div class="mini-line"></div>
-        <div class="signature-label">(Signature of Applicant)</div>
-        <div style="margin-top:18px" class="mini-line"></div>
-        <div class="signature-label">Witness</div>
-        <div style="margin-top:18px" class="mini-line"></div>
-        <div class="signature-label">Witness</div>
+      <div class="signature-lines-col" aria-label="Signature and witness lines">
+        <div class="signature-line-slot">
+          <div class="mini-line" role="presentation"></div>
+          <p class="signature-label">(Signature of Applicant)</p>
+        </div>
+        <div class="signature-line-slot">
+          <div class="mini-line" role="presentation"></div>
+          <p class="signature-label">Witness</p>
+        </div>
+        <div class="signature-line-slot">
+          <div class="mini-line" role="presentation"></div>
+          <p class="signature-label">Witness</p>
+        </div>
       </div>
     </div>
 
     <div class="thumb-photo-grid">
-      <div>
-        <div class="signature-label" style="font-style:italic">THUMB MARK</div>
+      <div class="thumb-mark-panel">
+        <p class="thumb-mark-title">Thumb mark</p>
         <div class="thumb-boxes">
           <div>
-            <div class="thumb-box"></div>
+            <div class="thumb-box" role="img" aria-label="Left thumb mark area"></div>
             <div class="thumb-caption">(Left)</div>
           </div>
           <div>
-            <div class="thumb-box"></div>
+            <div class="thumb-box" role="img" aria-label="Right thumb mark area"></div>
             <div class="thumb-caption">(Right)</div>
           </div>
         </div>
       </div>
-      <div style="text-align:center">
+      <div class="upload-photo-panel">
+        <p class="upload-photo-panel-title">Upload photo</p>
         <label class="photo-box photo-upload-trigger" id="photo-box" for="photo-upload" title="Click to upload">
           <img id="photo-preview" class="photo-preview" alt="2x2 Photo Preview" style="display:none" />
-          <span id="photo-placeholder-text">2x2 Photo</span>
+          <span id="photo-placeholder-text">2×2 — Click to upload</span>
         </label>
-        <input type="file" id="photo-upload" accept="image/*" style="display:none" />
+        <input type="file" id="photo-upload" accept="image/*" class="sr-only" />
         <input type="hidden" id="photoDataUrl" />
-        <div class="photo-caption"><em>Passport Size (2x2) Picture</em></div>
+        <div class="photo-caption"><em>Passport size (2×2) picture</em></div>
       </div>
     </div>
 
     <div class="sworn-block">
-      <div class="row">
-        <label>Subscribed and sworn before me this ____ day of __________ Philippines</label>
-        <div class="three-cols">
-          <input type="text" class="line-input" id="swornDay" placeholder="Day" />
-          <input type="text" class="line-input" id="swornMonth" placeholder="Month" />
-          <input type="text" class="line-input" id="swornPlace" placeholder="Place" />
+      <p class="sworn-block__intro">Subscribed and sworn before me (complete the following):</p>
+      <div class="row three-cols sworn-oath-fields">
+        <div>
+          <label for="swornDay">Day</label>
+          <input type="text" class="line-input" id="swornDay" inputmode="numeric" placeholder="e.g. 15" />
+        </div>
+        <div>
+          <label for="swornMonth">Month</label>
+          <input type="text" class="line-input" id="swornMonth" placeholder="e.g. March" />
+        </div>
+        <div>
+          <label for="swornPlace">Place (Philippines)</label>
+          <input type="text" class="line-input" id="swornPlace" placeholder="City / province" />
         </div>
       </div>
-      <div class="row three-cols">
+      <div class="row three-cols sworn-cert-row">
         <div>
-          <label>Residence Certificate Nr</label>
+          <label for="residenceCertNr2">Residence Certificate Nr</label>
           <input type="text" class="line-input" id="residenceCertNr2" />
         </div>
         <div>
-          <label>Issued on</label>
-          <input type="date" class="line-input" id="residenceCertIssuedOn2" />
+          <label for="residenceCertIssuedOn2">Issued on</label>
+          <input type="date" class="line-input line-input--date" id="residenceCertIssuedOn2" />
         </div>
         <div>
-          <label>Issued at</label>
+          <label for="residenceCertIssuedAt2">Issued at</label>
           <input type="text" class="line-input" id="residenceCertIssuedAt2" />
         </div>
       </div>
       <div class="row">
-        <label>Administering Officer</label>
+        <label for="administeringOfficer2">Administering Officer</label>
         <input type="text" class="line-input" id="administeringOfficer2" />
       </div>
     </div>

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
@@ -102,3 +102,4 @@ ipcMain.handle('personnel:delete', (_, id) => {
   saveData(records);
   return true;
 });
+
