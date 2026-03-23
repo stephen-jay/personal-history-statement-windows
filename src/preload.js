@@ -9,5 +9,4 @@ contextBridge.exposeInMainWorld('personnelApi', {
 contextBridge.exposeInMainWorld('exportApi', {
   savePhsPdf: (payload) => ipcRenderer.invoke('export:phsPdf', payload),
   savePhsWord: (payload) => ipcRenderer.invoke('export:phsWord', payload),
-  savePhsDocx: (payload) => ipcRenderer.invoke('export:phsDocx', payload),
 });

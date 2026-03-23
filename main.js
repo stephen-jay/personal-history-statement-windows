@@ -3,7 +3,6 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { pathToFileURL } = require('url');
-const { buildPhsDocxBuffer } = require('./src/build-phs-docx');
 
 // Force software rendering — must be before app is ready (fixes "failed to create shared context")
 app.disableHardwareAcceleration();
@@ -216,24 +215,7 @@ ipcMain.handle('export:phsWord', async function (event, payload) {
   return { ok: true, filePath: result.filePath };
 });
 
-ipcMain.handle('export:phsDocx', async function (event, payload) {
-  var record = payload && payload.record;
-  var defaultName = (payload && payload.defaultName) || 'Personnel-History-Statement.docx';
-  if (!record || typeof record !== 'object') return { ok: false, error: 'Missing record' };
-  var parent = BrowserWindow.fromWebContents(event.sender) || mainWindow;
-  try {
-    var buf = await buildPhsDocxBuffer(record);
-    var result = await dialog.showSaveDialog(parent || undefined, {
-      title: 'Save Word document',
-      defaultPath: path.join(app.getPath('documents'), defaultName),
-      filters: [{ name: 'Word Document', extensions: ['docx'] }],
-    });
-    if (result.canceled || !result.filePath) return { ok: false };
-    fs.writeFileSync(result.filePath, buf);
-    return { ok: true, filePath: result.filePath };
-  } catch (err) {
-    console.error('export:phsDocx', err);
-    return { ok: false, error: err && err.message ? err.message : String(err) };
-  }
+ipcMain.handle('export:phsDocx', async function () {
+  return { ok: false, error: 'DOCX export is currently disabled.' };
 });
 
