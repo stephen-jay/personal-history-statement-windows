@@ -1,6 +1,14 @@
 <div class="analytics-wrap">
   <h2>Personnel Graphing Analysis</h2>
-  <p class="analytics-subtitle">Auto-generated from submitted personnel records.</p>
+  <p class="analytics-subtitle">Education, training, and seminars from submitted personnel records.</p>
+
+  <div class="analytics-toolbar" role="region" aria-label="Analysis scope">
+    <label for="analytics-scope" class="analytics-toolbar-label">Show data for</label>
+    <select id="analytics-scope" class="analytics-scope-select">
+      <option value="">All personnel (combined totals)</option>
+    </select>
+  </div>
+  <p class="analytics-scope-hint" id="analytics-scope-hint" hidden></p>
 
   <div class="analytics-kpis">
     <div class="analytics-kpi">
@@ -8,35 +16,40 @@
       <div class="analytics-kpi-value" id="kpi-total">0</div>
     </div>
     <div class="analytics-kpi">
-      <div class="analytics-kpi-label">With Age Info</div>
-      <div class="analytics-kpi-value" id="kpi-age-filled">0</div>
+      <div class="analytics-kpi-label">With Education Records</div>
+      <div class="analytics-kpi-value" id="kpi-education-records">0</div>
     </div>
     <div class="analytics-kpi">
-      <div class="analytics-kpi-label">Updated This Month</div>
-      <div class="analytics-kpi-value" id="kpi-updated-month">0</div>
+      <div class="analytics-kpi-label">Trained This Month</div>
+      <div class="analytics-kpi-value" id="kpi-trained-month">0</div>
     </div>
   </div>
 
   <div class="analytics-grid">
     <div class="analytics-card">
-      <h3>Sex Distribution</h3>
-      <div id="chart-sex"></div>
+      <h3>Educational Attainment Distribution</h3>
+      <div id="chart-education-level"></div>
+      <div class="analytics-breakdown-slot" id="breakdown-education-level" hidden></div>
     </div>
     <div class="analytics-card">
-      <h3>Marital Status Distribution</h3>
-      <div id="chart-marital"></div>
+      <h3>Graduation Year Brackets</h3>
+      <div id="chart-grad-year"></div>
+      <div class="analytics-breakdown-slot" id="breakdown-grad-year" hidden></div>
     </div>
     <div class="analytics-card">
-      <h3>Age Brackets</h3>
-      <div id="chart-age"></div>
+      <h3>Field / Strand / Course Distribution</h3>
+      <div id="chart-field-course"></div>
+      <div class="analytics-breakdown-slot" id="breakdown-field-course" hidden></div>
     </div>
     <div class="analytics-card">
-      <h3>Submissions (Last 6 Months)</h3>
-      <div id="chart-monthly"></div>
+      <h3>Seminars &amp; Trainings Completed (Last 6 Months)</h3>
+      <div id="chart-training-monthly"></div>
+      <div class="analytics-breakdown-slot" id="breakdown-training-monthly" hidden></div>
     </div>
-    <div class="analytics-card">
-      <h3>Top Present Assignments</h3>
-      <div id="chart-assignment"></div>
+    <div class="analytics-card analytics-card--span">
+      <h3>Top Training Programs / Seminars Attended</h3>
+      <div id="chart-top-programs"></div>
+      <div class="analytics-breakdown-slot" id="breakdown-top-programs" hidden></div>
     </div>
   </div>
 </div>

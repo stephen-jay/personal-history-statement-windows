@@ -1,0 +1,545 @@
+/* PHS view / export: readable hierarchy — labels vs values, spacing, softer grid */
+@page {
+  size: letter;
+  margin: 0.5in 0.55in;
+}
+
+:root {
+  --phs-label: #4a5568;
+  --phs-text: #1a202c;
+  --phs-muted: #718096;
+  --phs-border: #cbd5e0;
+  --phs-border-strong: #2d3748;
+  --phs-fill: #f7fafc;
+  --phs-accent: #2c5282;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #fff;
+}
+
+body {
+  font-family: "Segoe UI", "Arial Narrow", Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.45;
+  color: var(--phs-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.phs-print-doc--readable {
+  color: var(--phs-text);
+}
+
+.phs-print-doc {
+  font-family: "Segoe UI", "Arial Narrow", Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.45;
+  color: var(--phs-text);
+  max-width: 100%;
+}
+
+/* --- Title --- */
+.phs-print-header {
+  text-align: center;
+  margin: 0 0 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--phs-accent);
+}
+
+.phs-print-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--phs-accent);
+}
+
+/* --- Sections --- */
+.phs-print-section {
+  margin-bottom: 22px;
+  page-break-inside: avoid;
+}
+
+.phs-print-section-misc {
+  page-break-before: auto;
+}
+
+.phs-print-h2 {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--phs-label);
+  border-bottom: 2px solid var(--phs-border-strong);
+  padding-bottom: 6px;
+}
+
+.phs-print-h2--instructions {
+  text-align: center;
+  letter-spacing: 0.28em;
+  font-size: 0.72rem;
+  border-bottom: none;
+  margin-bottom: 12px;
+  color: var(--phs-accent);
+}
+
+.phs-print-h2--section {
+  font-size: 0.8rem;
+}
+
+/* --- Instructions --- */
+.phs-print-instructions-box {
+  background: var(--phs-fill);
+  border: 1px solid var(--phs-border);
+  border-radius: 6px;
+  padding: 14px 16px 10px;
+  margin-bottom: 24px;
+}
+
+.phs-print-instructions-ol {
+  margin: 0;
+  padding-left: 1.35em;
+}
+
+.phs-print-instructions-ol li {
+  margin-bottom: 10px;
+  text-align: left;
+  line-height: 1.5;
+  color: var(--phs-text);
+}
+
+/* --- Values & placeholders (global) --- */
+.phs-print-val {
+  font-weight: 500;
+  color: var(--phs-text);
+  font-size: 1.02em;
+}
+
+.phs-print-placeholder {
+  color: var(--phs-muted);
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* --- Personal details table --- */
+.phs-print-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 8px 0 12px;
+  font-size: 10pt;
+  table-layout: fixed;
+  border: 1px solid var(--phs-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.phs-print-table th,
+.phs-print-table td {
+  border: 1px solid var(--phs-border);
+  padding: 8px 10px;
+  vertical-align: top;
+}
+
+.phs-print-i-table .phs-td-letter {
+  width: 36px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--phs-accent);
+  background: #edf2f7;
+  vertical-align: middle;
+}
+
+.phs-print-i-table .phs-name-row .phs-print-val {
+  font-size: 1.08rem;
+  font-weight: 600;
+  color: var(--phs-text);
+}
+
+.phs-print-i-table .phs-job-row .phs-td-underline .phs-print-val {
+  font-weight: 600;
+  color: var(--phs-accent);
+}
+
+.phs-print-i-table .phs-caption-row td {
+  border-top: none;
+  padding-top: 2px;
+  padding-bottom: 6px;
+}
+
+.phs-caption {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--phs-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-top: none !important;
+  background: #fafafa;
+}
+
+.phs-td-prompt-wide {
+  font-weight: 600;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--phs-label);
+  background: #f8fafc;
+}
+
+.phs-td-prompt,
+.phs-td-prompt-tight {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--phs-label);
+  background: #f8fafc;
+  white-space: normal;
+}
+
+.phs-td-underline {
+  vertical-align: bottom;
+  background: #fff;
+}
+
+.phs-print-cell-line {
+  display: block;
+  min-height: 16px;
+  border-bottom: 1px solid var(--phs-border-strong);
+  margin-top: 4px;
+  opacity: 0.45;
+}
+
+/* --- II. Characteristics grid --- */
+.phs-char-table .phs-char-cell {
+  width: 25%;
+  padding: 10px 12px;
+  vertical-align: top;
+  background: #fff;
+}
+
+.phs-char-cell--block {
+  padding: 12px 14px;
+  background: #fafafa;
+}
+
+.phs-char-cell--span2 {
+  width: 50%;
+}
+
+.phs-print-field-label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--phs-label);
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+
+.phs-char-value {
+  min-height: 1.25em;
+}
+
+.phs-char-value .phs-print-val {
+  font-size: 0.98rem;
+}
+
+/* --- III. Stack tables (marital) --- */
+.phs-stack-table {
+  table-layout: fixed;
+}
+
+.phs-stack-table .phs-stack-label {
+  width: 34%;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--phs-label);
+  text-align: left;
+  vertical-align: top;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid var(--phs-border);
+}
+
+.phs-stack-table .phs-stack-value {
+  padding: 10px 12px;
+  vertical-align: top;
+  line-height: 1.5;
+  border: 1px solid var(--phs-border);
+}
+
+/* --- IV, X, etc.: label blocks --- */
+.phs-print-kv-block {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  background: #fafafa;
+  border-left: 3px solid var(--phs-accent);
+  border-radius: 0 6px 6px 0;
+}
+
+.phs-print-kv-label {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--phs-label);
+  margin-bottom: 6px;
+  max-width: 48rem;
+  line-height: 1.35;
+}
+
+.phs-print-kv-text {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--phs-text);
+}
+
+.phs-print-section--prose .phs-print-kv-block:last-child {
+  margin-bottom: 0;
+}
+
+/* --- Education table --- */
+.phs-edu-table thead .phs-edu-h {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--phs-label);
+  background: #edf2f7;
+  padding: 8px 10px;
+}
+
+.phs-edu-table .phs-edu-level {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--phs-label);
+  background: #f8fafc;
+  text-align: left;
+  width: 22%;
+}
+
+.phs-edu-table tbody td {
+  vertical-align: top;
+  line-height: 1.45;
+}
+
+.phs-print-table-sm td,
+.phs-print-table-sm th {
+  font-size: 10pt;
+}
+
+/* --- Lists --- */
+.phs-print-list-block {
+  margin: 12px 0;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid var(--phs-border);
+  border-radius: 6px;
+}
+
+.phs-print-list-title {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--phs-label);
+  margin-bottom: 8px;
+}
+
+.phs-print-ol {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.phs-print-ol li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.phs-print-block {
+  margin: 8px 0;
+}
+
+/* --- Yes/No --- */
+.phs-print-yn {
+  margin: 12px 0;
+  padding: 10px 12px;
+  background: #fafafa;
+  border-radius: 6px;
+  border: 1px solid var(--phs-border);
+  font-size: 0.95rem;
+}
+
+.phs-print-yn-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--phs-label);
+}
+
+.phs-print-yn-opt {
+  margin-right: 16px;
+  font-weight: 500;
+}
+
+/* --- Signatures & misc --- */
+.phs-print-sig-ii {
+  margin-top: 16px;
+}
+
+.phs-print-sig-line {
+  border-bottom: 1px solid var(--phs-border-strong);
+  min-height: 24px;
+  margin-top: 10px;
+  max-width: 280px;
+}
+
+.phs-print-sig-line-wide {
+  max-width: 100%;
+}
+
+.phs-print-sig-cap {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  color: var(--phs-muted);
+  text-align: center;
+  max-width: 280px;
+}
+
+.phs-print-handwriting {
+  margin: 16px 0;
+  page-break-inside: avoid;
+  padding: 12px;
+  border: 1px solid var(--phs-border);
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+.phs-print-handwriting-title {
+  margin: 0 0 8px;
+}
+
+.phs-print-handwriting-title strong {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--phs-label);
+}
+
+.phs-print-handwriting-sample {
+  margin: 0 0 10px;
+  text-align: left;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--phs-text);
+}
+
+.phs-print-handwriting-lines {
+  border: 1px solid var(--phs-border);
+  padding: 10px;
+  min-height: 80px;
+  background: #fff;
+  border-radius: 4px;
+}
+
+.phs-print-hw-line {
+  border-bottom: 1px solid #e2e8f0;
+  min-height: 24px;
+  margin-bottom: 6px;
+}
+
+.phs-print-certify {
+  margin: 16px 0;
+  text-align: left;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  padding: 12px;
+  background: var(--phs-fill);
+  border-radius: 6px;
+  border: 1px solid var(--phs-border);
+}
+
+.phs-print-sign-table td {
+  border: 1px solid var(--phs-border);
+  vertical-align: top;
+  padding: 12px;
+}
+
+.phs-print-sign-left {
+  width: 38%;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.phs-print-thumb-photo .phs-print-table td {
+  min-height: 110px;
+  vertical-align: top;
+}
+
+.phs-print-thumb-cell strong,
+.phs-print-photo-cell strong {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--phs-label);
+}
+
+.phs-print-thumb-pair {
+  margin-top: 10px;
+}
+
+.phs-print-signatures {
+  margin-top: 12px;
+}
+
+.phs-print-thumb-box {
+  display: inline-block;
+  width: 56px;
+  height: 72px;
+  border: 2px solid var(--phs-border-strong);
+  vertical-align: middle;
+  border-radius: 2px;
+}
+
+.phs-print-photo-img {
+  max-width: 128px;
+  max-height: 160px;
+  display: block;
+  margin-top: 8px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--phs-border);
+}
+
+.phs-print-photo-placeholder {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--phs-muted);
+}
+
+.phs-print-sworn {
+  margin-top: 16px;
+  page-break-inside: avoid;
+}
+
+.phs-print-sworn .phs-print-table td {
+  font-size: 0.9rem;
+  line-height: 1.45;
+}

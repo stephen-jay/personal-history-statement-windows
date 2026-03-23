@@ -1514,12 +1514,66 @@ fieldset.section > .sworn-block {
   font-size: 0.85rem;
 }
 
+@keyframes summary-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes summary-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes summary-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .summary-modal {
   display: none;
 }
 
 .summary-modal.open {
   display: block;
+}
+
+.summary-modal.open .summary-backdrop {
+  animation: summary-backdrop-in 0.28s ease-out forwards;
+}
+
+.summary-modal.open .summary-dialog {
+  animation: summary-dialog-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transform-origin: 50% 45%;
+}
+
+.summary-modal.open .summary-phs-document {
+  animation: summary-content-in 0.38s ease-out 0.1s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .summary-modal.open .summary-backdrop,
+  .summary-modal.open .summary-dialog,
+  .summary-modal.open .summary-phs-document {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 
 .summary-backdrop {
@@ -1557,6 +1611,7 @@ fieldset.section > .sworn-block {
   padding: 10px 12px;
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 10px;
   border-bottom: 1px solid var(--border);
   background: #fff;
@@ -1565,6 +1620,20 @@ fieldset.section > .sworn-block {
 .summary-content {
   overflow: auto;
   padding: 20px;
+  background: #e8e8e6;
+}
+
+.summary-phs-document {
+  max-width: 8.75in;
+  margin: 0 auto;
+  background: #fff;
+  padding: 28px 32px 48px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  border: 1px solid #c8c8c8;
+}
+
+.summary-phs-document .phs-print-doc--readable {
+  max-width: 100%;
 }
 
 .phs-summary {
@@ -1652,6 +1721,100 @@ fieldset.section > .sworn-block {
   font-size: 0.9rem;
 }
 
+.analytics-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  background: #f3f2ef;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.analytics-toolbar-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--navy);
+  margin: 0;
+}
+
+.analytics-scope-select {
+  min-width: min(100%, 280px);
+  max-width: 100%;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--charcoal);
+}
+
+.analytics-scope-hint {
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  color: var(--charcoal);
+  background: #eef3f8;
+  border-left: 3px solid var(--navy);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.analytics-scope-hint strong {
+  color: var(--navy);
+}
+
+.analytics-breakdown-slot {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #ccc;
+}
+
+.analytics-breakdown {
+  margin: 0;
+}
+
+.analytics-breakdown > summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--navy);
+  list-style: none;
+}
+
+.analytics-breakdown > summary::-webkit-details-marker {
+  display: none;
+}
+
+.analytics-breakdown > summary::before {
+  content: "▸ ";
+  display: inline-block;
+  width: 1em;
+}
+
+.analytics-breakdown[open] > summary::before {
+  content: "▾ ";
+}
+
+.analytics-breakdown-dl {
+  margin: 8px 0 0;
+  padding: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.analytics-breakdown-dl dt {
+  margin: 8px 0 2px;
+  font-weight: 600;
+  color: var(--charcoal);
+}
+
+.analytics-breakdown-dl dd {
+  margin: 0 0 0 12px;
+  color: var(--charcoal-muted);
+}
+
 .analytics-kpis {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1698,9 +1861,17 @@ fieldset.section > .sworn-block {
   color: var(--charcoal);
 }
 
+.analytics-card--span {
+  grid-column: 1 / -1;
+}
+
 .bar-chart {
   display: grid;
   gap: 8px;
+}
+
+.bar-chart--wide-labels .bar-row {
+  grid-template-columns: minmax(100px, 36%) 1fr auto;
 }
 
 .bar-row {
@@ -1709,6 +1880,16 @@ fieldset.section > .sworn-block {
   align-items: center;
   gap: 8px;
   font-size: 0.85rem;
+}
+
+.bar-row__label {
+  min-width: 0;
+  word-break: break-word;
+  line-height: 1.25;
+}
+
+.bar-row__label--wide {
+  font-size: 0.8rem;
 }
 
 .bar-track {
@@ -1808,6 +1989,10 @@ fieldset.section > .sworn-block {
     grid-template-columns: 90px 1fr auto;
   }
 
+  .bar-chart--wide-labels .bar-row {
+    grid-template-columns: minmax(72px, 40%) 1fr auto;
+  }
+
   .summary-dialog {
     inset: 10px;
     max-height: calc(100vh - 20px);
@@ -1869,215 +2054,9 @@ fieldset.section > .sworn-block {
 }
 
 /* -------------------------------------------------------------------------
-   Official PHS print layout (paper / Word style). Hidden on screen; shown
-   only when printing from the summary modal.
+   Official PHS (matches PERSONNEL HISTORY STATEMENT.docx — also used for export).
    ------------------------------------------------------------------------- */
-.phs-official-print {
-  display: none !important;
-}
-
-.phs-print-doc {
-  font-family: "Times New Roman", Times, serif;
-  font-size: 11pt;
-  line-height: 1.25;
-  color: #000;
-  max-width: 100%;
-}
-
-.phs-print-header {
-  text-align: center;
-  margin-bottom: 10px;
-}
-
-.phs-print-title {
-  margin: 0;
-  font-size: 13pt;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-}
-
-.phs-print-section {
-  margin-bottom: 10px;
-  page-break-inside: avoid;
-}
-
-.phs-print-section-misc {
-  page-break-before: auto;
-}
-
-.phs-print-h2 {
-  margin: 0 0 6px;
-  font-size: 11pt;
-  font-weight: 700;
-  text-transform: uppercase;
-  border-bottom: 1px solid #000;
-  padding-bottom: 2px;
-}
-
-.phs-print-instructions .phs-print-h2 {
-  margin-bottom: 4px;
-}
-
-.phs-print-instructions-ol {
-  margin: 0 0 0 1.25em;
-  padding: 0;
-}
-
-.phs-print-instructions-ol li {
-  margin-bottom: 6px;
-  text-align: justify;
-}
-
-.phs-print-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 4px 0 8px;
-  font-size: 10.5pt;
-}
-
-.phs-print-table th,
-.phs-print-table td {
-  border: 1px solid #000;
-  padding: 4px 6px;
-  vertical-align: top;
-}
-
-.phs-print-table-sm td,
-.phs-print-table-sm th {
-  font-size: 10pt;
-}
-
-.phs-print-block {
-  margin: 6px 0;
-}
-
-.phs-print-ol {
-  margin: 4px 0 8px 1.25em;
-  padding: 0;
-}
-
-.phs-print-ol li {
-  margin-bottom: 4px;
-}
-
-.phs-print-yn {
-  margin: 6px 0;
-  font-size: 10.5pt;
-}
-
-.phs-print-yn-label {
-  display: block;
-  margin-bottom: 2px;
-}
-
-.phs-print-yn-opt {
-  margin-right: 12px;
-}
-
-.phs-print-sig-ii {
-  margin-top: 10px;
-}
-
-.phs-print-sig-line {
-  border-bottom: 1px solid #000;
-  min-height: 22px;
-  margin-top: 8px;
-  max-width: 280px;
-}
-
-.phs-print-sig-line-wide {
-  max-width: 100%;
-}
-
-.phs-print-sig-cap {
-  margin: 2px 0 0;
-  font-size: 9.5pt;
-  text-align: center;
-  max-width: 280px;
-}
-
-.phs-print-handwriting {
-  margin: 12px 0;
-  page-break-inside: avoid;
-}
-
-.phs-print-handwriting-title {
-  margin: 0 0 6px;
-}
-
-.phs-print-handwriting-sample {
-  margin: 0 0 8px;
-  text-align: justify;
-  font-size: 10pt;
-}
-
-.phs-print-handwriting-lines {
-  border: 1px solid #999;
-  padding: 6px;
-  min-height: 72px;
-}
-
-.phs-print-hw-line {
-  border-bottom: 1px solid #ccc;
-  min-height: 22px;
-  margin-bottom: 4px;
-}
-
-.phs-print-certify {
-  margin: 12px 0;
-  text-align: justify;
-  font-size: 10.5pt;
-}
-
-.phs-print-sign-table {
-  margin-top: 8px;
-}
-
-.phs-print-sign-table td {
-  border: 1px solid #000;
-  vertical-align: top;
-  padding: 8px;
-}
-
-.phs-print-sign-left {
-  width: 38%;
-}
-
-.phs-print-thumb-photo .phs-print-table td {
-  min-height: 100px;
-}
-
-.phs-print-thumb-pair {
-  margin-top: 8px;
-}
-
-.phs-print-thumb-box {
-  display: inline-block;
-  width: 56px;
-  height: 72px;
-  border: 2px solid #000;
-  vertical-align: middle;
-}
-
-.phs-print-photo-img {
-  max-width: 120px;
-  max-height: 150px;
-  display: block;
-  margin-top: 6px;
-  object-fit: cover;
-}
-
-.phs-print-photo-placeholder {
-  margin-top: 8px;
-  font-size: 9pt;
-  color: #444;
-}
-
-.phs-print-sworn {
-  margin-top: 12px;
-  page-break-inside: avoid;
-}
+@import url("phs-print-export.css");
 
 @media print {
   @page {
@@ -2101,6 +2080,14 @@ fieldset.section > .sworn-block {
     inset: auto !important;
   }
 
+  .summary-modal.open .summary-backdrop,
+  .summary-modal.open .summary-dialog,
+  .summary-modal.open .summary-phs-document {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
   .summary-dialog {
     position: static !important;
     inset: auto !important;
@@ -2115,10 +2102,6 @@ fieldset.section > .sworn-block {
   .summary-content {
     padding: 0 !important;
     overflow: visible !important;
-  }
-
-  .phs-summary-compact {
-    display: none !important;
   }
 
   .phs-official-print {
