@@ -281,6 +281,26 @@ function bindAnalyticsTabsOnce() {
   });
 }
 
+function bindAnalyticsViewTabsOnce() {
+  var buttons = Array.from(document.querySelectorAll('.analytics-view-tab-btn'));
+  if (!buttons.length || buttons[0].dataset.analyticsBound === '1') return;
+  buttons.forEach(function (btn) {
+    btn.dataset.analyticsBound = '1';
+    btn.addEventListener('click', function () {
+      var selected = btn.getAttribute('data-analytics-view');
+      buttons.forEach(function (b) {
+        var active = b === btn;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      document.querySelectorAll('.analytics-view-panel').forEach(function (panel) {
+        var show = panel.getAttribute('data-analytics-view-panel') === selected;
+        panel.hidden = !show;
+      });
+    });
+  });
+}
+
 function updateScopeHint(selectedId, records) {
   var hint = document.getElementById('analytics-scope-hint');
   if (!hint) return;
@@ -378,6 +398,70 @@ function renderBarChart(containerId, dataMap, options) {
   }).join('') + '</div>';
 }
 
+function renderPieChart(containerId, dataMap, options) {
+  options = options || {};
+  var host = document.getElementById(containerId);
+  if (!host) return;
+
+  var entries = (options.fixedOrder && options.fixedOrder.length
+    ? options.fixedOrder.map(function (label) { return [label, dataMap[label] || 0]; })
+    : Object.entries(dataMap || {}).sort(function (a, b) { return b[1] - a[1]; })
+  ).filter(function (e) { return Number(e[1]) > 0; });
+
+  if (!entries.length) {
+    host.innerHTML = EMPTY_CHART;
+    return;
+  }
+
+  var total = entries.reduce(function (acc, e) { return acc + Number(e[1] || 0); }, 0);
+  if (!total) {
+    host.innerHTML = EMPTY_CHART;
+    return;
+  }
+
+  var palette = options.colors || ['#1f4e79', '#2a7f9e', '#5aa469', '#f2a541', '#8e7dbe', '#cc6f6f'];
+  var mode = options.valueMode === 'percent' ? 'percent' : 'count';
+
+  var cursor = 0;
+  var slices = entries.map(function (entry, idx) {
+    var value = Number(entry[1] || 0);
+    var pct = (value / total) * 100;
+    var start = cursor;
+    cursor += pct;
+    return {
+      label: String(entry[0]),
+      value: value,
+      pct: pct,
+      color: palette[idx % palette.length],
+      range: palette[idx % palette.length] + ' ' + start.toFixed(2) + '% ' + cursor.toFixed(2) + '%'
+    };
+  });
+
+  var pieGradient = slices.map(function (s) { return s.range; }).join(', ');
+  var legend = slices.map(function (s) {
+    var valueText = mode === 'percent'
+      ? s.pct.toFixed(s.pct >= 10 ? 0 : 1) + '% (' + s.value + ')'
+      : s.value + ' (' + s.pct.toFixed(s.pct >= 10 ? 0 : 1) + '%)';
+    return '' +
+      '<li class="analytics-pie-legend-item">' +
+        '<span class="analytics-pie-legend-swatch" style="background:' + s.color + '"></span>' +
+        '<span class="analytics-pie-legend-label" title="' + escapeAttr(s.label) + '">' + escapeHtml(s.label) + '</span>' +
+        '<span class="analytics-pie-legend-value">' + escapeHtml(valueText) + '</span>' +
+      '</li>';
+  }).join('');
+
+  host.innerHTML = '' +
+    '<div class="analytics-pie-wrap">' +
+      '<div class="analytics-pie-chart" style="--analytics-pie:' + escapeAttr(pieGradient) + '">' +
+        '<div class="analytics-pie-center">' +
+          '<span class="analytics-pie-center-label">Total</span>' +
+          '<strong class="analytics-pie-center-value">' + total + '</strong>' +
+        '</div>' +
+      '</div>' +
+      '<ul class="analytics-pie-legend">' + legend + '</ul>' +
+    '</div>';
+}
+
 function topLabelFromMap(dataMap) {
   var entries = Object.entries(dataMap || {}).sort(function (a, b) { return b[1] - a[1]; });
   if (!entries.length || entries[0][1] <= 0) return 'None';
@@ -389,30 +473,61 @@ function topLabelFromEntries(entries) {
   return entries[0][0] + ' (' + entries[0][1] + ')';
 }
 
-function renderFindings(summary) {
-  var list = document.getElementById('analytics-findings-list');
-  var panel = document.getElementById('analytics-findings');
-  if (!list || !panel) return;
-  if (!summary || !summary.total) {
-    panel.hidden = true;
-    list.innerHTML = '';
+function hasCivilServiceEligibility(record) {
+  return !!normalizeValue(record && record.civilServiceEligibility);
+}
+
+function hasTrainingEntry(record) {
+  var seminars = Array.isArray(record && record.seminarsTraining) ? record.seminarsTraining : [];
+  if (seminars.some(function (row) {
+    return normalizeValue(row && row.name) || normalizeValue(row && row.inclusiveDate) || normalizeValue(row && row.conductedBy);
+  })) {
+    return true;
+  }
+  return !!normalizeValue(record && record.otherSchools);
+}
+
+function renderKeyFindingsGraph(summary, valueMode) {
+  var note = document.getElementById('analytics-key-findings-note');
+  var total = summary && summary.total ? Number(summary.total) : 0;
+  if (!total) {
+    renderPieChart('chart-key-findings-overview', {}, {});
+    if (note) note.textContent = 'No records match the current filters.';
     return;
   }
-  panel.hidden = false;
-  list.innerHTML = [
-    'Coverage: ' + summary.withEdu + ' of ' + summary.total + ' personnel have education records.',
-    'Top education attainment: ' + summary.topAttainment + '.',
-    'Top field/course: ' + summary.topField + '.',
-    'Most common training program: ' + summary.topProgram + '.',
-    'Most reported civil service eligibility: ' + summary.topEligibility + '.'
-  ].map(function (line) {
-    return '<li>' + escapeHtml(line) + '</li>';
-  }).join('');
+
+  var map = {
+    'With Education Records': summary.withEdu || 0,
+    'With Training/Seminar Entries': summary.withTraining || 0,
+    'Trained This Month': summary.trainedThisMonth || 0,
+    'With Civil Service Eligibility': summary.withCivilService || 0
+  };
+
+  renderPieChart('chart-key-findings-overview', map, {
+    fixedOrder: [
+      'With Education Records',
+      'With Training/Seminar Entries',
+      'Trained This Month',
+      'With Civil Service Eligibility'
+    ],
+    valueMode: valueMode,
+    colors: ['#1f4e79', '#2a7f9e', '#5aa469', '#f2a541']
+  });
+
+  if (note) {
+    note.textContent =
+      'Based on ' + total + ' filtered personnel records. Top attainment: ' + summary.topAttainment +
+      '; Top field/course: ' + summary.topField +
+      '; Top training program: ' + summary.topProgram +
+      '; Top civil service entry: ' + summary.topEligibility + '. ' +
+      'These pie slices represent distribution across key metrics and may overlap by personnel.';
+  }
 }
 
 export function renderAnalytics(records) {
   records = records || [];
   cachedRecords = records;
+  bindAnalyticsViewTabsOnce();
   bindAnalyticsTabsOnce();
   bindScopeChangeOnce();
   bindMetricModeChangeOnce();
@@ -441,6 +556,8 @@ export function renderAnalytics(records) {
 
   var total = subset.length;
   var withEdu = subset.filter(hasEducationRecord).length;
+  var withCivilService = subset.filter(hasCivilServiceEligibility).length;
+  var withTraining = subset.filter(hasTrainingEntry).length;
 
   var now = new Date();
   var thisMonthKey = monthKey(now);
@@ -699,12 +816,15 @@ export function renderAnalytics(records) {
     showAggregateBreakdowns
   );
 
-  renderFindings({
+  renderKeyFindingsGraph({
     total: total,
     withEdu: withEdu,
+    withCivilService: withCivilService,
+    withTraining: withTraining,
+    trainedThisMonth: trainedThisMonth,
     topAttainment: topLabelFromMap(eduMap),
     topField: topLabelFromEntries(topFieldEntries),
     topProgram: topLabelFromEntries(topProgramEntries),
     topEligibility: topLabelFromEntries(civilServiceEntries)
-  });
+  }, valueMode);
 }
