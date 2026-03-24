@@ -139,6 +139,13 @@ function fieldOfStudyLabel(record) {
   return null;
 }
 
+function splitEntryLines(value) {
+  return String(value || '')
+    .split(/\r?\n/)
+    .map(function (s) { return normalizeValue(s); })
+    .filter(Boolean);
+}
+
 function syncScopeSelect(records) {
   var sel = document.getElementById('analytics-scope');
   if (!sel) return;
@@ -163,6 +170,114 @@ function bindScopeChangeOnce() {
   sel.dataset.analyticsBound = '1';
   sel.addEventListener('change', function () {
     renderAnalytics(cachedRecords);
+  });
+}
+
+function bindMetricModeChangeOnce() {
+  var sel = document.getElementById('analytics-metric-mode');
+  if (!sel || sel.dataset.analyticsBound === '1') return;
+  sel.dataset.analyticsBound = '1';
+  sel.addEventListener('change', function () {
+    renderAnalytics(cachedRecords);
+  });
+}
+
+function metricMode() {
+  var sel = document.getElementById('analytics-metric-mode');
+  var val = sel && sel.value ? String(sel.value) : 'count';
+  return val === 'percent' ? 'percent' : 'count';
+}
+
+function bindSearchFiltersOnce() {
+  ['analytics-search-query', 'analytics-search-type'].forEach(function (id) {
+    var input = document.getElementById(id);
+    if (!input || input.dataset.analyticsBound === '1') return;
+    input.dataset.analyticsBound = '1';
+    var eventName = input.tagName === 'SELECT' ? 'change' : 'input';
+    input.addEventListener(eventName, function () {
+      renderAnalytics(cachedRecords);
+    });
+  });
+}
+
+function queryValue(id) {
+  var el = document.getElementById(id);
+  return el && el.value ? String(el.value).trim().toLowerCase() : '';
+}
+
+function educationSearchText(record) {
+  var parts = [
+    record.elemLocation,
+    record.elemAttendance,
+    record.elemGraduated,
+    record.hsLocation,
+    record.hsAttendance,
+    record.hsGraduated,
+    record.collegeLocation,
+    record.collegeAttendance,
+    record.collegeGraduated,
+    record.pgLocation,
+    record.pgCourseAttendance,
+    record.pgGraduated,
+    record.otherSchools,
+    record.civilServiceEligibility
+  ];
+  return parts.map(function (v) { return normalizeValue(v); }).filter(Boolean).join(' ').toLowerCase();
+}
+
+function trainingSearchText(record) {
+  var parts = [record.otherSchools];
+  var seminars = Array.isArray(record.seminarsTraining) ? record.seminarsTraining : [];
+  seminars.forEach(function (row) {
+    parts.push(
+      row && row.inclusiveDate,
+      row && row.name,
+      row && row.conductedBy,
+      row && row.remarks
+    );
+  });
+  return parts.map(function (v) { return normalizeValue(v); }).filter(Boolean).join(' ').toLowerCase();
+}
+
+function recordMatchesSearches(record, filters) {
+  var query = filters.query;
+  if (!query) return true;
+
+  var nameText = [
+    rosterLabel(record),
+    normalizeValue(record.nameFirst),
+    normalizeValue(record.nameMiddle),
+    normalizeValue(record.nameLast),
+    normalizeValue(record.fullName)
+  ].join(' ').toLowerCase();
+  var educationText = educationSearchText(record);
+  var trainingText = trainingSearchText(record);
+
+  if (filters.type === 'name') return nameText.indexOf(query) !== -1;
+  if (filters.type === 'education') return educationText.indexOf(query) !== -1;
+  if (filters.type === 'training') return trainingText.indexOf(query) !== -1;
+
+  return [nameText, educationText, trainingText].join(' ').indexOf(query) !== -1;
+}
+
+function bindAnalyticsTabsOnce() {
+  var buttons = Array.from(document.querySelectorAll('.analytics-tab-btn'));
+  if (!buttons.length || buttons[0].dataset.analyticsBound === '1') return;
+  buttons.forEach(function (btn) {
+    btn.dataset.analyticsBound = '1';
+    btn.addEventListener('click', function () {
+      var selected = btn.getAttribute('data-analytics-tab');
+      buttons.forEach(function (b) {
+        var active = b === btn;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      document.querySelectorAll('.analytics-panel').forEach(function (panel) {
+        var show = panel.getAttribute('data-analytics-panel') === selected;
+        panel.classList.toggle('active', show);
+        panel.hidden = !show;
+      });
+    });
   });
 }
 
@@ -226,6 +341,14 @@ function renderBarChart(containerId, dataMap, options) {
   } else {
     entries = Object.entries(dataMap || {}).sort(function (a, b) { return b[1] - a[1]; });
   }
+  if (options.maxItems && entries.length > options.maxItems) {
+    var top = entries.slice(0, options.maxItems);
+    if (options.groupOthers) {
+      var others = entries.slice(options.maxItems).reduce(function (acc, entry) { return acc + entry[1]; }, 0);
+      if (others > 0) top.push(['Others', others]);
+    }
+    entries = top;
+  }
   if (!entries.length) {
     host.innerHTML = EMPTY_CHART;
     return;
@@ -237,32 +360,84 @@ function renderBarChart(containerId, dataMap, options) {
   }
   var max = Math.max.apply(null, entries.map(function (e) { return e[1]; })) || 1;
   var labelClass = options.wideLabels ? ' bar-row__label--wide' : '';
+  var mode = options.valueMode === 'percent' ? 'percent' : 'count';
   host.innerHTML = '<div class="bar-chart">' + entries.map(function (entry) {
+    var labelText = String(entry[0]);
+    var shortLabel = labelText.length > 68 ? labelText.slice(0, 65) + '...' : labelText;
     var width = Math.max(4, Math.round((entry[1] / max) * 100));
+    var pct = sum > 0 ? (entry[1] / sum) * 100 : 0;
+    var valueText = mode === 'percent'
+      ? pct.toFixed(pct >= 10 ? 0 : 1) + '% (' + entry[1] + ')'
+      : String(entry[1]) + ' (' + pct.toFixed(pct >= 10 ? 0 : 1) + '%)';
     return '' +
       '<div class="bar-row">' +
-        '<div class="bar-row__label' + labelClass + '">' + escapeHtml(entry[0]) + '</div>' +
+        '<div class="bar-row__label' + labelClass + '"><span class="bar-row__label-text" title="' + escapeAttr(labelText) + '">' + escapeHtml(shortLabel) + '</span></div>' +
         '<div class="bar-track"><div class="bar-fill" style="width:' + width + '%"></div></div>' +
-        '<div class="bar-value">' + entry[1] + '</div>' +
+        '<div class="bar-value">' + escapeHtml(valueText) + '</div>' +
       '</div>';
   }).join('') + '</div>';
+}
+
+function topLabelFromMap(dataMap) {
+  var entries = Object.entries(dataMap || {}).sort(function (a, b) { return b[1] - a[1]; });
+  if (!entries.length || entries[0][1] <= 0) return 'None';
+  return entries[0][0] + ' (' + entries[0][1] + ')';
+}
+
+function topLabelFromEntries(entries) {
+  if (!entries || !entries.length || entries[0][1] <= 0) return 'None';
+  return entries[0][0] + ' (' + entries[0][1] + ')';
+}
+
+function renderFindings(summary) {
+  var list = document.getElementById('analytics-findings-list');
+  var panel = document.getElementById('analytics-findings');
+  if (!list || !panel) return;
+  if (!summary || !summary.total) {
+    panel.hidden = true;
+    list.innerHTML = '';
+    return;
+  }
+  panel.hidden = false;
+  list.innerHTML = [
+    'Coverage: ' + summary.withEdu + ' of ' + summary.total + ' personnel have education records.',
+    'Top education attainment: ' + summary.topAttainment + '.',
+    'Top field/course: ' + summary.topField + '.',
+    'Most common training program: ' + summary.topProgram + '.',
+    'Most reported civil service eligibility: ' + summary.topEligibility + '.'
+  ].map(function (line) {
+    return '<li>' + escapeHtml(line) + '</li>';
+  }).join('');
 }
 
 export function renderAnalytics(records) {
   records = records || [];
   cachedRecords = records;
+  bindAnalyticsTabsOnce();
   bindScopeChangeOnce();
+  bindMetricModeChangeOnce();
+  bindSearchFiltersOnce();
   syncScopeSelect(records);
 
   var sel = document.getElementById('analytics-scope');
   var selectedId = sel && sel.value ? String(sel.value) : '';
   updateScopeHint(selectedId, records);
 
-  var subset = selectedId
+  var scoped = selectedId
     ? records.filter(function (r) { return String(r.id) === selectedId; })
     : records;
 
+  var filters = {
+    type: queryValue('analytics-search-type') || 'all',
+    query: queryValue('analytics-search-query')
+  };
+
+  var subset = scoped.filter(function (r) {
+    return recordMatchesSearches(r, filters);
+  });
+
   var showAggregateBreakdowns = !selectedId && records.length > 0;
+  var valueMode = metricMode();
 
   var total = subset.length;
   var withEdu = subset.filter(hasEducationRecord).length;
@@ -309,7 +484,12 @@ export function renderAnalytics(records) {
       pushUnique(eduToNames[level], rosterLabel(r));
     }
   });
-  renderBarChart('chart-education-level', eduMap, { fixedOrder: eduOrder, omitZeroRows: true, wideLabels: true });
+  renderBarChart('chart-education-level', eduMap, {
+    fixedOrder: eduOrder,
+    omitZeroRows: true,
+    wideLabels: true,
+    valueMode: valueMode
+  });
   setBreakdownSlot(
     'breakdown-education-level',
     eduToNames,
@@ -330,7 +510,12 @@ export function renderAnalytics(records) {
   var topFieldEntries = Object.entries(fieldMap).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 10);
   var topFields = Object.fromEntries(topFieldEntries);
   var topFieldKeys = topFieldEntries.map(function (e) { return e[0]; });
-  renderBarChart('chart-field-course', topFields, { wideLabels: true });
+  renderBarChart('chart-field-course', topFields, {
+    wideLabels: true,
+    valueMode: valueMode,
+    maxItems: 8,
+    groupOthers: true
+  });
   setBreakdownSlot(
     'breakdown-field-course',
     fieldToNames,
@@ -354,7 +539,12 @@ export function renderAnalytics(records) {
       pushUnique(bracketToNames[b], rosterLabel(r));
     }
   });
-  renderBarChart('chart-grad-year', bracketMap, { fixedOrder: bracketOrder, omitZeroRows: true, wideLabels: true });
+  renderBarChart('chart-grad-year', bracketMap, {
+    fixedOrder: bracketOrder,
+    omitZeroRows: true,
+    wideLabels: true,
+    valueMode: valueMode
+  });
   setBreakdownSlot(
     'breakdown-grad-year',
     bracketToNames,
@@ -394,7 +584,8 @@ export function renderAnalytics(records) {
   renderBarChart('chart-training-monthly', monthlyTraining, {
     fixedOrder: monthKeysOrder,
     omitZeroRows: false,
-    treatAllZeroAsEmpty: true
+    treatAllZeroAsEmpty: true,
+    valueMode: valueMode
   });
   setBreakdownSlot(
     'breakdown-training-monthly',
@@ -426,7 +617,12 @@ export function renderAnalytics(records) {
   var topProgramEntries = Object.entries(programCounts).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 12);
   var topPrograms = Object.fromEntries(topProgramEntries);
   var topProgramKeys = topProgramEntries.map(function (e) { return e[0]; });
-  renderBarChart('chart-top-programs', topPrograms, { wideLabels: true });
+  renderBarChart('chart-top-programs', topPrograms, {
+    wideLabels: true,
+    valueMode: valueMode,
+    maxItems: 10,
+    groupOthers: true
+  });
   setBreakdownSlot(
     'breakdown-top-programs',
     programToNames,
@@ -434,4 +630,81 @@ export function renderAnalytics(records) {
     'Which personnel attended each training or seminar (counted once per program per person)',
     showAggregateBreakdowns
   );
+
+  var otherTrainingToNames = {};
+  subset.forEach(function (r) {
+    var lines = splitEntryLines(r.otherSchools);
+    if (!lines.length) return;
+    var seen = {};
+    var label = rosterLabel(r);
+    lines.forEach(function (line) {
+      if (seen[line]) return;
+      seen[line] = true;
+      if (!otherTrainingToNames[line]) otherTrainingToNames[line] = [];
+      pushUnique(otherTrainingToNames[line], label);
+    });
+  });
+  var otherTrainingCounts = {};
+  Object.keys(otherTrainingToNames).forEach(function (name) {
+    otherTrainingCounts[name] = otherTrainingToNames[name].length;
+  });
+  var otherTrainingEntries = Object.entries(otherTrainingCounts).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 12);
+  var otherTrainingTop = Object.fromEntries(otherTrainingEntries);
+  var otherTrainingKeys = otherTrainingEntries.map(function (e) { return e[0]; });
+  renderBarChart('chart-other-schools-training', otherTrainingTop, {
+    wideLabels: true,
+    valueMode: valueMode,
+    maxItems: 8,
+    groupOthers: true
+  });
+  setBreakdownSlot(
+    'breakdown-other-schools-training',
+    otherTrainingToNames,
+    otherTrainingKeys,
+    'Which personnel reported each other school or training item',
+    showAggregateBreakdowns
+  );
+
+  var civilServiceToNames = {};
+  subset.forEach(function (r) {
+    var lines = splitEntryLines(r.civilServiceEligibility);
+    if (!lines.length) return;
+    var seenCivil = {};
+    var label = rosterLabel(r);
+    lines.forEach(function (line) {
+      if (seenCivil[line]) return;
+      seenCivil[line] = true;
+      if (!civilServiceToNames[line]) civilServiceToNames[line] = [];
+      pushUnique(civilServiceToNames[line], label);
+    });
+  });
+  var civilServiceCounts = {};
+  Object.keys(civilServiceToNames).forEach(function (name) {
+    civilServiceCounts[name] = civilServiceToNames[name].length;
+  });
+  var civilServiceEntries = Object.entries(civilServiceCounts).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 12);
+  var civilServiceTop = Object.fromEntries(civilServiceEntries);
+  var civilServiceKeys = civilServiceEntries.map(function (e) { return e[0]; });
+  renderBarChart('chart-civil-service-eligibility', civilServiceTop, {
+    wideLabels: true,
+    valueMode: valueMode,
+    maxItems: 8,
+    groupOthers: true
+  });
+  setBreakdownSlot(
+    'breakdown-civil-service-eligibility',
+    civilServiceToNames,
+    civilServiceKeys,
+    'Which personnel reported each civil service eligibility/date-acquired entry',
+    showAggregateBreakdowns
+  );
+
+  renderFindings({
+    total: total,
+    withEdu: withEdu,
+    topAttainment: topLabelFromMap(eduMap),
+    topField: topLabelFromEntries(topFieldEntries),
+    topProgram: topLabelFromEntries(topProgramEntries),
+    topEligibility: topLabelFromEntries(civilServiceEntries)
+  });
 }

@@ -7,8 +7,33 @@
     <select id="analytics-scope" class="analytics-scope-select">
       <option value="">All personnel (combined totals)</option>
     </select>
+
+    <label for="analytics-metric-mode" class="analytics-toolbar-label">Display values as</label>
+    <select id="analytics-metric-mode" class="analytics-scope-select">
+      <option value="count">Count</option>
+      <option value="percent">Percent</option>
+    </select>
   </div>
+
+  <div class="analytics-toolbar analytics-toolbar--search" role="region" aria-label="Analysis search filters">
+    <label for="analytics-search-type" class="analytics-toolbar-label">Search In</label>
+    <select id="analytics-search-type" class="analytics-scope-select">
+      <option value="all">All</option>
+      <option value="name">Name</option>
+      <option value="education">Education</option>
+      <option value="training">Training/Seminar</option>
+    </select>
+
+    <label for="analytics-search-query" class="analytics-toolbar-label">Search</label>
+    <input type="search" id="analytics-search-query" class="analytics-search-input" placeholder="Type a keyword" />
+  </div>
+
   <p class="analytics-scope-hint" id="analytics-scope-hint" hidden></p>
+
+  <section class="analytics-findings" id="analytics-findings" aria-label="Key findings">
+    <h3>Key Findings</h3>
+    <ul id="analytics-findings-list"></ul>
+  </section>
 
   <div class="analytics-kpis">
     <div class="analytics-kpi">
@@ -25,31 +50,59 @@
     </div>
   </div>
 
-  <div class="analytics-grid">
-    <div class="analytics-card">
-      <h3>Educational Attainment Distribution</h3>
-      <div id="chart-education-level"></div>
-      <div class="analytics-breakdown-slot" id="breakdown-education-level" hidden></div>
-    </div>
-    <div class="analytics-card">
-      <h3>Graduation Year Brackets</h3>
-      <div id="chart-grad-year"></div>
-      <div class="analytics-breakdown-slot" id="breakdown-grad-year" hidden></div>
-    </div>
-    <div class="analytics-card">
-      <h3>Field / Strand / Course Distribution</h3>
-      <div id="chart-field-course"></div>
-      <div class="analytics-breakdown-slot" id="breakdown-field-course" hidden></div>
-    </div>
-    <div class="analytics-card">
-      <h3>Seminars &amp; Trainings Completed (Last 6 Months)</h3>
-      <div id="chart-training-monthly"></div>
-      <div class="analytics-breakdown-slot" id="breakdown-training-monthly" hidden></div>
-    </div>
-    <div class="analytics-card analytics-card--span">
-      <h3>Top Training Programs / Seminars Attended</h3>
-      <div id="chart-top-programs"></div>
-      <div class="analytics-breakdown-slot" id="breakdown-top-programs" hidden></div>
-    </div>
+  <div class="analytics-tabs" role="tablist" aria-label="Analytics sections">
+    <button type="button" class="analytics-tab-btn active" role="tab" aria-selected="true" data-analytics-tab="education">Education</button>
+    <button type="button" class="analytics-tab-btn" role="tab" aria-selected="false" data-analytics-tab="training">Training</button>
+    <button type="button" class="analytics-tab-btn" role="tab" aria-selected="false" data-analytics-tab="eligibility">Eligibility</button>
   </div>
+
+  <section class="analytics-panel active" data-analytics-panel="education">
+    <div class="analytics-grid">
+      <div class="analytics-card">
+        <h3>Educational Attainment Distribution</h3>
+        <div id="chart-education-level"></div>
+        <div class="analytics-breakdown-slot" id="breakdown-education-level" hidden></div>
+      </div>
+      <div class="analytics-card">
+        <h3>Graduation Year Brackets</h3>
+        <div id="chart-grad-year"></div>
+        <div class="analytics-breakdown-slot" id="breakdown-grad-year" hidden></div>
+      </div>
+      <div class="analytics-card analytics-card--span">
+        <h3>Field / Strand / Course Distribution</h3>
+        <div id="chart-field-course"></div>
+        <div class="analytics-breakdown-slot" id="breakdown-field-course" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="analytics-panel" data-analytics-panel="training" hidden>
+    <div class="analytics-grid">
+      <div class="analytics-card">
+        <h3>Seminars &amp; Trainings Completed (Last 6 Months)</h3>
+        <div id="chart-training-monthly"></div>
+        <div class="analytics-breakdown-slot" id="breakdown-training-monthly" hidden></div>
+      </div>
+      <div class="analytics-card">
+        <h3>Other Schools/Training Attended and Date of Attendance</h3>
+        <div id="chart-other-schools-training"></div>
+        <div class="analytics-breakdown-slot" id="breakdown-other-schools-training" hidden></div>
+      </div>
+      <div class="analytics-card analytics-card--span">
+        <h3>Top Training Programs / Seminars Attended</h3>
+        <div id="chart-top-programs"></div>
+        <div class="analytics-breakdown-slot" id="breakdown-top-programs" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="analytics-panel" data-analytics-panel="eligibility" hidden>
+    <div class="analytics-grid">
+      <div class="analytics-card analytics-card--span">
+        <h3>Civil Service Eligibility/Date Acquired</h3>
+        <div id="chart-civil-service-eligibility"></div>
+        <div class="analytics-breakdown-slot" id="breakdown-civil-service-eligibility" hidden></div>
+      </div>
+    </div>
+  </section>
 </div>
