@@ -225,7 +225,8 @@ body[data-app-view="form"] .sidebar .nav-item.active:not(:hover) {
 
 /* Dashboard-style patterned background (roster & reports) */
 body[data-app-view="list"] .main-area .content,
-body[data-app-view="analytics"] .main-area .content {
+body[data-app-view="analytics"] .main-area .content,
+body[data-app-view="profile"] .main-area .content {
   background-color: var(--content-pattern);
   background-image:
     repeating-linear-gradient(
@@ -252,19 +253,22 @@ body[data-app-view="form"] .main-area .content {
 
 /* Light institutional header (roster / reports) — reference dashboard */
 body[data-app-view="list"] .topbar--institutional,
-body[data-app-view="analytics"] .topbar--institutional {
+body[data-app-view="analytics"] .topbar--institutional,
+body[data-app-view="profile"] .topbar--institutional {
   background: linear-gradient(180deg, #fbfcfe 0%, #f4f6f9 100%);
   border-bottom: 1px solid #d5dbe3;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
 body[data-app-view="list"] .topbar--institutional .topbar-seal,
-body[data-app-view="analytics"] .topbar--institutional .topbar-seal {
+body[data-app-view="analytics"] .topbar--institutional .topbar-seal,
+body[data-app-view="profile"] .topbar--institutional .topbar-seal {
   color: #c4a035;
 }
 
 body[data-app-view="list"] .topbar--institutional .topbar-title,
-body[data-app-view="analytics"] .topbar--institutional .topbar-title {
+body[data-app-view="analytics"] .topbar--institutional .topbar-title,
+body[data-app-view="profile"] .topbar--institutional .topbar-title {
   font-family: var(--font-serif);
   font-weight: 700;
   font-size: 1.05rem;
@@ -275,7 +279,8 @@ body[data-app-view="analytics"] .topbar--institutional .topbar-title {
 }
 
 body[data-app-view="list"] .topbar--institutional .topbar-subtitle,
-body[data-app-view="analytics"] .topbar--institutional .topbar-subtitle {
+body[data-app-view="analytics"] .topbar--institutional .topbar-subtitle,
+body[data-app-view="profile"] .topbar--institutional .topbar-subtitle {
   color: #6b7280;
   text-transform: uppercase;
   font-weight: 600;
@@ -1327,6 +1332,16 @@ fieldset.section .row .row:last-child {
     padding: 12px;
   }
 
+  .profile-card--hero {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+
   .two-cols,
   .three-cols,
   .four-cols {
@@ -1871,6 +1886,99 @@ fieldset.section > .sworn-block {
   padding: 16px 18px;
   box-shadow: none;
   border: 1px solid #ccc;
+}
+
+#profile-view {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: none;
+  border: 1px solid #ccc;
+}
+
+.profile-wrap h2 {
+  margin: 0 0 4px;
+  color: var(--navy);
+  font-family: var(--font-sans);
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+}
+
+.profile-subtitle {
+  margin: 0 0 14px;
+  color: var(--charcoal-muted);
+  font-size: 0.9rem;
+}
+
+.profile-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fafbfc;
+  padding: 12px;
+}
+
+.profile-card h3 {
+  margin: 0 0 8px;
+  color: #1f2d3d;
+  font-size: 0.9rem;
+}
+
+.profile-card--hero {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
+}
+
+.profile-avatar-placeholder {
+  width: 84px;
+  height: 84px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #1f4e79 0%, #2f6aa6 100%);
+}
+
+.profile-hero-meta h3 {
+  margin: 0 0 4px;
+}
+
+.profile-hero-meta p {
+  margin: 0 0 6px;
+  color: #475569;
+}
+
+.profile-status {
+  font-size: 0.76rem;
+  color: #1f4e79;
+  font-weight: 600;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.profile-card--span {
+  grid-column: 1 / -1;
+}
+
+.profile-placeholder-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #334155;
+  font-size: 0.83rem;
+}
+
+.profile-note {
+  margin: 0;
+  color: #475569;
+  font-size: 0.85rem;
 }
 
 .analytics-wrap h2 {

@@ -1,6 +1,6 @@
 /**
- * Primary sidebar: Roster | Reports only. PHS form is not a tab.
- * @param {'list'|'analytics'|'none'} tabName
+ * Primary sidebar: Roster | Reports | Profile. PHS form is not a tab.
+ * @param {'list'|'analytics'|'profile'|'none'} tabName
  */
 export function setActiveNav(tabName) {
   document.querySelectorAll('.nav-item').forEach(function (t) {

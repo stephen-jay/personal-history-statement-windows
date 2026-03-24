@@ -39,6 +39,14 @@ async function loadAnalyticsPage() {
   analyticsContainer.innerHTML = await response.text();
 }
 
+async function loadProfilePage() {
+  const profileContainer = document.getElementById('profile-content');
+  if (!profileContainer) throw new Error('Profile container not found.');
+  const response = await fetch('pages/profile-view.html');
+  if (!response.ok) throw new Error('Failed to load profile-view.html');
+  profileContainer.innerHTML = await response.text();
+}
+
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -428,6 +436,7 @@ function buildAutoFillRecord() {
   try {
     await loadFormPages();
     await loadAnalyticsPage();
+    await loadProfilePage();
 
     if (!window.personnelApi) {
       showError('personnelApi not loaded. Preload may have failed.');
@@ -436,6 +445,7 @@ function buildAutoFillRecord() {
 
     const listView = document.getElementById('list-view');
     const analyticsView = document.getElementById('analytics-view');
+    const profileView = document.getElementById('profile-view');
     const phsModalEl = document.getElementById('phs-modal');
     const phsModalBackdrop = document.getElementById('phs-modal-backdrop');
     const phsModalDialog = phsModalEl && phsModalEl.querySelector('.phs-modal-dialog');
@@ -450,7 +460,6 @@ function buildAutoFillRecord() {
     const summaryBackdrop = document.getElementById('summary-backdrop');
     const summaryPrint = document.getElementById('summary-print');
     const summaryExportPdf = document.getElementById('summary-export-pdf');
-    const summaryExportWord = document.getElementById('summary-export-word');
     const topbarSection = document.getElementById('topbar-section');
     const btnAutoFillPhs = document.getElementById('btn-autofill-phs');
 
@@ -462,6 +471,7 @@ function buildAutoFillRecord() {
     function applyListChrome() {
       listView.classList.add('active');
       if (analyticsView) analyticsView.classList.remove('active');
+      if (profileView) profileView.classList.remove('active');
       setActiveNav('list');
       setAppView('list');
       setTopbarSection(topbarSection, 'Personnel roster');
@@ -500,29 +510,6 @@ function buildAutoFillRecord() {
           var html = await buildStandalonePhsHtml(rec);
           var base = suggestedExportBasename(rec);
           await window.exportApi.savePhsPdf({ html: html, defaultName: base + '.pdf' });
-        } catch (err) {
-          exportSummaryError(err);
-        }
-      });
-    }
-
-    if (summaryExportWord) {
-      summaryExportWord.addEventListener('click', async function () {
-        var recW = lastSummaryRecord;
-        if (!recW) return;
-        if (!window.exportApi || !window.exportApi.savePhsDocx) {
-          alert('Export is not available. Restart the application.');
-          return;
-        }
-        try {
-          var baseW = suggestedExportBasename(recW);
-          var out = await window.exportApi.savePhsDocx({
-            record: recW,
-            defaultName: baseW + '.docx',
-          });
-          if (out && out.ok === false && out.error) {
-            throw new Error(out.error);
-          }
         } catch (err) {
           exportSummaryError(err);
         }
@@ -596,6 +583,7 @@ function buildAutoFillRecord() {
      */
     function showForm(opts) {
       if (analyticsView) analyticsView.classList.remove('active');
+      if (profileView) profileView.classList.remove('active');
       listView.classList.add('active');
       setActiveNav('none');
       setAppView('form');
@@ -617,6 +605,7 @@ function buildAutoFillRecord() {
         if (!phsModalCtl.close(false)) return;
       }
       listView.classList.remove('active');
+      if (profileView) profileView.classList.remove('active');
       if (analyticsView) analyticsView.classList.add('active');
       setActiveNav('analytics');
       setAppView('analytics');
@@ -626,11 +615,24 @@ function buildAutoFillRecord() {
       });
     }
 
+    function showProfile() {
+      if (phsModalCtl.isOpen()) {
+        if (!phsModalCtl.close(false)) return;
+      }
+      listView.classList.remove('active');
+      if (analyticsView) analyticsView.classList.remove('active');
+      if (profileView) profileView.classList.add('active');
+      setActiveNav('profile');
+      setAppView('profile');
+      setTopbarSection(topbarSection, 'Profile');
+    }
+
     document.querySelectorAll('.nav-item').forEach(function (tab) {
       tab.addEventListener('click', function () {
         const which = tab.getAttribute('data-tab');
         if (which === 'list') showList();
         if (which === 'analytics') showAnalytics();
+        if (which === 'profile') showProfile();
       });
     });
 
