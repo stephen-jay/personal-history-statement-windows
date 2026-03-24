@@ -126,55 +126,55 @@ export function buildOfficialPrintHtml(data) {
     '<td colspan="2" class="phs-caption">(Middle/Maternal)</td>' +
     '</tr>' +
     '<tr class="phs-job-row">' +
-    '<td class="phs-td-letter">C.</td>' +
+    '<td class="phs-td-letter">B.</td>' +
     '<td colspan="2" class="phs-td-prompt">PRESENT JOB/ASSIGNMENT:</td>' +
     '<td class="phs-td-underline" colspan="4">' + c(data, 'presentJob') + '</td>' +
     '</tr>' +
     '<tr>' +
-    '<td class="phs-td-letter">D.</td>' +
+    '<td class="phs-td-letter">C.</td>' +
     '<td colspan="2" class="phs-td-prompt">BUSINESS OR DUTY ADDRESS:</td>' +
     '<td class="phs-td-underline" colspan="4">' + c(data, 'businessAddress') + '</td>' +
     '</tr>' +
     '<tr>' +
-    '<td class="phs-td-letter">E.</td>' +
+    '<td class="phs-td-letter">D.</td>' +
     '<td colspan="2" class="phs-td-prompt">HOME ADDRESS (Include Street &amp; No.):</td>' +
     '<td class="phs-td-underline" colspan="4">' + c(data, 'homeAddress') + '</td>' +
     '</tr>' +
     '<tr>' +
-    '<td class="phs-td-letter">F.</td>' +
+    '<td class="phs-td-letter">E.</td>' +
     '<td colspan="2" class="phs-td-prompt">DATE OF BIRTH:</td>' +
     '<td class="phs-td-underline" colspan="2">' + c(data, 'dateOfBirth') + '</td>' +
     '<td class="phs-td-prompt-tight">PLACE OF BIRTH:</td>' +
     '<td class="phs-td-underline">' + c(data, 'placeOfBirth') + '</td>' +
     '</tr>' +
     '<tr>' +
-    '<td class="phs-td-letter">G.</td>' +
+    '<td class="phs-td-letter">F.</td>' +
     '<td colspan="2" class="phs-td-prompt">CHANGE IN NAME (If by Court Action give details):</td>' +
     '<td class="phs-td-underline" colspan="4">' + c(data, 'changeInName') + '</td>' +
     '</tr>' +
     '<tr>' +
-    '<td class="phs-td-letter">H.</td>' +
+    '<td class="phs-td-letter">G.</td>' +
     '<td class="phs-td-prompt-tight">NICKNAMES:</td>' +
     '<td class="phs-td-underline" colspan="2">' + c(data, 'nicknames') + '</td>' +
     '<td colspan="2" class="phs-td-prompt">NATIONALITY:</td>' +
     '<td class="phs-td-underline">' + c(data, 'nationality') + '</td>' +
     '</tr>' +
     '<tr>' +
-    '<td class="phs-td-letter">I.</td>' +
+    '<td class="phs-td-letter">H.</td>' +
     '<td class="phs-td-prompt-tight">TAX IDENTIFICATION NR.:</td>' +
     '<td class="phs-td-underline" colspan="2">' + c(data, 'taxId') + '</td>' +
     '<td colspan="2" class="phs-td-prompt">TEL. NO.:</td>' +
     '<td class="phs-td-underline">' + c(data, 'telNo') + '</td>' +
     '</tr>' +
     '<tr>' +
-    '<td class="phs-td-letter">J.</td>' +
+    '<td class="phs-td-letter">I.</td>' +
     '<td class="phs-td-prompt-tight">MOBILE PHONE NR.:</td>' +
     '<td class="phs-td-underline" colspan="2">' + c(data, 'mobile') + '</td>' +
     '<td colspan="2" class="phs-td-prompt">EMAIL ADDRESS:</td>' +
     '<td class="phs-td-underline">' + c(data, 'email') + '</td>' +
     '</tr>' +
     '<tr>' +
-    '<td class="phs-td-letter">K.</td>' +
+    '<td class="phs-td-letter">J.</td>' +
     '<td class="phs-td-prompt-tight">PASSPORT NR.:</td>' +
     '<td class="phs-td-underline" colspan="2">' + c(data, 'passportNr') + '</td>' +
     '<td colspan="2" class="phs-td-prompt">DATE OF EXPIRATION:</td>' +
