@@ -378,6 +378,8 @@ function renderBarChart(containerId, dataMap, options) {
     host.innerHTML = EMPTY_CHART;
     return;
   }
+  var percentBase = Number(options.percentBase || 0);
+  var denominator = percentBase > 0 ? percentBase : sum;
   var max = Math.max.apply(null, entries.map(function (e) { return e[1]; })) || 1;
   var labelClass = options.wideLabels ? ' bar-row__label--wide' : '';
   var mode = options.valueMode === 'percent' ? 'percent' : 'count';
@@ -385,7 +387,7 @@ function renderBarChart(containerId, dataMap, options) {
     var labelText = String(entry[0]);
     var shortLabel = labelText.length > 68 ? labelText.slice(0, 65) + '...' : labelText;
     var width = Math.max(4, Math.round((entry[1] / max) * 100));
-    var pct = sum > 0 ? (entry[1] / sum) * 100 : 0;
+    var pct = denominator > 0 ? (entry[1] / denominator) * 100 : 0;
     var valueText = mode === 'percent'
       ? pct.toFixed(pct >= 10 ? 0 : 1) + '% (' + entry[1] + ')'
       : String(entry[1]) + ' (' + pct.toFixed(pct >= 10 ? 0 : 1) + '%)';
@@ -586,7 +588,8 @@ export function renderAnalytics(records) {
     'Vocational/Tech-Voc',
     'College Graduate',
     'Post-Graduate',
-    'Doctorate'
+    'Doctorate',
+    'No Education Background'
   ];
   var eduMap = {};
   var eduToNames = {};
@@ -596,6 +599,7 @@ export function renderAnalytics(records) {
   });
   subset.forEach(function (r) {
     var level = educationAttainmentLevel(r);
+    if (!level) level = 'No Education Background';
     if (level && Object.prototype.hasOwnProperty.call(eduMap, level)) {
       eduMap[level] += 1;
       pushUnique(eduToNames[level], rosterLabel(r));
@@ -605,7 +609,8 @@ export function renderAnalytics(records) {
     fixedOrder: eduOrder,
     omitZeroRows: true,
     wideLabels: true,
-    valueMode: valueMode
+    valueMode: valueMode,
+    percentBase: total
   });
   setBreakdownSlot(
     'breakdown-education-level',
