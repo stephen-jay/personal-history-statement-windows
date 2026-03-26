@@ -452,6 +452,7 @@ function buildAutoFillRecord() {
     const summaryPrint = document.getElementById('summary-print');
     const summaryExportPdf = document.getElementById('summary-export-pdf');
     const topbarSection = document.getElementById('topbar-section');
+    const btnLogout = document.getElementById('btn-logout');
     const btnAutoFillPhs = document.getElementById('btn-autofill-phs');
 
     /** @type {object|null} */
@@ -619,6 +620,12 @@ function buildAutoFillRecord() {
     document.getElementById('btn-cancel').addEventListener('click', function () {
       showList();
     });
+
+    if (btnLogout) {
+      btnLogout.addEventListener('click', function () {
+        window.location.href = 'login.html';
+      });
+    }
 
     if (phsModalBackdrop) {
       phsModalBackdrop.addEventListener('click', function () {

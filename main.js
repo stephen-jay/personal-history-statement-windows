@@ -497,8 +497,8 @@ function createWindow() {
       : undefined,
   });
 
-  const indexPath = path.join(__dirname, 'src', 'ui', 'index.html');
-  mainWindow.loadURL(pathToFileURL(indexPath).href);
+  const loginPath = path.join(__dirname, 'src', 'ui', 'login.html');
+  mainWindow.loadURL(pathToFileURL(loginPath).href);
   mainWindow.on('closed', () => { mainWindow = null; });
   mainWindow.setTitle('Personnel Database');
   // Open DevTools so you can see any errors (Console tab)

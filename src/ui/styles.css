@@ -176,6 +176,16 @@ body[data-app-view="form"] .sidebar .nav-item.active:not(:hover) {
   min-width: 0;
 }
 
+.topbar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.topbar-logout-btn {
+  min-width: 92px;
+}
+
 .topbar-seal {
   flex: 0 0 auto;
   display: flex;
@@ -297,6 +307,21 @@ body[data-app-view="profile"] .topbar--institutional .topbar-subtitle {
   font-weight: 600;
   font-size: 0.68rem;
   letter-spacing: 0.1em;
+}
+
+body[data-app-view="list"] .topbar--institutional .topbar-logout-btn,
+body[data-app-view="analytics"] .topbar--institutional .topbar-logout-btn,
+body[data-app-view="profile"] .topbar--institutional .topbar-logout-btn {
+  background: #f6f8fb;
+  border-color: #cfd9e6;
+  color: #2f3f56;
+}
+
+body[data-app-view="list"] .topbar--institutional .topbar-logout-btn:hover,
+body[data-app-view="analytics"] .topbar--institutional .topbar-logout-btn:hover,
+body[data-app-view="profile"] .topbar--institutional .topbar-logout-btn:hover {
+  background: #eaf0f8;
+  border-color: #b4c4d8;
 }
 
 /* Form task view: keep navy header */
