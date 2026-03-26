@@ -39,14 +39,6 @@ async function loadAnalyticsPage() {
   analyticsContainer.innerHTML = await response.text();
 }
 
-async function loadProfilePage() {
-  const profileContainer = document.getElementById('profile-content');
-  if (!profileContainer) throw new Error('Profile container not found.');
-  const response = await fetch('pages/profile-view.html');
-  if (!response.ok) throw new Error('Failed to load profile-view.html');
-  profileContainer.innerHTML = await response.text();
-}
-
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -143,6 +135,7 @@ function randomFieldValue(fieldId, el, seed) {
     nameLast: seed.lastName,
     nameFirst: seed.firstName,
     nameMiddle: seed.middleName,
+    organization: pickRandom(['Member - DepEd', 'Member - DOH', 'Member - PNP', 'Member - AFP']),
     presentJob: pickRandom(['Operations Analyst', 'Administrative Officer', 'Data Compliance Associate']),
     businessAddress: seed.businessAddress,
     homeAddress: seed.homeAddress,
@@ -436,7 +429,6 @@ function buildAutoFillRecord() {
   try {
     await loadFormPages();
     await loadAnalyticsPage();
-    await loadProfilePage();
 
     if (!window.personnelApi) {
       showError('personnelApi not loaded. Preload may have failed.');
@@ -445,7 +437,6 @@ function buildAutoFillRecord() {
 
     const listView = document.getElementById('list-view');
     const analyticsView = document.getElementById('analytics-view');
-    const profileView = document.getElementById('profile-view');
     const phsModalEl = document.getElementById('phs-modal');
     const phsModalBackdrop = document.getElementById('phs-modal-backdrop');
     const phsModalDialog = phsModalEl && phsModalEl.querySelector('.phs-modal-dialog');
@@ -471,7 +462,6 @@ function buildAutoFillRecord() {
     function applyListChrome() {
       listView.classList.add('active');
       if (analyticsView) analyticsView.classList.remove('active');
-      if (profileView) profileView.classList.remove('active');
       setActiveNav('list');
       setAppView('list');
       setTopbarSection(topbarSection, 'Personnel roster');
@@ -583,7 +573,6 @@ function buildAutoFillRecord() {
      */
     function showForm(opts) {
       if (analyticsView) analyticsView.classList.remove('active');
-      if (profileView) profileView.classList.remove('active');
       listView.classList.add('active');
       setActiveNav('none');
       setAppView('form');
@@ -605,7 +594,6 @@ function buildAutoFillRecord() {
         if (!phsModalCtl.close(false)) return;
       }
       listView.classList.remove('active');
-      if (profileView) profileView.classList.remove('active');
       if (analyticsView) analyticsView.classList.add('active');
       setActiveNav('analytics');
       setAppView('analytics');
@@ -615,24 +603,11 @@ function buildAutoFillRecord() {
       });
     }
 
-    function showProfile() {
-      if (phsModalCtl.isOpen()) {
-        if (!phsModalCtl.close(false)) return;
-      }
-      listView.classList.remove('active');
-      if (analyticsView) analyticsView.classList.remove('active');
-      if (profileView) profileView.classList.add('active');
-      setActiveNav('profile');
-      setAppView('profile');
-      setTopbarSection(topbarSection, 'Profile');
-    }
-
     document.querySelectorAll('.nav-item').forEach(function (tab) {
       tab.addEventListener('click', function () {
         const which = tab.getAttribute('data-tab');
         if (which === 'list') showList();
         if (which === 'analytics') showAnalytics();
-        if (which === 'profile') showProfile();
       });
     });
 

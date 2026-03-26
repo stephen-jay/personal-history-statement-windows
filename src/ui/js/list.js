@@ -111,11 +111,12 @@ export function renderList(records, deps) {
     ? records.filter(function (r) {
         const fn = rosterDisplayName(r).toLowerCase();
         const pos = (r.presentJob || '').toLowerCase();
+        const org = (r.organization || '').toLowerCase();
         const mob = (r.mobile || '').toString().toLowerCase();
         const em = (r.email || '').toLowerCase();
         const edu = (formatEducationBackground(r) || '').toLowerCase();
         const sem = (formatSeminarsTraining(r) || '').toLowerCase();
-        return fn.includes(query) || pos.includes(query) || mob.includes(query) || em.includes(query) || edu.includes(query) || sem.includes(query);
+        return fn.includes(query) || pos.includes(query) || org.includes(query) || mob.includes(query) || em.includes(query) || edu.includes(query) || sem.includes(query);
       })
     : records;
 
@@ -127,6 +128,7 @@ export function renderList(records, deps) {
     const sem = formatSeminarsTraining(r);
     const nameCell = escapeHtml(rosterDisplayName(r) || '—');
     const position = escapeHtml(r.presentJob || '—');
+    const organization = escapeHtml(r.organization || '—');
     const contact = escapeHtml(r.mobile || r.email || '—');
     const safeId = escapeHtml(r.id || '');
     const pct = getRecordCompletenessPercent(r);
@@ -136,6 +138,7 @@ export function renderList(records, deps) {
       '<td class="avatar-cell">' + getAvatarHtml(r) + '</td>' +
       '<td class="name-cell"><span class="name-chip">' + nameCell + '</span></td>' +
       '<td>' + position + '</td>' +
+      '<td>' + organization + '</td>' +
       '<td class="cell-multiline">' + escapeHtml(edu) + '</td>' +
       '<td class="cell-multiline">' + escapeHtml(sem) + '</td>' +
       '<td>' + contact + '</td>' +

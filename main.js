@@ -22,8 +22,30 @@ const REMOVED_FIELDS = new Set(['brOfSvc']);
 const USE_POSTGRES_READ = /^(1|true|yes)$/i.test(String(process.env.USE_POSTGRES_READ || ''));
 const USE_POSTGRES_WRITE = /^(1|true|yes)$/i.test(String(process.env.USE_POSTGRES_WRITE || ''));
 const ENABLE_DUAL_WRITE = /^(1|true|yes)$/i.test(String(process.env.ENABLE_DUAL_WRITE || ''));
+const USE_REMOTE_API = /^(1|true|yes)$/i.test(String(process.env.USE_REMOTE_API || ''));
+const REMOTE_API_BASE = String(process.env.REMOTE_API_BASE || 'http://10.10.218.144:3210');
 const DATABASE_URL = process.env.DATABASE_URL || '';
 let pgPool = null;
+
+async function remoteApi(pathname, options) {
+  const base = REMOTE_API_BASE.replace(/\/+$/, '');
+  const url = base + pathname;
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json' },
+    ...(options || {}),
+  });
+  const text = await res.text();
+  let body = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch (_) {
+    body = null;
+  }
+  if (!res.ok) {
+    throw new Error((body && body.error) || ('Remote API error: ' + res.status));
+  }
+  return body;
+}
 
 function getPgPool() {
   if (!DATABASE_URL) return null;
@@ -127,6 +149,7 @@ const PERSONNEL_FIELD_MAP = {
   nameLast: 'name_last',
   nameFirst: 'name_first',
   nameMiddle: 'name_middle',
+  organization: 'organization',
   presentJob: 'present_job',
   businessAddress: 'business_address',
   homeAddress: 'home_address',
@@ -493,6 +516,13 @@ app.on('activate', () => {
 });
 
 ipcMain.handle('personnel:getAll', async () => {
+  if (USE_REMOTE_API) {
+    try {
+      return await remoteApi('/personnel');
+    } catch (e) {
+      console.error('personnel:getAll remote API failed, falling back to local providers:', e && e.message ? e.message : e);
+    }
+  }
   if (USE_POSTGRES_READ) {
     try {
       return await getPostgresData();
@@ -504,6 +534,16 @@ ipcMain.handle('personnel:getAll', async () => {
 });
 
 ipcMain.handle('personnel:save', async (_, record) => {
+  if (USE_REMOTE_API) {
+    try {
+      return await remoteApi('/personnel', {
+        method: 'POST',
+        body: JSON.stringify(record || {}),
+      });
+    } catch (e) {
+      console.error('personnel:save remote API failed, falling back to local providers:', e && e.message ? e.message : e);
+    }
+  }
   const shouldWritePg = USE_POSTGRES_WRITE;
   const shouldDualWrite = ENABLE_DUAL_WRITE;
   if (shouldWritePg) {
@@ -521,6 +561,17 @@ ipcMain.handle('personnel:save', async (_, record) => {
 });
 
 ipcMain.handle('personnel:delete', async (_, id, version) => {
+  if (USE_REMOTE_API) {
+    try {
+      const qs = '?version=' + encodeURIComponent(version == null ? '' : String(version));
+      const result = await remoteApi('/personnel/' + encodeURIComponent(id) + qs, {
+        method: 'DELETE',
+      });
+      return !!(result && result.ok);
+    } catch (e) {
+      console.error('personnel:delete remote API failed, falling back to local providers:', e && e.message ? e.message : e);
+    }
+  }
   const shouldWritePg = USE_POSTGRES_WRITE;
   const shouldDualWrite = ENABLE_DUAL_WRITE;
   if (shouldWritePg) {

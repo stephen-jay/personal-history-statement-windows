@@ -3,37 +3,43 @@
 }
 
 :root {
-  --navy: #1e3a5f;
-  --navy-dark: #152a45;
-  --cream: #f8f6f3;
-  --cream-dark: #ebe8e3;
-  --sidebar-active-bg: #335a8c;
-  --sidebar-hover-bg: rgba(255, 255, 255, 0.12);
-  --charcoal: #2c2c2c;
-  --charcoal-muted: #5a5a5a;
-  --border: #e0ddd8;
-  --border-focus: #1e3a5f;
-  --accent: #1e3a5f;
-  --accent-hover: #2a4a75;
+  --navy: #1f3b63;
+  --navy-dark: #152c4a;
+  --cream: #f7f8fb;
+  --cream-dark: #eef1f6;
+  --sidebar-active-bg: rgba(255, 255, 255, 0.16);
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.1);
+  --charcoal: #1f2937;
+  --charcoal-muted: #64748b;
+  --border: #dce3ec;
+  --border-focus: #315f98;
+  --accent: #2f5f97;
+  --accent-hover: #264f80;
   --danger: #b91c1c;
   --danger-hover: #991b1b;
-  --radius: 2px;
-  --radius-lg: 10px;
+  --radius: 8px;
+  --radius-lg: 14px;
   --radius-pill: 999px;
-  --content-pattern: #e9ecef;
-  --card-shadow: 0 4px 18px rgba(15, 31, 53, 0.08), 0 1px 3px rgba(15, 31, 53, 0.06);
+  --content-pattern: #e9edf3;
+  --card-shadow: 0 10px 28px rgba(15, 31, 53, 0.08), 0 2px 6px rgba(15, 31, 53, 0.05);
   --font-serif: Georgia, 'Times New Roman', serif;
   --font-sans: 'Segoe UI', 'Segoe UI Web (West European)', system-ui, -apple-system, sans-serif;
   --shadow-sm: none;
   --shadow-md: 0 1px 0 rgba(0, 0, 0, 0.06);
+  --anim-fast: 160ms;
+  --anim-mid: 280ms;
+  --anim-slow: 420ms;
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background: #f0f0f0;
+  background: #e8edf4;
   color: var(--charcoal);
   min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   overflow-x: hidden;
   font-size: 14px;
   line-height: 1.45;
@@ -52,17 +58,18 @@ body[data-app-view="form"] .sidebar .nav-item.active:not(:hover) {
 .app-shell {
   display: flex;
   min-height: 100vh;
+  height: 100vh;
   width: 100%;
 }
 
 .sidebar {
   width: 152px;
   flex: 0 0 152px;
-  background: var(--navy);
+  background: linear-gradient(180deg, #1f3b63 0%, #182f4f 100%);
   color: #fff;
   padding: 0 6px 14px;
   box-shadow: none;
-  border-right: 1px solid rgba(0, 0, 0, 0.2);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   align-self: stretch;
   min-height: 100vh;
   display: flex;
@@ -86,16 +93,17 @@ body[data-app-view="form"] .sidebar .nav-item.active:not(:hover) {
   align-items: center;
   gap: 8px;
   padding: 9px 8px;
-  border-radius: 3px;
+  border-radius: 10px;
   text-align: left;
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 500;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  transition: background var(--anim-fast) ease, color var(--anim-fast) ease, border-color var(--anim-fast) ease, opacity var(--anim-fast) ease, transform var(--anim-fast) ease;
 }
 
 .nav-item:hover {
   background: var(--sidebar-hover-bg);
   color: #fff;
+  transform: translateX(2px);
 }
 
 .nav-item:focus-visible {
@@ -104,9 +112,9 @@ body[data-app-view="form"] .sidebar .nav-item.active:not(:hover) {
 }
 
 .nav-item.active {
-  background: var(--sidebar-active-bg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.14) 100%);
   color: #fff;
-  border-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
   font-weight: 600;
 }
 
@@ -153,7 +161,7 @@ body[data-app-view="form"] .sidebar .nav-item.active:not(:hover) {
 }
 
 .topbar--institutional {
-  background: var(--navy);
+  background: linear-gradient(180deg, #ffffff 0%, #f6f8fc 100%);
   border-bottom: 1px solid #0f1f35;
   justify-content: flex-start;
   gap: 0;
@@ -221,6 +229,9 @@ body[data-app-view="form"] .sidebar .nav-item.active:not(:hover) {
   padding: 18px 22px 22px;
   flex: 1 1 auto;
   min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Dashboard-style patterned background (roster & reports) */
@@ -243,7 +254,7 @@ body[data-app-view="profile"] .main-area .content {
       rgba(255, 255, 255, 0.35) 18px,
       rgba(255, 255, 255, 0.35) 19px
     ),
-    linear-gradient(180deg, #eef0f4 0%, #e4e7ec 100%);
+    linear-gradient(180deg, #f4f7fb 0%, #e9edf3 100%);
   background-attachment: local;
 }
 
@@ -332,6 +343,18 @@ body[data-app-view="form"] .topbar--institutional .topbar-seal {
 
 .view.active {
   display: block;
+  animation: view-fade var(--anim-mid) var(--ease-smooth);
+}
+
+@keyframes view-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* List view */
@@ -387,13 +410,14 @@ body[data-app-view="form"] .topbar--institutional .topbar-seal {
   flex: 1;
   max-width: 320px;
   padding: 10px 16px;
-  border: 1px solid #c5ccd6;
+  border: 1px solid #d3dbe6;
   border-radius: var(--radius-lg);
   background: #fff;
   color: var(--charcoal);
   font-size: 0.84rem;
   font-family: var(--font-sans);
-  box-shadow: 0 1px 2px rgba(15, 31, 53, 0.04);
+  box-shadow: 0 2px 8px rgba(15, 31, 53, 0.06);
+  transition: border-color var(--anim-fast) ease, box-shadow var(--anim-fast) ease, transform var(--anim-fast) ease;
 }
 
 .roster-toolbar .search {
@@ -403,6 +427,8 @@ body[data-app-view="form"] .topbar--institutional .topbar-seal {
 .search:focus {
   outline: none;
   border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(49, 95, 152, 0.15), 0 4px 12px rgba(15, 31, 53, 0.08);
+  transform: translateY(-1px);
 }
 
 .search::placeholder {
@@ -411,33 +437,35 @@ body[data-app-view="form"] .topbar--institutional .topbar-seal {
 
 .btn {
   padding: 8px 16px;
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--radius);
   font-size: 0.88rem;
   cursor: pointer;
   font-family: var(--font-sans);
   font-weight: 600;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  transition: background var(--anim-fast), color var(--anim-fast), border-color var(--anim-fast), box-shadow var(--anim-fast), transform var(--anim-fast);
 }
 
 .btn.primary {
-  background: var(--navy);
+  background: linear-gradient(180deg, #2f5f97 0%, #264f80 100%);
   color: #fff;
+  box-shadow: 0 4px 12px rgba(47, 95, 151, 0.25);
 }
 
 .btn.primary:hover {
-  background: var(--accent-hover);
+  background: linear-gradient(180deg, #3569a5 0%, #2a578d 100%);
+  transform: translateY(-1px);
 }
 
 .btn.secondary {
-  background: #fff;
+  background: #f8fafd;
   color: var(--charcoal);
-  border: 1px solid var(--border);
+  border: 1px solid #d6dee9;
 }
 
 .btn.secondary:hover {
-  background: var(--cream-dark);
-  border-color: var(--charcoal-muted);
+  background: #eef3f9;
+  border-color: #b8c6d8;
 }
 
 .btn.danger {
@@ -469,10 +497,22 @@ body[data-app-view="form"] .topbar--institutional .topbar-seal {
 /* Table — card on patterned background */
 .table-wrap {
   overflow-x: auto;
-  border: 1px solid #d8dee6;
+  border: 1px solid #d6dee8;
   border-radius: var(--radius-lg);
   background: #fff;
   box-shadow: var(--card-shadow);
+  animation: card-enter var(--anim-slow) var(--ease-smooth);
+}
+
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .personnel-table {
@@ -490,21 +530,47 @@ body[data-app-view="form"] .topbar--institutional .topbar-seal {
 }
 
 .personnel-table th {
-  background: linear-gradient(180deg, #eef1f5 0%, #e6e9ef 100%);
+  background: linear-gradient(180deg, #f5f8fc 0%, #edf2f8 100%);
   font-weight: 700;
   font-size: 0.65rem;
-  color: #4b5563;
+  color: #475569;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   border-bottom: 1px solid #d8dee6;
 }
 
 .personnel-table tbody tr:nth-child(even) {
-  background: #fafbfc;
+  background: #fbfcfe;
 }
 
 .personnel-table tbody tr:hover {
-  background: #f0f4fa;
+  background: #f1f6fd;
+}
+
+.personnel-table tbody tr {
+  animation: row-enter var(--anim-mid) var(--ease-smooth);
+}
+
+.personnel-table tbody tr:nth-child(1) { animation-delay: 20ms; }
+.personnel-table tbody tr:nth-child(2) { animation-delay: 40ms; }
+.personnel-table tbody tr:nth-child(3) { animation-delay: 60ms; }
+.personnel-table tbody tr:nth-child(4) { animation-delay: 80ms; }
+.personnel-table tbody tr:nth-child(5) { animation-delay: 100ms; }
+.personnel-table tbody tr:nth-child(6) { animation-delay: 120ms; }
+.personnel-table tbody tr:nth-child(7) { animation-delay: 140ms; }
+.personnel-table tbody tr:nth-child(8) { animation-delay: 160ms; }
+.personnel-table tbody tr:nth-child(9) { animation-delay: 180ms; }
+.personnel-table tbody tr:nth-child(10) { animation-delay: 200ms; }
+
+@keyframes row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .personnel-table .name-cell {
@@ -515,9 +581,9 @@ body[data-app-view="form"] .topbar--institutional .topbar-seal {
   display: inline-block;
   max-width: 100%;
   padding: 6px 10px;
-  border-radius: 6px;
-  background: #eef1f6;
-  border: 1px solid #dce3ed;
+  border-radius: 8px;
+  background: #f2f6fb;
+  border: 1px solid #dbe5f1;
   color: #1f2937;
   font-weight: 600;
   line-height: 1.3;

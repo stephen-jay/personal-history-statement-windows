@@ -1,7 +1,7 @@
 export const TOTAL_PAGES = 5;
 
 export const FIELD_IDS = [
-  'nameLast', 'nameFirst', 'nameMiddle', 'presentJob', 'businessAddress', 'homeAddress',
+  'nameLast', 'nameFirst', 'nameMiddle', 'organization', 'presentJob', 'businessAddress', 'homeAddress',
   'dateOfBirth', 'placeOfBirth', 'changeInName', 'nicknames', 'nationality', 'taxId', 'telNo', 'mobile', 'email',
   'passportNr', 'passportExpiry', 'sex', 'age', 'height', 'weight', 'build', 'complexion', 'colorEyes', 'colorHair',
   'scarMarks', 'healthState', 'recentIllness', 'bloodType', 'maritalStatus', 'spouseName', 'marriageDatePlace',
