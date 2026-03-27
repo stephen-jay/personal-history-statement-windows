@@ -26,7 +26,7 @@ export function suggestedExportBasename(record) {
 export async function buildStandalonePhsHtml(record) {
   var cssText = FALLBACK_CSS;
   try {
-    var res = await fetch('phs-print-export.css');
+    var res = await fetch('css/phs-print-export.css');
     if (res.ok) {
       var t = await res.text();
       if (t && t.trim()) cssText = t;

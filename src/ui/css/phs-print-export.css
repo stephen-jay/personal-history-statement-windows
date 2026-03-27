@@ -40,6 +40,55 @@ body {
   max-width: 100%;
 }
 
+/* Use modern summary layout in export too for clean consistency. */
+.phs-personal-modern,
+.phs-char-modern,
+.phs-marital-modern,
+.phs-family-modern,
+.phs-education-modern,
+.phs-residence-modern,
+.phs-employment-modern,
+.phs-foreign-modern,
+.phs-credit-modern,
+.phs-arrest-modern,
+.phs-reputation-modern,
+.phs-organizations-modern,
+.phs-misc-modern {
+  display: block;
+}
+
+.phs-modern-bottom-signatures {
+  display: none;
+}
+
+/* Hide instructions to match summary layout. */
+.phs-print-instructions {
+  display: none;
+}
+
+/* Keep legacy section bodies hidden when modern equivalents exist. */
+.phs-print-section--personal .phs-print-i-table,
+.phs-print-section--personal .phs-print-photo-inline,
+.phs-print-section--char .phs-char-table,
+.phs-print-section--char .phs-print-sig-ii,
+.phs-print-section--marital .phs-stack-table,
+.phs-print-section--marital .phs-print-list-block {
+  display: none;
+}
+
+.phs-print-section--family > :not(.phs-print-h2):not(.phs-family-modern),
+.phs-print-section--education > :not(.phs-print-h2):not(.phs-education-modern),
+.phs-print-section--residence > :not(.phs-print-h2):not(.phs-residence-modern),
+.phs-print-section--employment > :not(.phs-print-h2):not(.phs-employment-modern),
+.phs-print-section--foreign > :not(.phs-print-h2):not(.phs-foreign-modern),
+.phs-print-section--credit > :not(.phs-print-h2):not(.phs-credit-modern),
+.phs-print-section--arrest > :not(.phs-print-h2):not(.phs-arrest-modern),
+.phs-print-section--reputation > :not(.phs-print-h2):not(.phs-reputation-modern),
+.phs-print-section--organizations > :not(.phs-print-h2):not(.phs-organizations-modern),
+.phs-print-section--misc > :not(.phs-print-h2):not(.phs-misc-modern) {
+  display: none;
+}
+
 /* --- Title --- */
 .phs-print-header {
   text-align: center;
@@ -59,7 +108,11 @@ body {
 
 /* --- Sections --- */
 .phs-print-section {
-  margin-bottom: 22px;
+  margin-bottom: 14px;
+  padding: 11px 12px 10px;
+  border: 1px solid var(--phs-border);
+  border-radius: 8px;
+  background: #fff;
   page-break-inside: avoid;
 }
 
@@ -73,7 +126,7 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--phs-label);
+  color: #000;
   border-bottom: 2px solid var(--phs-border-strong);
   padding-bottom: 6px;
 }
@@ -89,6 +142,350 @@ body {
 
 .phs-print-h2--section {
   font-size: 0.8rem;
+}
+
+/* I. PERSONAL DETAILS modern export */
+.phs-personal-modern-hero {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.phs-personal-modern-avatar-wrap {
+  width: 110px;
+  height: 110px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f2f6fb;
+  border: 1px solid var(--phs-border);
+}
+
+.phs-personal-modern-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.phs-personal-modern-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.phs-personal-modern-name {
+  margin: 0;
+  font-size: 1.45rem;
+  line-height: 1.1;
+  color: #1a202c;
+}
+
+.phs-personal-modern-job {
+  margin: 6px 0 0;
+  color: #2d3748;
+}
+
+.phs-personal-modern-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.phs-personal-modern-card {
+  border: 1px solid var(--phs-border);
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px;
+}
+
+.phs-personal-modern-card-title {
+  margin: 0 0 8px;
+  padding: 0 0 6px;
+  border-bottom: 1px solid var(--phs-border);
+  font-size: 0.67rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #2d3748;
+}
+
+.phs-personal-modern-item {
+  display: block;
+  padding: 7px 0;
+  border-top: 1px dashed #d7e0ea;
+}
+
+.phs-personal-modern-item:first-of-type {
+  border-top: none;
+  padding-top: 2px;
+}
+
+.phs-personal-modern-icon {
+  display: none;
+}
+
+.phs-personal-modern-label {
+  display: block;
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #4a5568;
+}
+
+.phs-personal-modern-value {
+  display: block;
+  margin-top: 2px;
+}
+
+/* II-III modern lines (iconless) */
+.phs-modern-line {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 7px 0;
+  border-top: 1px dashed #d7e0ea;
+}
+
+.phs-modern-line:first-child {
+  border-top: none;
+  padding-top: 2px;
+}
+
+.phs-modern-line-icon {
+  display: none;
+}
+
+.phs-modern-line-label {
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #4a5568;
+}
+
+.phs-modern-line-value {
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.phs-modern-line--stacked {
+  grid-template-columns: 1fr;
+  grid-template-areas: 'label' 'value';
+  gap: 4px;
+}
+
+.phs-modern-line--stacked .phs-modern-line-label {
+  grid-area: label;
+}
+
+.phs-modern-line--stacked .phs-modern-line-value {
+  grid-area: value;
+}
+
+.phs-char-modern-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.phs-char-modern-col,
+.phs-char-modern-footer,
+.phs-char-modern-health-item,
+.phs-marital-modern-col,
+.phs-marital-modern-children {
+  border: 1px solid var(--phs-border);
+  border-radius: 8px;
+  background: #fff;
+  padding: 9px 10px;
+}
+
+.phs-char-modern-health {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.phs-marital-modern-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.phs-marital-modern-children-title {
+  margin: 0 0 8px;
+  font-size: 0.67rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #4a5568;
+}
+
+.phs-marital-modern-children-table,
+.phs-modern-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--phs-border);
+  border-radius: 6px;
+  overflow: hidden;
+  font-size: 9.5pt;
+}
+
+.phs-marital-modern-children-table th,
+.phs-marital-modern-children-table td,
+.phs-modern-table th,
+.phs-modern-table td {
+  border-right: 1px solid var(--phs-border);
+  border-top: 1px solid var(--phs-border);
+  padding: 7px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.phs-marital-modern-children-table th:last-child,
+.phs-marital-modern-children-table td:last-child,
+.phs-modern-table th:last-child,
+.phs-modern-table td:last-child {
+  border-right: none;
+}
+
+.phs-marital-modern-children-table thead th,
+.phs-modern-table thead th {
+  border-top: none;
+  background: #edf2f7;
+  color: #2d3748;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* IV-XIII shared modern cards/tables */
+.phs-modern-card-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.phs-modern-card-grid--1 {
+  grid-template-columns: 1fr;
+}
+
+.phs-modern-card-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.phs-modern-card,
+.phs-modern-table-card {
+  border: 1px solid var(--phs-border);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+  margin-top: 10px;
+}
+
+.phs-modern-card-grid .phs-modern-card {
+  margin-top: 0;
+}
+
+.phs-modern-card-title {
+  margin: 0;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--phs-border);
+  background: #edf2f7;
+  color: #2d3748;
+  font-size: 0.67rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.phs-modern-card-body {
+  padding: 9px 10px;
+}
+
+.phs-modern-field {
+  padding: 7px 0;
+  border-top: 1px dashed #d7e0ea;
+}
+
+.phs-modern-field:first-child {
+  padding-top: 2px;
+  border-top: none;
+}
+
+.phs-modern-field-label {
+  display: block;
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #4a5568;
+}
+
+.phs-modern-field-value {
+  margin-top: 2px;
+}
+
+/* XIII thumb/signature modern block */
+.phs-modern-thumb-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.phs-modern-thumb-item {
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  border: 1px solid var(--phs-border);
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+.phs-modern-thumb-box {
+  width: 56px;
+  height: 72px;
+  border: 2px solid var(--phs-border-strong);
+  border-radius: 2px;
+  background: #fff;
+}
+
+.phs-modern-thumb-label {
+  margin-top: 6px;
+  font-size: 0.7rem;
+  color: #4a5568;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.phs-modern-thumb-signature {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.phs-modern-thumb-sign-line {
+  width: min(260px, 100%);
+  min-height: 24px;
+  border-bottom: 1px solid var(--phs-border-strong);
+}
+
+.phs-modern-thumb-sign-cap {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  color: var(--phs-muted);
+  text-align: center;
 }
 
 /* --- Instructions --- */
@@ -338,6 +735,30 @@ body {
 .phs-print-table-sm td,
 .phs-print-table-sm th {
   font-size: 10pt;
+}
+
+.phs-print-photo-inline {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--phs-border);
+  border-radius: 6px;
+  background: #fff;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.phs-print-photo-inline-title {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--phs-label);
+}
+
+.phs-print-photo-img--inline {
+  margin-top: 0;
 }
 
 /* --- Lists --- */
