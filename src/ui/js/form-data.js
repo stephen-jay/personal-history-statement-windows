@@ -193,6 +193,8 @@ export function getFormData() {
     const val = normalizeValue(el.value);
     data[id] = val;
   });
+  var handwrittenInput = document.getElementById('handwrittenDataUrl');
+  if (handwrittenInput) data.handwrittenDataUrl = normalizeValue(handwrittenInput.value);
   data.children = getChildrenRows();
   ROW_SECTIONS.forEach(function (section) {
     data[section.key] = getStructuredRows(section);
@@ -219,6 +221,24 @@ export function setFormData(record) {
       el.value = String(val);
     }
   });
+  var handwrittenInput = document.getElementById('handwrittenDataUrl');
+  if (handwrittenInput) {
+    handwrittenInput.value = record && record.handwrittenDataUrl ? String(record.handwrittenDataUrl) : '';
+  }
+  var handwrittenPreview = document.getElementById('handwritten-preview');
+  var handwrittenPlaceholder = document.getElementById('handwritten-placeholder-text');
+  if (handwrittenPreview && handwrittenPlaceholder) {
+    var hw = record && record.handwrittenDataUrl ? String(record.handwrittenDataUrl) : '';
+    if (hw) {
+      handwrittenPreview.src = hw;
+      handwrittenPreview.style.display = 'block';
+      handwrittenPlaceholder.style.display = 'none';
+    } else {
+      handwrittenPreview.removeAttribute('src');
+      handwrittenPreview.style.display = 'none';
+      handwrittenPlaceholder.style.display = '';
+    }
+  }
   setChildrenRows(record.children);
   ROW_SECTIONS.forEach(function (section) {
     setStructuredRows(section, record[section.key]);

@@ -97,6 +97,35 @@ body {
   border-bottom: 2px solid var(--phs-accent);
 }
 
+.phs-print-header-main {
+  display: grid;
+  grid-template-columns: 1fr 132px;
+  gap: 14px;
+  align-items: start;
+  text-align: left;
+}
+
+.phs-print-header-text {
+  min-width: 0;
+}
+
+.phs-print-header-subtitle {
+  margin: 6px 0 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--phs-text);
+}
+
+.phs-print-header-meta {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--phs-muted);
+}
+
+.phs-print-header-photo {
+  justify-self: end;
+}
+
 .phs-print-title {
   margin: 0;
   font-size: 1.35rem;
@@ -886,6 +915,24 @@ body {
   color: var(--phs-text);
 }
 
+.phs-print-handwriting-uploaded {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  max-height: 220px;
+  object-fit: contain;
+  margin: 8px 0 10px;
+  border: 1px solid var(--phs-border);
+  border-radius: 4px;
+  background: #fff;
+}
+
+.phs-print-handwriting-uploaded--empty {
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  color: var(--phs-muted);
+}
+
 .phs-print-handwriting-lines {
   border: 1px solid var(--phs-border);
   padding: 10px;
@@ -945,6 +992,28 @@ body {
   margin-top: 12px;
 }
 
+.phs-print-id-block {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 14px;
+  align-items: start;
+}
+
+.phs-print-id-right {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.phs-print-id-left .phs-print-sig-line {
+  margin-top: 0;
+}
+
+.phs-print-id-left .phs-print-sig-cap {
+  text-align: left;
+}
+
 .phs-print-thumb-box {
   display: inline-block;
   width: 56px;
@@ -964,10 +1033,43 @@ body {
   border: 1px solid var(--phs-border);
 }
 
+.phs-print-photo-img--header {
+  width: 120px;
+  height: 120px;
+  max-width: 120px;
+  max-height: 120px;
+  object-fit: cover;
+  margin-top: 0;
+}
+
 .phs-print-photo-placeholder {
   margin-top: 8px;
   font-size: 0.85rem;
   color: var(--phs-muted);
+}
+
+.phs-print-photo-placeholder--header {
+  width: 120px;
+  height: 120px;
+  margin-top: 0;
+  border: 1px dashed var(--phs-border);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: #fff;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.phs-print-photo-cell,
+.phs-print-thumb-cell {
+  border: 1px solid var(--phs-border);
+  border-radius: 6px;
+  padding: 10px;
+  background: #fff;
 }
 
 .phs-print-sworn {

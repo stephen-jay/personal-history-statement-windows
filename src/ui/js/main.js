@@ -17,11 +17,7 @@ async function loadFormPages() {
   const pagesContainer = document.getElementById('form-pages');
   if (!pagesContainer) throw new Error('Form pages container not found.');
   const files = [
-    'pages/form-page-1-personal-details.html',
-    'pages/form-page-2-characteristics-marital.html',
-    'pages/form-page-3-family-history.html',
-    'pages/form-page-4-education-residence-employment-foreign.html',
-    'pages/form-page-5-credit-to-misc.html'
+    'pages/form-all.html'
   ];
   const htmlPages = await Promise.all(files.map(async function (file) {
     const response = await fetch(file);
@@ -130,22 +126,6 @@ function buildRandomPhotoDataUrl(initials) {
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }
 
-function buildRandomHandwritingDataUrl(initials) {
-  const svg =
-    '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="240" viewBox="0 0 640 240">' +
-      '<rect width="640" height="240" fill="#ffffff"/>' +
-      '<g stroke="#d1d5db" stroke-width="1">' +
-        '<line x1="24" y1="52" x2="616" y2="52"/>' +
-        '<line x1="24" y1="96" x2="616" y2="96"/>' +
-        '<line x1="24" y1="140" x2="616" y2="140"/>' +
-        '<line x1="24" y1="184" x2="616" y2="184"/>' +
-      '</g>' +
-      '<path d="M44 80 C110 40, 165 130, 236 88 S365 54, 432 96 S540 132, 604 86" fill="none" stroke="#1f2937" stroke-width="2.6" stroke-linecap="round"/>' +
-      '<text x="600" y="220" text-anchor="end" fill="#6b7280" font-size="16" font-family="Arial, sans-serif">' + initials + ' handwritten sample</text>' +
-    '</svg>';
-  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-}
-
 function randomFieldValue(fieldId, el, seed) {
   const fixed = {
     nameLast: seed.lastName,
@@ -248,10 +228,6 @@ function randomFieldValue(fieldId, el, seed) {
 
   if (fieldId === 'photoDataUrl') {
     return buildRandomPhotoDataUrl(seed.initials);
-  }
-
-  if (fieldId === 'handwrittenEntryDataUrl') {
-    return buildRandomHandwritingDataUrl(seed.initials);
   }
 
   if (Object.prototype.hasOwnProperty.call(fixed, fieldId)) {
@@ -472,7 +448,6 @@ function buildAutoFillRecord() {
     const summaryPrint = document.getElementById('summary-print');
     const summaryExportPdf = document.getElementById('summary-export-pdf');
     const topbarSection = document.getElementById('topbar-section');
-    const btnLogout = document.getElementById('btn-logout');
     const btnAutoFillPhs = document.getElementById('btn-autofill-phs');
 
     /** @type {object|null} */
@@ -641,12 +616,6 @@ function buildAutoFillRecord() {
       showList();
     });
 
-    if (btnLogout) {
-      btnLogout.addEventListener('click', function () {
-        window.location.href = 'login.html';
-      });
-    }
-
     if (phsModalBackdrop) {
       phsModalBackdrop.addEventListener('click', function () {
         showList();
@@ -737,17 +706,21 @@ function buildAutoFillRecord() {
       });
     }
 
-    var handwritingUpload = document.getElementById('handwriting-upload');
-    var handwrittenEntryInput = document.getElementById('handwrittenEntryDataUrl');
-    if (handwritingUpload && handwrittenEntryInput) {
-      handwritingUpload.addEventListener('change', function () {
-        var file = handwritingUpload.files && handwritingUpload.files[0];
+    var handwrittenUpload = document.getElementById('handwritten-upload');
+    var handwrittenDataUrlInput = document.getElementById('handwrittenDataUrl');
+    var handwrittenPreview = document.getElementById('handwritten-preview');
+    var handwrittenPlaceholder = document.getElementById('handwritten-placeholder-text');
+    if (handwrittenUpload && handwrittenDataUrlInput && handwrittenPreview && handwrittenPlaceholder) {
+      handwrittenUpload.addEventListener('change', function () {
+        var file = handwrittenUpload.files && handwrittenUpload.files[0];
         if (!file) return;
         var reader = new FileReader();
         reader.onload = function () {
           var raw = String(reader.result || '');
-          handwrittenEntryInput.value = raw;
-          formData.setHandwritingPreview(raw);
+          handwrittenDataUrlInput.value = raw;
+          handwrittenPreview.src = raw;
+          handwrittenPreview.style.display = 'block';
+          handwrittenPlaceholder.style.display = 'none';
         };
         reader.readAsDataURL(file);
       });
