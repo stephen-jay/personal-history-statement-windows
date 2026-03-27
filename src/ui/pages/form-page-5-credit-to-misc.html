@@ -89,6 +89,20 @@
       <select id="lieDetector"><option value="">—</option><option value="Yes">Yes</option><option value="No">No</option></select>
     </div>
 
+    <div class="row">
+      <label>Upload image for personnel handwritten entry</label>
+      <div class="upload-photo-panel handwritten-upload-panel">
+        <p class="upload-photo-panel-title">Personnel handwritten entry</p>
+        <label class="photo-box photo-box--handwritten photo-upload-trigger" id="handwriting-box" for="handwriting-upload" title="Click to upload handwritten entry">
+          <img id="handwriting-preview" class="photo-preview" alt="Personnel handwritten entry preview" style="display:none" />
+          <span id="handwriting-placeholder-text">Click to upload handwritten entry</span>
+        </label>
+        <input type="file" id="handwriting-upload" accept="image/*" class="sr-only" />
+        <input type="hidden" id="handwrittenEntryDataUrl" />
+        <div class="photo-caption"><em>Accepted: JPG, PNG, WEBP</em></div>
+      </div>
+    </div>
+
     <div class="thumb-photo-grid">
       <div class="thumb-mark-panel">
         <p class="thumb-mark-title">Thumb mark</p>

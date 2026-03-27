@@ -488,6 +488,21 @@ body {
   text-align: center;
 }
 
+.phs-modern-handwriting-wrap {
+  border: 1px solid var(--phs-border);
+  border-radius: 6px;
+  background: #fff;
+  padding: 6px;
+}
+
+.phs-modern-handwriting-img {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  background: #fff;
+}
+
 /* --- Instructions --- */
 .phs-print-instructions-box {
   background: var(--phs-fill);

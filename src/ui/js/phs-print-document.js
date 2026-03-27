@@ -165,6 +165,18 @@ function modernTableCard(title, headers, rows) {
   );
 }
 
+function handwrittenEntryHtml(data) {
+  var src = raw(data, 'handwrittenEntryDataUrl');
+  if (!src) {
+    return '<span class="phs-print-placeholder">No handwritten entry image uploaded</span>';
+  }
+  return (
+    '<div class="phs-modern-handwriting-wrap">' +
+    '<img class="phs-modern-handwriting-img" src="' + escapeHtml(src) + '" alt="Personnel handwritten entry" />' +
+    '</div>'
+  );
+}
+
 function joinData(data, keys) {
   var parts = keys.map(function (k) {
     var x = data && data[k];
@@ -667,6 +679,7 @@ export function buildOfficialPrintHtml(data) {
       return [row && row.languageDialect, row && row.speak, row && row.read, row && row.write];
     })) +
     modernCard('Lie Detector Test', modernField('Willing to undergo periodic test?', v(data, 'lieDetector'))) +
+    modernCard('Personnel Handwritten Entry', handwrittenEntryHtml(data)) +
     '<section class="phs-modern-card phs-modern-card--thumb-sign">' +
     '<h4 class="phs-modern-card-title">Thumb Mark / Signature</h4>' +
     '<div class="phs-modern-card-body">' +

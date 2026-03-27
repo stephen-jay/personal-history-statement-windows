@@ -20,6 +20,22 @@ export function setPhotoPreview(dataUrl) {
   }
 }
 
+export function setHandwritingPreview(dataUrl) {
+  const previewImg = document.getElementById('handwriting-preview');
+  const placeholderText = document.getElementById('handwriting-placeholder-text');
+  if (!previewImg || !placeholderText) return;
+  const src = dataUrl && String(dataUrl).trim() !== '' ? String(dataUrl) : '';
+  if (src) {
+    previewImg.src = src;
+    previewImg.style.display = 'block';
+    placeholderText.style.display = 'none';
+  } else {
+    previewImg.src = '';
+    previewImg.style.display = 'none';
+    placeholderText.style.display = 'block';
+  }
+}
+
 export function createChildRow(rowData) {
   const row = document.createElement('div');
   row.className = 'row child-row';
@@ -208,6 +224,7 @@ export function setFormData(record) {
     setStructuredRows(section, record[section.key]);
   });
   setPhotoPreview(record.photoDataUrl);
+  setHandwritingPreview(record.handwrittenEntryDataUrl);
 }
 
 export function clearForm() {

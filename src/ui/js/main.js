@@ -130,6 +130,22 @@ function buildRandomPhotoDataUrl(initials) {
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }
 
+function buildRandomHandwritingDataUrl(initials) {
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="240" viewBox="0 0 640 240">' +
+      '<rect width="640" height="240" fill="#ffffff"/>' +
+      '<g stroke="#d1d5db" stroke-width="1">' +
+        '<line x1="24" y1="52" x2="616" y2="52"/>' +
+        '<line x1="24" y1="96" x2="616" y2="96"/>' +
+        '<line x1="24" y1="140" x2="616" y2="140"/>' +
+        '<line x1="24" y1="184" x2="616" y2="184"/>' +
+      '</g>' +
+      '<path d="M44 80 C110 40, 165 130, 236 88 S365 54, 432 96 S540 132, 604 86" fill="none" stroke="#1f2937" stroke-width="2.6" stroke-linecap="round"/>' +
+      '<text x="600" y="220" text-anchor="end" fill="#6b7280" font-size="16" font-family="Arial, sans-serif">' + initials + ' handwritten sample</text>' +
+    '</svg>';
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
 function randomFieldValue(fieldId, el, seed) {
   const fixed = {
     nameLast: seed.lastName,
@@ -232,6 +248,10 @@ function randomFieldValue(fieldId, el, seed) {
 
   if (fieldId === 'photoDataUrl') {
     return buildRandomPhotoDataUrl(seed.initials);
+  }
+
+  if (fieldId === 'handwrittenEntryDataUrl') {
+    return buildRandomHandwritingDataUrl(seed.initials);
   }
 
   if (Object.prototype.hasOwnProperty.call(fixed, fieldId)) {
@@ -712,6 +732,22 @@ function buildAutoFillRecord() {
               photoDataUrlInput.value = raw;
               formData.setPhotoPreview(raw);
             });
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    var handwritingUpload = document.getElementById('handwriting-upload');
+    var handwrittenEntryInput = document.getElementById('handwrittenEntryDataUrl');
+    if (handwritingUpload && handwrittenEntryInput) {
+      handwritingUpload.addEventListener('change', function () {
+        var file = handwritingUpload.files && handwritingUpload.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function () {
+          var raw = String(reader.result || '');
+          handwrittenEntryInput.value = raw;
+          formData.setHandwritingPreview(raw);
         };
         reader.readAsDataURL(file);
       });

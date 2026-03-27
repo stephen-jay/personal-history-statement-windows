@@ -17,7 +17,7 @@ export const FIELD_IDS = [
   'otherSchools', 'civilServiceEligibility', 'dismissedResign',
   'salaryDependent', 'salFiled', 'incomeTaxFiled',
   'arrestRecord', 'familyArrest', 'adminCase', 'pd1081', 'liquorDrugs',
-  'hobbies', 'lieDetector',
+  'hobbies', 'lieDetector', 'handwrittenEntryDataUrl',
   'signedAtCert', 'signedDateCert', 'swornDay', 'swornMonth', 'swornPlace',
   'residenceCertNr2', 'residenceCertIssuedOn2', 'residenceCertIssuedAt2', 'administeringOfficer2',
   'photoDataUrl'
