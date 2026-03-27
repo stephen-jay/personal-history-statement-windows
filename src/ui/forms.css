@@ -1,0 +1,124 @@
+/* =========================
+   CLEAN PROFESSIONAL PHS FORM
+   ========================= */
+
+   .phs-form-main{
+    font-family: "Times New Roman", serif;
+    font-size: 12px;
+    color:#000;
+    background:white;
+  }
+  
+  /* section */
+  fieldset.section{
+    border:1px solid #000;
+    border-radius:0;
+    background:white;
+    margin-bottom:10px;
+    padding:10px;
+  }
+  
+  fieldset.section legend{
+    font-weight:bold;
+    font-size:12px;
+    padding:0 6px;
+  }
+  
+  /* rows */
+  .row{
+    display:grid;
+    gap:8px;
+    margin-bottom:8px;
+  }
+  
+  .two-cols{
+    grid-template-columns:1fr 1fr;
+  }
+  
+  .three-cols{
+    grid-template-columns:1fr 1fr 1fr;
+  }
+  
+  .four-cols{
+    grid-template-columns:1fr 1fr 1fr 1fr;
+  }
+  
+  /* labels */
+  label{
+    font-size:11px;
+    font-weight:bold;
+    margin-bottom:2px;
+    display:block;
+  }
+  
+  /* IMPORTANT: clean input lines */
+  input,
+  select,
+  textarea{
+    border:none !important;
+    border-bottom:1px solid #000 !important;
+    border-radius:0 !important;
+    background:transparent !important;
+    padding:3px 2px !important;
+    margin:0 !important;
+    box-shadow:none !important;
+    outline:none !important;
+    width:100%;
+    font-size:12px;
+  }
+  
+  /* REMOVE DOUBLE LINES */
+  fieldset.section > .row{
+    border-top:none !important;
+    padding-top:0 !important;
+  }
+  
+  /* subgroup */
+  .form-subgroup{
+    border:1px solid #000;
+    padding:8px;
+    background:none;
+  }
+  
+  /* photo */
+  .photo-box{
+    border:1px solid #000;
+    background:none;
+  }
+  
+  /* spacing fix */
+  .row.three-cols > div,
+  .row.four-cols > div{
+    display:flex;
+    flex-direction:column;
+  }
+  
+  /* remove grey background */
+  body[data-app-view="form"] .main-area .content{
+    background:white;
+  }
+  
+  /* print */
+  @media print{
+  
+    .form-nav{
+      display:none;
+    }
+  
+    .phs-section-nav{
+      display:none;
+    }
+  
+    .phs-form-header{
+      display:none;
+    }
+  
+    .phs-form-main{
+      padding:0;
+    }
+  
+    fieldset.section{
+      page-break-inside:avoid;
+    }
+  
+  }

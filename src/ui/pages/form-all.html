@@ -1,0 +1,619 @@
+<!-- PAGE 1: I. PERSONAL DETAILS -->
+<div class="phs-form-main phs-document">
+
+  <div class="phs-header">
+    <h2>PERSONNEL HISTORY STATEMENT</h2>
+  </div>
+  
+  <!-- PAGE 1 -->
+  <div class="form-page active" data-page="1">
+    <fieldset class="section">
+      <legend>I. PERSONAL DETAILS</legend>
+  
+      <div class="row three-cols">
+        <div>
+          <label>Name (Last)</label>
+          <input class="line-input" type="text" id="nameLast" placeholder="Surname" />
+        </div>
+  
+        <div>
+          <label>Name (First)</label>
+          <input class="line-input" type="text" id="nameFirst" placeholder="First name" />
+        </div>
+  
+        <div>
+          <label>Name (Middle/Maternal)</label>
+          <input class="line-input" type="text" id="nameMiddle" placeholder="Middle name" />
+        </div>
+      </div>
+  
+      <div class="row">
+        <label>ORGANIZATION</label>
+        <input class="line-input" type="text" id="organization"/>
+      </div>
+  
+      <div class="row">
+        <label>PRESENT JOB/ASSIGNMENT</label>
+        <input class="line-input" type="text" id="presentJob"/>
+      </div>
+  
+      <div class="row">
+        <label>BUSINESS OR DUTY ADDRESS</label>
+        <input class="line-input" type="text" id="businessAddress"/>
+      </div>
+  
+      <div class="row">
+        <label>HOME ADDRESS</label>
+        <input class="line-input" type="text" id="homeAddress"/>
+      </div>
+  
+      <div class="row two-cols">
+        <div>
+          <label>DATE OF BIRTH</label>
+          <input class="line-input" type="date" id="dateOfBirth"/>
+        </div>
+  
+        <div>
+          <label>PLACE OF BIRTH</label>
+          <input class="line-input" type="text" id="placeOfBirth"/>
+        </div>
+      </div>
+  
+      <div class="row two-cols">
+        <div>
+          <label>NATIONALITY</label>
+          <input class="line-input" type="text" id="nationality"/>
+        </div>
+  
+        <div>
+          <label>TAX IDENTIFICATION NR</label>
+          <input class="line-input" type="text" id="taxId"/>
+        </div>
+      </div>
+  
+      <div class="row two-cols">
+        <div>
+          <label>TEL NO</label>
+          <input class="line-input" type="tel" id="telNo"/>
+        </div>
+  
+        <div>
+          <label>MOBILE PHONE NR</label>
+          <input class="line-input" type="tel" id="mobile"/>
+        </div>
+      </div>
+  
+      <div class="row">
+        <label>EMAIL ADDRESS</label>
+        <input class="line-input" type="email" id="email"/>
+      </div>
+  
+    </fieldset>
+  </div>
+  
+  </div>
+
+<!-- PAGE 2: II. PERSONAL CHARACTERISTICS + III. MARITAL HISTORY -->
+<div class="form-page" data-page="2">
+  <fieldset class="section">
+    <legend>II. PERSONAL CHARACTERISTICS</legend>
+    <div class="row four-cols">
+      <div>
+        <label>Sex</label>
+        <select id="sex"><option value="">—</option><option value="Male">Male</option><option value="Female">Female</option></select>
+      </div>
+      <div>
+        <label>Age</label>
+        <input type="number" id="age" min="1" max="120" placeholder="Age" />
+      </div>
+      <div>
+        <label>Height (m)</label>
+        <input type="text" id="height" placeholder="e.g. 1.70" />
+      </div>
+      <div>
+        <label>Weight (kgs)</label>
+        <input type="number" id="weight" min="0" placeholder="kgs" />
+      </div>
+    </div>
+    <div class="row four-cols">
+      <div>
+        <label>Build</label>
+        <select id="build"><option value="">—</option><option value="Heavy">Heavy</option><option value="Medium">Medium</option><option value="Light">Light</option></select>
+      </div>
+      <div>
+        <label>Complexion</label>
+        <select id="complexion"><option value="">—</option><option value="Dark">Dark</option><option value="Fair">Fair</option><option value="Light">Light</option></select>
+      </div>
+      <div>
+        <label>Color of Eyes</label>
+        <input type="text" id="colorEyes" placeholder="e.g. Brown" />
+      </div>
+      <div>
+        <label>Color of Hair</label>
+        <input type="text" id="colorHair" placeholder="e.g. Black" />
+      </div>
+    </div>
+    <div class="row">
+      <label>Scar or Marks and other distinguishing features</label>
+      <input type="text" id="scarMarks" placeholder="N/A if none" />
+    </div>
+    <div class="row three-cols">
+      <div>
+        <label>Present State of Health</label>
+        <select id="healthState"><option value="">—</option><option value="Excellent">Excellent</option><option value="Good">Good</option><option value="Poor">Poor</option></select>
+      </div>
+      <div>
+        <label>Recent Serious Illness</label>
+        <input type="text" id="recentIllness" placeholder="N/A if none" />
+      </div>
+      <div>
+        <label>Blood Type</label>
+        <select id="bloodType"><option value="">—</option><option value="A+">A+</option><option value="A-">A-</option><option value="B+">B+</option><option value="B-">B-</option><option value="AB+">AB+</option><option value="AB-">AB-</option><option value="O+">O+</option><option value="O-">O-</option></select>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset class="section">
+    <legend>III. MARITAL HISTORY</legend>
+    <div class="row two-cols">
+      <div>
+        <label>MARITAL STATUS</label>
+        <select id="maritalStatus"><option value="">—</option><option value="Single">Single</option><option value="Married">Married</option><option value="Separated">Separated</option><option value="Widow">Widow</option></select>
+      </div>
+      <div>
+        <label>NAME OF SPOUSE (Full Name)</label>
+        <input type="text" id="spouseName" placeholder="N/A if single" />
+      </div>
+    </div>
+    <div class="row two-cols">
+      <div>
+        <label>Date and Place of Marriage</label>
+        <input type="text" id="marriageDatePlace" placeholder="Date, Place" />
+      </div>
+      <div>
+        <label>Spouse Date of Birth</label>
+        <input type="date" id="spouseDob" />
+      </div>
+    </div>
+    <div class="row two-cols">
+      <div>
+        <label>Spouse Place of Birth</label>
+        <input type="text" id="spousePlaceBirth" placeholder="City, Province" />
+      </div>
+      <div>
+        <label>Spouse Occupation/Employer/Place of Employment</label>
+        <input type="text" id="spouseOccupation" placeholder="Occupation details" />
+      </div>
+    </div>
+    <div class="row two-cols">
+      <div>
+        <label>Spouse Contact Number</label>
+        <input type="tel" id="spouseContact" placeholder="09xx xxx xxxx" />
+      </div>
+      <div>
+        <label>Spouse Citizenship (Other if dual)</label>
+        <input type="text" id="spouseCitizenship" placeholder="e.g. Filipino" />
+      </div>
+    </div>
+    <div class="row">
+      <label>CHILDREN (Name, Date of Birth, Citizenship/Address — one per line)</label>
+      <div id="children-rows"></div>
+      <button type="button" class="btn small secondary form-add-row" id="add-child-row">Add Row</button>
+    </div>
+  </fieldset>
+</div>
+
+<!-- PAGE 3: IV. FAMILY HISTORY -->
+<div class="form-page" data-page="3">
+  <fieldset class="section">
+    <legend>IV. FAMILY HISTORY AND INFORMATION</legend>
+    <div class="row">
+      <label>Father (Full Name)</label>
+      <input type="text" id="fatherName" placeholder="Full name" />
+    </div>
+    <div class="row two-cols">
+      <div>
+        <label>Father Date and Place of Birth</label>
+        <input type="text" id="fatherDobPlace" placeholder="Date, Place" />
+      </div>
+      <div>
+        <label>Father Complete Address</label>
+        <input type="text" id="fatherAddress" placeholder="Address" />
+      </div>
+    </div>
+    <div class="row">
+      <label>Father Occupation/Employer/Place of Employment</label>
+      <input type="text" id="fatherOccupation" placeholder="Occupation details" />
+    </div>
+    <div class="row">
+      <label>Father Citizenship (If dual/naturalized, give details)</label>
+      <input type="text" id="fatherCitizenship" placeholder="Citizenship" />
+    </div>
+    <div class="row">
+      <label>Mother (Full Name)</label>
+      <input type="text" id="motherName" placeholder="Full name" />
+    </div>
+    <div class="row two-cols">
+      <div>
+        <label>Mother Date and Place of Birth</label>
+        <input type="text" id="motherDobPlace" placeholder="Date, Place" />
+      </div>
+      <div>
+        <label>Mother Complete Address</label>
+        <input type="text" id="motherAddress" placeholder="Address" />
+      </div>
+    </div>
+    <div class="row">
+      <label>Mother Occupation/Employer/Place of Employment</label>
+      <input type="text" id="motherOccupation" placeholder="Occupation details" />
+    </div>
+    <div class="row">
+      <label>Mother Citizenship (If dual/naturalized, give details)</label>
+      <input type="text" id="motherCitizenship" placeholder="Citizenship" />
+    </div>
+    <div class="row field-group">
+      <label>Brothers and Sisters (Name, DOB, Citizenship, Address, Occupation)</label>
+      <div class="form-subgroup">
+        <div class="row two-cols">
+          <div>
+            <label>Name</label>
+            <input type="text" id="siblingsName" placeholder="Full name" />
+          </div>
+          <div>
+            <label>Date of Birth</label>
+            <input type="date" id="siblingsDob" />
+          </div>
+        </div>
+        <div class="row two-cols">
+          <div>
+            <label>Citizenship (if dual, write both)</label>
+            <input type="text" id="siblingsCitizenship" placeholder="e.g. Filipino / US" />
+          </div>
+          <div>
+            <label>Complete Address</label>
+            <input type="text" id="siblingsAddress" placeholder="Complete address" />
+          </div>
+        </div>
+        <div class="row two-cols">
+          <div>
+            <label>Occupation</label>
+            <input type="text" id="siblingsOccupation" placeholder="Occupation" />
+          </div>
+          <div>
+            <label>Employer / Address</label>
+            <input type="text" id="siblingsEmployerAddress" placeholder="Employer and address" />
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row field-group">
+      <label>STEP-PARENT OR GUARDIAN (Full Name, DOB, Address, Occupation, Citizenship)</label>
+      <div class="form-subgroup">
+        <div class="row two-cols">
+          <div>
+            <label>Full Name</label>
+            <input type="text" id="stepParentFullName" placeholder="Full name" />
+          </div>
+          <div>
+            <label>DOB</label>
+            <input type="date" id="stepParentDob" />
+          </div>
+        </div>
+        <div class="row two-cols">
+          <div>
+            <label>Address</label>
+            <input type="text" id="stepParentAddress" placeholder="Complete address" />
+          </div>
+          <div>
+            <label>Occupation</label>
+            <input type="text" id="stepParentOccupation" placeholder="Occupation" />
+          </div>
+        </div>
+        <div class="row">
+          <label>Citizenship</label>
+          <input type="text" id="stepParentCitizenship" placeholder="Citizenship" />
+        </div>
+      </div>
+    </div>
+    <div class="row field-group">
+      <label>FATHER-IN-LAW (Full Name, DOB, Address, Occupation, Citizenship)</label>
+      <div class="form-subgroup">
+        <div class="row two-cols">
+          <div>
+            <label>Full Name</label>
+            <input type="text" id="fatherInLawFullName" placeholder="Full name" />
+          </div>
+          <div>
+            <label>DOB</label>
+            <input type="date" id="fatherInLawDob" />
+          </div>
+        </div>
+        <div class="row two-cols">
+          <div>
+            <label>Address</label>
+            <input type="text" id="fatherInLawAddress" placeholder="Complete address" />
+          </div>
+          <div>
+            <label>Occupation</label>
+            <input type="text" id="fatherInLawOccupation" placeholder="Occupation" />
+          </div>
+        </div>
+        <div class="row">
+          <label>Citizenship</label>
+          <input type="text" id="fatherInLawCitizenship" placeholder="Citizenship" />
+        </div>
+      </div>
+    </div>
+    <div class="row field-group">
+      <label>MOTHER-IN-LAW (Full Name, DOB, Address, Occupation, Citizenship)</label>
+      <div class="form-subgroup">
+        <div class="row two-cols">
+          <div>
+            <label>Full Name</label>
+            <input type="text" id="motherInLawFullName" placeholder="Full name" />
+          </div>
+          <div>
+            <label>DOB</label>
+            <input type="date" id="motherInLawDob" />
+          </div>
+        </div>
+        <div class="row two-cols">
+          <div>
+            <label>Address</label>
+            <input type="text" id="motherInLawAddress" placeholder="Complete address" />
+          </div>
+          <div>
+            <label>Occupation</label>
+            <input type="text" id="motherInLawOccupation" placeholder="Occupation" />
+          </div>
+        </div>
+        <div class="row">
+          <label>Citizenship</label>
+          <input type="text" id="motherInLawCitizenship" placeholder="Citizenship" />
+        </div>
+      </div>
+    </div>
+  </fieldset>
+</div>
+
+<!-- PAGE 4: V-VIII. EDUCATION, RESIDENCE, EMPLOYMENT, FOREIGN -->
+<div class="form-page" data-page="4">
+  <fieldset class="section">
+    <legend>V. EDUCATIONAL BACKGROUND</legend>
+    <div class="row three-cols">
+      <div>
+        <label>Elementary — Location</label>
+        <input type="text" id="elemLocation" placeholder="School name, address" />
+      </div>
+      <div>
+        <label>Elementary — Date of Attendance</label>
+        <input type="text" id="elemAttendance" placeholder="e.g. 1990-1996" />
+      </div>
+      <div>
+        <label>Elementary — Year Graduated</label>
+        <input type="text" id="elemGraduated" placeholder="e.g. 1996" />
+      </div>
+    </div>
+    <div class="row three-cols">
+      <div>
+        <label>High School — Location</label>
+        <input type="text" id="hsLocation" placeholder="School name, address" />
+      </div>
+      <div>
+        <label>High School — Date of Attendance</label>
+        <input type="text" id="hsAttendance" placeholder="e.g. 1996-2000" />
+      </div>
+      <div>
+        <label>High School — Year Graduated</label>
+        <input type="text" id="hsGraduated" placeholder="e.g. 2000" />
+      </div>
+    </div>
+    <div class="row three-cols">
+      <div>
+        <label>College — Location</label>
+        <input type="text" id="collegeLocation" placeholder="University, address" />
+      </div>
+      <div>
+        <label>College — Date of Attendance</label>
+        <input type="text" id="collegeAttendance" placeholder="e.g. 2000-2004" />
+      </div>
+      <div>
+        <label>College — Year Graduated</label>
+        <input type="text" id="collegeGraduated" placeholder="e.g. 2004" />
+      </div>
+    </div>
+    <div class="row three-cols">
+      <div>
+        <label>Post Graduate — Location</label>
+        <input type="text" id="pgLocation" placeholder="School, address" />
+      </div>
+      <div>
+        <label>Post Graduate — Course Taken, Date of Attendance</label>
+        <input type="text" id="pgCourseAttendance" placeholder="Course, dates" />
+      </div>
+      <div>
+        <label>Post Graduate — Year Graduated</label>
+        <input type="text" id="pgGraduated" placeholder="e.g. 2010" />
+      </div>
+    </div>
+    <div class="row">
+      <label>Other Schools/Training Attended and Date of Attendance</label>
+      <textarea id="otherSchools" rows="3" placeholder="School/training, dates"></textarea>
+    </div>
+    <div class="row">
+      <label>Civil Service Eligibility/Date acquired, if any and Other Similar Qualifications</label>
+      <input type="text" id="civilServiceEligibility" placeholder="N/A if none" />
+    </div>
+  </fieldset>
+
+  <fieldset class="section">
+    <legend>VI. PLACES OF RESIDENCE SINCE BIRTH</legend>
+    <div class="row">
+      <label>Inclusive Dates, Address</label>
+      <div id="places-of-residence-rows"></div>
+      <button type="button" class="btn small secondary form-add-row" id="add-places-of-residence-row">Add Row</button>
+    </div>
+  </fieldset>
+
+  <fieldset class="section">
+    <legend>VII. EMPLOYMENT</legend>
+    <div class="row">
+      <label>Employment History (Inclusive Date, Type, Name & Address of Employer, Reason for Leaving)</label>
+      <div id="employment-history-rows"></div>
+      <button type="button" class="btn small secondary form-add-row" id="add-employment-history-row">Add Row</button>
+    </div>
+    <div class="row">
+      <label>Seminars and Training (Inclusive Date, Name of Seminar/Training, Conducted By, Remarks)</label>
+      <div id="seminars-training-rows"></div>
+      <button type="button" class="btn small secondary form-add-row" id="add-seminars-training-row">Add Row</button>
+    </div>
+    <div class="row">
+      <label>Dismissed or forced to resign? If YES, explain</label>
+      <input type="text" id="dismissedResign" placeholder="NO or explain if YES" />
+    </div>
+  </fieldset>
+
+  <fieldset class="section">
+    <legend>VIII. FOREIGN COUNTRIES VISITED (Chronological)</legend>
+    <div class="row">
+      <label>Date of Visit, Country, Purpose, Address Abroad</label>
+      <div id="foreign-countries-rows"></div>
+      <button type="button" class="btn small secondary form-add-row" id="add-foreign-countries-row">Add Row</button>
+    </div>
+  </fieldset>
+</div>
+
+<!-- PAGE 5: IX-XIII. CREDIT, ARREST, REPUTATION, ORGS, MISC -->
+<div class="form-page" data-page="5">
+  <fieldset class="section">
+    <legend>IX. CREDIT REPUTATION</legend>
+    <div class="row">
+      <label>Entirely dependent on salary? If NO, state other source of income</label>
+      <input type="text" id="salaryDependent" placeholder="YES or NO + other source" />
+    </div>
+    <div class="row">
+      <label>Banks/Credit Institutions (Name, Address, Nature of Accounts)</label>
+      <div id="banks-credit-rows"></div>
+      <button type="button" class="btn small secondary form-add-row" id="add-banks-credit-row">Add Row</button>
+    </div>
+    <div class="row">
+      <label>Filed Statement of Asset and Liabilities? Agency and when?</label>
+      <input type="text" id="salFiled" placeholder="Yes/No, agency, date" />
+    </div>
+    <div class="row">
+      <label>Filed last income tax return? Amount paid last Calendar Year</label>
+      <input type="text" id="incomeTaxFiled" placeholder="Yes/No, amount" />
+    </div>
+    <div class="row">
+      <label>Three (3) credit references in the Philippines (Name, Address)</label>
+      <div id="credit-references-rows"></div>
+      <button type="button" class="btn small secondary form-add-row" id="add-credit-references-row">Add Row</button>
+    </div>
+  </fieldset>
+
+  <fieldset class="section">
+    <legend>X. ARREST RECORD AND CONDUCT</legend>
+    <div class="row">
+      <label>Ever investigated/arrested, indicted or convicted? If YES, state court, offense, disposition</label>
+      <input type="text" id="arrestRecord" placeholder="NO or details if YES" />
+    </div>
+    <div class="row">
+      <label>Immediate family member investigated/arrested? If YES, state details</label>
+      <input type="text" id="familyArrest" placeholder="NO or details if YES" />
+    </div>
+    <div class="row">
+      <label>Charged in any Administrative Case? If YES, explain</label>
+      <input type="text" id="adminCase" placeholder="NO or explain if YES" />
+    </div>
+    <div class="row">
+      <label>Arrested/detained pursuant to PD 1081? If YES, state nature & place of detention</label>
+      <input type="text" id="pd1081" placeholder="NO or details if YES" />
+    </div>
+    <div class="row">
+      <label>Use intoxicating liquor or Illegal Drugs? If YES, to what extent?</label>
+      <input type="text" id="liquorDrugs" placeholder="NO or extent if YES" />
+    </div>
+  </fieldset>
+
+  <fieldset class="section">
+    <legend>XI. GENERAL REPUTATION</legend>
+    <div class="row">
+      <label>Five (5) character references (not relatives, known 3+ years) — Name, Address</label>
+      <div id="character-refs-rows"></div>
+      <button type="button" class="btn small secondary form-add-row" id="add-character-refs-row">Add Row</button>
+    </div>
+    <div class="row">
+      <label>Three (3) neighbors at present residence — Name, Address</label>
+      <div id="neighbors-rows"></div>
+      <button type="button" class="btn small secondary form-add-row" id="add-neighbors-row">Add Row</button>
+    </div>
+  </fieldset>
+
+  <fieldset class="section">
+    <legend>XII. ORGANIZATIONS</legend>
+    <div class="row">
+      <label>Organizations/social groups — Organization, Address, Date of Membership, Position Held</label>
+      <div id="organizations-rows"></div>
+      <button type="button" class="btn small secondary form-add-row" id="add-organizations-row">Add Row</button>
+    </div>
+  </fieldset>
+
+  <fieldset class="section">
+    <legend>XIII. MISCELLANEOUS</legend>
+    <div class="row">
+      <label>Hobbies, sports and past times</label>
+      <input type="text" id="hobbies" placeholder="e.g. Basketball, Reading" />
+    </div>
+    <div class="row">
+      <label>Language / Dialect, Speak, Read, Write (indicate ability as fluent, fair or poor)</label>
+      <div id="languages-rows"></div>
+      <button type="button" class="btn small secondary form-add-row" id="add-languages-row">Add Row</button>
+    </div>
+    <div class="row">
+      <label>Willing to undergo periodic lie detector test?</label>
+      <select id="lieDetector"><option value="">—</option><option value="Yes">Yes</option><option value="No">No</option></select>
+    </div>
+    <div class="certify-box">
+      I certify that the following answers are true and correct to the best of my knowledge and belief and I agree that my misstatement or omission as to material facts will constitute ground for denial of my application for clearance.
+    </div>
+
+    <div class="row">
+      <label>Upload handwritten sample</label>
+      <label class="photo-box photo-upload-trigger" id="handwritten-box" for="handwritten-upload" title="Click to upload handwritten sample">
+        <img id="handwritten-preview" class="photo-preview" alt="Handwritten sample preview" style="display:none" />
+        <span id="handwritten-placeholder-text">Handwritten sample — Click to upload</span>
+      </label>
+      <input type="file" id="handwritten-upload" accept="image/*" class="sr-only" />
+      <input type="hidden" id="handwrittenDataUrl" />
+    </div>
+
+    <div class="thumb-photo-grid">
+      <div class="upload-photo-panel">
+        <p class="upload-photo-panel-title">2x2 ID photo</p>
+        <label class="photo-box photo-upload-trigger" id="photo-box" for="photo-upload" title="Click to upload">
+          <img id="photo-preview" class="photo-preview" alt="2x2 Photo Preview" style="display:none" />
+          <span id="photo-placeholder-text">2×2 — Click to upload</span>
+        </label>
+        <input type="file" id="photo-upload" accept="image/*" class="sr-only" />
+        <input type="hidden" id="photoDataUrl" />
+      </div>
+      <div class="thumb-mark-panel">
+        <p class="thumb-mark-title">Thumb mark</p>
+        <div class="thumb-boxes">
+          <div>
+            <div class="thumb-box" role="img" aria-label="Left thumb mark area"></div>
+            <div class="thumb-caption">(Left)</div>
+          </div>
+          <div>
+            <div class="thumb-box" role="img" aria-label="Right thumb mark area"></div>
+            <div class="thumb-caption">(Right)</div>
+          </div>
+        </div>
+        <div class="signature-line-slot signature-line-slot--single">
+          <div class="mini-line" role="presentation"></div>
+          <p class="signature-label">(Signature of Applicant)</p>
+        </div>
+      </div>
+    </div>
+  </fieldset>
+</div>
