@@ -703,6 +703,8 @@ function buildAutoFillRecord() {
 
     if (btnLogout) {
       btnLogout.addEventListener('click', function () {
+        var confirmed = confirm('Are you sure you want to log out?');
+        if (!confirmed) return;
         if (window.authApi && typeof window.authApi.logout === 'function') {
           window.authApi.logout().finally(function () {
             window.location.href = 'login.html';
