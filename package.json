@@ -6,7 +6,9 @@
   "scripts": {
     "start": "npx --yes electron .",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder --win"
+    "dist": "electron-builder --win",
+    "test:db": "node test-database-connection.js",
+    "test:db:production": "node -e \"process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://user:password@10.10.218.144:5432/apollo_db'; require('child_process').execSync('node test-database-connection.js', {stdio: 'inherit'})\""
   },
   "author": "",
   "license": "MIT",
@@ -17,11 +19,34 @@
   "build": {
     "appId": "com.apollo.personnel",
     "productName": "APOLLO Personnel Database",
+    "directories": {
+      "buildResources": "assets"
+    },
     "win": {
-      "target": "nsis"
-    }
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "APOLLO Personnel Database"
+    },
+    "files": [
+      "main.js",
+      "app-config.example.json",
+      "src/**/*",
+      "config/**/*",
+      "scripts/**/*",
+      "package.json",
+      "node_modules/**/*"
+    ]
   },
   "dependencies": {
+    "dotenv": "^16.6.1",
     "docx": "^8.5.0",
     "pg": "^8.20.0",
     "pizzip": "^3.2.0"

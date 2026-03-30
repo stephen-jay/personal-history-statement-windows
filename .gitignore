@@ -3,6 +3,8 @@ dist/
 out/
 *.log
 .env
+.env.local
+app-config.json
 _docx_extract/
 _test-out.docx
 _phs_temp.zip

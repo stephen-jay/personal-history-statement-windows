@@ -1,6 +1,7 @@
 const express = require('express');
 const { Pool } = require('pg');
 const crypto = require('crypto');
+require('dotenv').config({ override: true });
 
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const PORT = Number(process.env.API_PORT || process.env.PORT || 3210);

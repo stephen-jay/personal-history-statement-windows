@@ -19,7 +19,15 @@ if (!DB_URL) {
   process.exit(1);
 }
 
-const sourceFile = path.join(__dirname, '..', 'data', 'sample-personnel.json');
+console.error('Sample data file has been removed. Please provide a valid JSON file path.');
+console.error('Usage: SOURCE_FILE=/path/to/file.json node scripts/import-json-to-postgres.js');
+process.exit(1);
+
+const sourceFile = process.env.SOURCE_FILE;
+if (!sourceFile) {
+  console.error('Missing SOURCE_FILE environment variable');
+  process.exit(1);
+}
 const raw = fs.readFileSync(sourceFile, 'utf8');
 const records = JSON.parse(raw);
 
