@@ -1,9 +1,90 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const electron = require('electron');
+if (!electron || typeof electron === 'string' || !electron.app) {
+  console.error('This app must be started with Electron. Use "npm start" or run the built .exe.');
+  process.exit(1);
+}
+const { app, BrowserWindow, ipcMain, dialog } = electron;
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { pathToFileURL } = require('url');
 const { Pool } = require('pg');
+const dotenv = require('dotenv');
+dotenv.config({ override: true });
+
+const CONFIG_KEYS = new Set([
+  'DATABASE_URL',
+  'USE_REMOTE_API',
+  'REMOTE_API_BASE',
+  'USE_POSTGRES_READ',
+  'USE_POSTGRES_WRITE',
+  'ENABLE_DUAL_WRITE',
+]);
+
+function applyConfigValues(values) {
+  if (!values || typeof values !== 'object') return;
+  Object.keys(values).forEach(function (key) {
+    if (!CONFIG_KEYS.has(key)) return;
+    const val = values[key];
+    if (val == null) return;
+    process.env[key] = String(val);
+  });
+}
+
+function loadConfigFromFile(configPath, loader) {
+  try {
+    if (!fs.existsSync(configPath)) return;
+    const raw = fs.readFileSync(configPath, 'utf8').replace(/^\uFEFF/, '');
+    const parsed = loader(raw);
+    applyConfigValues(parsed);
+  } catch (e) {
+    console.warn('Could not load config file:', configPath, e && e.message ? e.message : e);
+  }
+}
+
+function loadExternalConfig() {
+  const dirs = [];
+  if (process.execPath) dirs.push(path.dirname(process.execPath));
+  if (process.cwd()) dirs.push(process.cwd());
+  if (__dirname) dirs.push(__dirname);
+  if (process.env.APPDATA) {
+    dirs.push(path.join(process.env.APPDATA, 'APOLLO Personnel Database'));
+    dirs.push(path.join(process.env.APPDATA, 'apollo-personnel-db'));
+  }
+  try {
+    dirs.push(app.getPath('userData'));
+  } catch (_) {
+    // ignore, app path may not be available this early in startup on some hosts
+  }
+  const uniqueDirs = Array.from(new Set(dirs.filter(Boolean)));
+  uniqueDirs.forEach(function (dir) {
+    loadConfigFromFile(path.join(dir, 'app-config.json'), function (text) {
+      return JSON.parse(text);
+    });
+    loadConfigFromFile(path.join(dir, '.env.local'), function (text) {
+      return dotenv.parse(text);
+    });
+  });
+}
+
+loadExternalConfig();
+
+function configSearchLocations() {
+  const dirs = [];
+  if (process.execPath) dirs.push(path.dirname(process.execPath));
+  if (process.cwd()) dirs.push(process.cwd());
+  if (__dirname) dirs.push(__dirname);
+  if (process.env.APPDATA) {
+    dirs.push(path.join(process.env.APPDATA, 'APOLLO Personnel Database'));
+    dirs.push(path.join(process.env.APPDATA, 'apollo-personnel-db'));
+  }
+  try {
+    dirs.push(app.getPath('userData'));
+  } catch (_) {
+    // ignore
+  }
+  return Array.from(new Set(dirs.filter(Boolean)));
+}
 
 // Force software rendering — must be before app is ready (fixes "failed to create shared context")
 app.disableHardwareAcceleration();
@@ -17,14 +98,14 @@ app.commandLine.appendSwitch('disable-features', 'GPU');
 
 let mainWindow;
 const DATA_FILE = path.join(app.getPath('userData'), 'personnel-data.json');
-const SAMPLE_DATA_PATH = path.join(__dirname, 'data', 'sample-personnel.json');
 const REMOVED_FIELDS = new Set(['brOfSvc']);
-const USE_POSTGRES_READ = /^(1|true|yes)$/i.test(String(process.env.USE_POSTGRES_READ || ''));
-const USE_POSTGRES_WRITE = /^(1|true|yes)$/i.test(String(process.env.USE_POSTGRES_WRITE || ''));
-const ENABLE_DUAL_WRITE = /^(1|true|yes)$/i.test(String(process.env.ENABLE_DUAL_WRITE || ''));
-const USE_REMOTE_API = /^(1|true|yes)$/i.test(String(process.env.USE_REMOTE_API || ''));
+const DEFAULT_DATABASE_URL = 'postgresql://apollo_app:ApolloApp2026@10.10.218.144:5432/apollo_db';
+const USE_POSTGRES_READ = /^(1|true|yes)$/i.test(String(process.env.USE_POSTGRES_READ || 'true'));
+const USE_POSTGRES_WRITE = /^(1|true|yes)$/i.test(String(process.env.USE_POSTGRES_WRITE || 'true'));
+const ENABLE_DUAL_WRITE = /^(1|true|yes)$/i.test(String(process.env.ENABLE_DUAL_WRITE || 'true'));
+const USE_REMOTE_API = /^(1|true|yes)$/i.test(String(process.env.USE_REMOTE_API || 'false'));
 const REMOTE_API_BASE = String(process.env.REMOTE_API_BASE || 'http://10.10.218.144:3210');
-const DATABASE_URL = process.env.DATABASE_URL || '';
+const DATABASE_URL = process.env.DATABASE_URL || DEFAULT_DATABASE_URL;
 let pgPool = null;
 const AUTH_SESSION_PATH = path.join(app.getPath('userData'), 'auth-session.json');
 let authSession = null;
@@ -88,47 +169,99 @@ function getPgPool() {
   return pgPool;
 }
 
-function sampleSeedMarkerPath() {
-  return path.join(app.getPath('userData'), '.sample-personnel-seeded');
+async function loginWithLocalPostgres(username, password) {
+  const pool = getPgPool();
+  if (!pool) throw new Error('DATABASE_URL is required for local auth.');
+  const rows = await pool.query(
+    `
+      SELECT
+        u.id,
+        u.username,
+        u.full_name,
+        ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL) AS roles
+      FROM app_users u
+      LEFT JOIN app_user_roles ur ON ur.user_id = u.id
+      LEFT JOIN app_roles r ON r.id = ur.role_id
+      WHERE u.username = $1
+        AND u.is_active = TRUE
+        AND u.password_hash = crypt($2, u.password_hash)
+      GROUP BY u.id, u.username, u.full_name
+    `,
+    [username, password]
+  );
+  if (!rows.rows || !rows.rows.length) {
+    throw new Error('Invalid credentials.');
+  }
+  const user = rows.rows[0];
+  return {
+    token: 'local-session',
+    user: {
+      id: user.id,
+      username: user.username,
+      fullName: user.full_name,
+      roles: Array.isArray(user.roles) ? user.roles : [],
+    },
+  };
 }
 
-function loadSeedRecords() {
+async function getAdminRolesLocal() {
+  const pool = getPgPool();
+  if (!pool) throw new Error('DATABASE_URL is required for local admin operations.');
+  const rows = await pool.query('SELECT name FROM app_roles ORDER BY name ASC');
+  return { roles: (rows.rows || []).map(function (r) { return r.name; }) };
+}
+
+async function createAdminUserLocal(payload) {
+  const pool = getPgPool();
+  if (!pool) throw new Error('DATABASE_URL is required for local admin operations.');
+
+  const body = payload || {};
+  const username = String(body.username || '').trim();
+  const password = String(body.password || '');
+  const fullName = String(body.fullName || body.full_name || '').trim();
+  const roleName = String(body.roleName || body.role || '').trim();
+  if (!username || !password || !roleName) {
+    throw new Error('username, password, and roleName are required.');
+  }
+
+  const client = await pool.connect();
   try {
-    const raw = fs.readFileSync(SAMPLE_DATA_PATH, 'utf8');
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return [];
-    var now = new Date().toISOString();
-    return parsed.map(function (r) {
-      return Object.assign({}, r, { updatedAt: r.updatedAt || now });
-    });
+    await client.query('BEGIN');
+    const roleRow = await client.query('SELECT id FROM app_roles WHERE name = $1', [roleName]);
+    if (!roleRow.rows || !roleRow.rows.length) {
+      throw new Error('Unknown roleName.');
+    }
+    const roleId = roleRow.rows[0].id;
+    const inserted = await client.query(
+      `
+        INSERT INTO app_users (username, password_hash, full_name, is_active)
+        VALUES ($1, crypt($2, gen_salt('bf')), $3, TRUE)
+        RETURNING id, username, full_name
+      `,
+      [username, password, fullName]
+    );
+    const userId = inserted.rows && inserted.rows[0] ? inserted.rows[0].id : null;
+    if (!userId) throw new Error('Failed to create user.');
+
+    await client.query('INSERT INTO app_user_roles (user_id, role_id) VALUES ($1, $2)', [userId, roleId]);
+    await client.query('COMMIT');
+    return { ok: true, user: { id: userId, username: username, fullName: fullName, roleName: roleName } };
   } catch (e) {
-    console.warn('Could not load data/sample-personnel.json:', e.message);
-    return [];
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    if (e && e.code === '23505') throw new Error('Username already exists.');
+    throw e;
+  } finally {
+    client.release();
   }
 }
 
-function writeSeedData() {
-  var seed = loadSeedRecords();
-  fs.writeFileSync(DATA_FILE, JSON.stringify(seed.length ? seed : [], null, 2), 'utf8');
-  if (seed.length) fs.writeFileSync(sampleSeedMarkerPath(), 'v1', 'utf8');
-}
+
 
 function ensureDataFile() {
   try {
     if (!fs.existsSync(DATA_FILE)) {
-      writeSeedData();
+      fs.writeFileSync(DATA_FILE, JSON.stringify([], null, 2), 'utf8');
       return true;
-    }
-    var raw = fs.readFileSync(DATA_FILE, 'utf8');
-    var arr = [];
-    try {
-      arr = JSON.parse(raw);
-    } catch (_) {
-      arr = [];
-    }
-    if (Array.isArray(arr) && arr.length === 0 && !fs.existsSync(sampleSeedMarkerPath())) {
-      var seed = loadSeedRecords();
-      if (seed.length) writeSeedData();
     }
     return true;
   } catch (e) {
@@ -352,6 +485,17 @@ function groupByPersonnelId(rows) {
   return map;
 }
 
+let personnelColumnSetCache = null;
+
+async function getPersonnelColumnSet(client) {
+  if (personnelColumnSetCache) return personnelColumnSetCache;
+  const result = await client.query(
+    "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'personnel'"
+  );
+  personnelColumnSetCache = new Set((result.rows || []).map(function (r) { return r.column_name; }));
+  return personnelColumnSetCache;
+}
+
 async function getPostgresData() {
   const pool = getPgPool();
   if (!pool) throw new Error('DATABASE_URL is required for Postgres read');
@@ -398,10 +542,13 @@ async function savePostgresRecord(record) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    const personnelColumnSet = await getPersonnelColumnSet(client);
     const cols = [];
     const vals = [];
     Object.keys(PERSONNEL_FIELD_MAP).forEach(function (srcKey) {
-      cols.push(PERSONNEL_FIELD_MAP[srcKey]);
+      const dbCol = PERSONNEL_FIELD_MAP[srcKey];
+      if (!personnelColumnSet.has(dbCol)) return;
+      cols.push(dbCol);
       vals.push(safe[srcKey] == null ? null : safe[srcKey]);
     });
     const insertCols = ['id'].concat(cols, ['updated_at']);
@@ -553,10 +700,33 @@ ipcMain.handle('auth:login', async function (_evt, creds) {
   const username = String(creds.username || '').trim();
   const password = String(creds.password || '');
   if (!username || !password) throw new Error('Missing username/password.');
-  const result = await remoteApi('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ username: username, password: password }),
-  });
+
+  let result = null;
+  const hasLocalDb = !!DATABASE_URL;
+  const shouldTryRemote = USE_REMOTE_API || !hasLocalDb;
+
+  if (shouldTryRemote) {
+    try {
+      result = await remoteApi('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username: username, password: password }),
+      });
+    } catch (e) {
+      console.error('auth:login remote API failed, trying local DB auth:', e && e.message ? e.message : e);
+    }
+  }
+
+  if (!result && hasLocalDb) {
+    result = await loginWithLocalPostgres(username, password);
+  }
+
+  if (!result) {
+    throw new Error(
+      'No local DATABASE_URL configured. Add app-config.json or .env.local in one of: ' +
+      configSearchLocations().join('; ')
+    );
+  }
+
   authSession = { token: result && result.token ? String(result.token) : '', user: result && result.user ? result.user : null };
   persistAuthSessionToDisk();
   return authSession ? { user: authSession.user } : null;
@@ -574,14 +744,28 @@ ipcMain.handle('auth:logout', async function () {
 });
 
 ipcMain.handle('admin:roles', async function () {
-  return await remoteApi('/admin/roles');
+  if (USE_REMOTE_API) {
+    try {
+      return await remoteApi('/admin/roles');
+    } catch (e) {
+      console.error('admin:roles remote API failed, trying local DB:', e && e.message ? e.message : e);
+    }
+  }
+  return await getAdminRolesLocal();
 });
 
 ipcMain.handle('admin:createUser', async function (_evt, payload) {
-  return await remoteApi('/admin/users', {
-    method: 'POST',
-    body: JSON.stringify(payload || {}),
-  });
+  if (USE_REMOTE_API) {
+    try {
+      return await remoteApi('/admin/users', {
+        method: 'POST',
+        body: JSON.stringify(payload || {}),
+      });
+    } catch (e) {
+      console.error('admin:createUser remote API failed, trying local DB:', e && e.message ? e.message : e);
+    }
+  }
+  return await createAdminUserLocal(payload || {});
 });
 
 ipcMain.handle('personnel:getAll', async () => {

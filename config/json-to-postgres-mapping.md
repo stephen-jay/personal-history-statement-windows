@@ -1,6 +1,6 @@
 # APOLLO JSON -> PostgreSQL Mapping and Import Order
 
-This maps current JSON records (see `data/sample-personnel.json`) to the PostgreSQL schema in `config/apollo-postgres-schema.sql`.
+This maps JSON records to the PostgreSQL schema in `config/apollo-postgres-schema.sql`.
 
 ## 1) Source shape
 
