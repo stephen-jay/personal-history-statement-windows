@@ -42,7 +42,19 @@
 
         </button>
 
+        <button type="button" class="nav-item" data-tab="admin" id="nav-admin" hidden>
+          <span class="nav-icon" aria-hidden="true">▣</span>
+          <span class="nav-text">Admin Users</span>
+        </button>
+
       </nav>
+
+      <div class="sidebar-footer">
+        <button type="button" class="sidebar-logout-btn" id="btn-logout">
+          <span class="sidebar-logout-icon" aria-hidden="true">⎋</span>
+          <span class="sidebar-logout-text">Logout</span>
+        </button>
+      </div>
 
     </aside>
 
@@ -76,10 +88,6 @@
 
           </div>
 
-        </div>
-
-        <div class="topbar-actions">
-          <button type="button" class="btn secondary btn-smallish topbar-logout-btn" id="btn-logout">Logout</button>
         </div>
 
       </header>
@@ -156,6 +164,44 @@
 
         <div id="analytics-content"></div>
 
+      </section>
+
+      <section id="admin-view" class="view" aria-hidden="true">
+        <div class="toolbar roster-toolbar">
+          <h2 class="admin-users-title">User Management</h2>
+        </div>
+
+        <div class="admin-users-panel">
+          <form id="admin-user-form" class="admin-user-form" novalidate>
+            <div class="admin-field">
+              <label for="admin-username">Username</label>
+              <input id="admin-username" name="admin-username" type="text" autocomplete="username" required />
+            </div>
+
+            <div class="admin-field">
+              <label for="admin-fullname">Full Name (optional)</label>
+              <input id="admin-fullname" name="admin-fullname" type="text" autocomplete="name" />
+            </div>
+
+            <div class="admin-field">
+              <label for="admin-password">Password</label>
+              <input id="admin-password" name="admin-password" type="password" autocomplete="new-password" required />
+            </div>
+
+            <div class="admin-field">
+              <label for="admin-role">Role</label>
+              <select id="admin-role" name="admin-role" required>
+                <option value="" selected disabled>Select a role…</option>
+              </select>
+            </div>
+
+            <div class="admin-actions">
+              <button type="submit" class="btn primary" id="admin-create-user-btn">Create User</button>
+            </div>
+          </form>
+
+          <p id="admin-user-status" class="admin-user-status" role="alert" aria-live="polite"></p>
+        </div>
       </section>
 
       </main>

@@ -84,6 +84,57 @@ body[data-app-view="form"] .sidebar .nav-item.active:not(:hover) {
   flex: 1 1 auto;
 }
 
+.sidebar-footer {
+  margin-top: auto;
+  padding: 10px 4px 0;
+}
+
+.sidebar-logout-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.95);
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  justify-content: flex-start;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.sidebar-logout-btn:hover {
+  background: rgba(220, 38, 38, 0.22);
+  border-color: rgba(248, 113, 113, 0.45);
+  transform: translateY(-1px);
+}
+
+.sidebar-logout-btn:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.65);
+  outline-offset: 2px;
+}
+
+.sidebar-logout-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.sidebar-logout-text {
+  letter-spacing: 0.01em;
+}
+
 .nav-item {
   border: 1px solid transparent;
   background: transparent;
@@ -405,6 +456,87 @@ body[data-app-view="form"] .topbar--institutional .topbar-seal {
   flex: 0 1 320px;
   max-width: 100%;
   margin-left: auto;
+}
+
+.admin-users-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a2a42;
+}
+
+.admin-users-panel {
+  margin: 0 16px 16px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+}
+
+.admin-user-form {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(160px, 1fr));
+  gap: 14px;
+  align-items: end;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-field label {
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--charcoal-muted);
+  font-weight: 600;
+}
+
+.admin-field input,
+.admin-field select {
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #fff;
+  color: var(--charcoal);
+  font: inherit;
+}
+
+.admin-field input:focus,
+.admin-field select:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px rgba(49, 95, 152, 0.15);
+}
+
+.admin-actions {
+  display: flex;
+  align-items: end;
+}
+
+.admin-actions .btn {
+  min-width: 126px;
+  height: 38px;
+}
+
+.admin-user-status {
+  margin: 12px 0 0;
+  min-height: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--charcoal-muted);
+}
+
+.admin-user-status[data-state='success'] {
+  color: #166534;
+}
+
+.admin-user-status[data-state='error'] {
+  color: #b91c1c;
 }
 
 .roster-toolbar__add--pill {
@@ -3355,6 +3487,10 @@ fieldset.section > .sworn-block {
   .roster-toolbar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .admin-user-form {
+    grid-template-columns: 1fr;
   }
 
   .roster-toolbar__search {

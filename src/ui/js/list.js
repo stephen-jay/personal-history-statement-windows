@@ -107,6 +107,8 @@ export function getAvatarHtml(record) {
  */
 export function renderList(records, deps) {
   const query = (deps.searchInput && deps.searchInput.value || '').trim().toLowerCase();
+  const canEdit = !!(deps.permissions && deps.permissions.canEdit);
+  const canDelete = !!(deps.permissions && deps.permissions.canDelete);
   const filtered = query
     ? records.filter(function (r) {
         const fn = rosterDisplayName(r).toLowerCase();
@@ -134,6 +136,12 @@ export function renderList(records, deps) {
     const pct = getRecordCompletenessPercent(r);
     const dateStr = formatDate(r.updatedAt);
     const tr = document.createElement('tr');
+    const editBtnHtml = canEdit
+      ? '<button type="button" class="btn roster-action-btn roster-action-btn--edit edit-btn" data-id="' + safeId + '"><span class="roster-action-btn__glyph" aria-hidden="true"></span>Edit</button>'
+      : '';
+    const deleteBtnHtml = canDelete
+      ? '<button type="button" class="btn roster-action-btn roster-action-btn--delete delete-btn" data-id="' + safeId + '"><span class="roster-action-btn__glyph" aria-hidden="true"></span>Delete</button>'
+      : '';
     tr.innerHTML =
       '<td class="avatar-cell">' + getAvatarHtml(r) + '</td>' +
       '<td class="name-cell"><span class="name-chip">' + nameCell + '</span></td>' +
@@ -152,8 +160,8 @@ export function renderList(records, deps) {
       '<td class="table-actions-cell">' +
         '<div class="table-actions table-actions--stacked" role="group" aria-label="Row actions">' +
         '<button type="button" class="btn roster-action-btn roster-action-btn--view view-btn" data-id="' + safeId + '"><span class="roster-action-btn__glyph" aria-hidden="true"></span>View</button>' +
-        '<button type="button" class="btn roster-action-btn roster-action-btn--edit edit-btn" data-id="' + safeId + '"><span class="roster-action-btn__glyph" aria-hidden="true"></span>Edit</button>' +
-        '<button type="button" class="btn roster-action-btn roster-action-btn--delete delete-btn" data-id="' + safeId + '"><span class="roster-action-btn__glyph" aria-hidden="true"></span>Delete</button>' +
+        editBtnHtml +
+        deleteBtnHtml +
         '</div>' +
       '</td>';
     deps.personnelTbody.appendChild(tr);
