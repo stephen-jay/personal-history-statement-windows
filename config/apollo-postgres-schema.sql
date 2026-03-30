@@ -318,6 +318,36 @@ BEFORE UPDATE ON personnel_languages
 FOR EACH ROW EXECUTE FUNCTION apollo_set_updated_at();
 
 -- ---------------------------------------------------------------------------
+-- Auth/RBAC tables (admin login + role-based restrictions)
+-- ---------------------------------------------------------------------------
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE IF NOT EXISTS app_roles (
+  id bigserial PRIMARY KEY,
+  name text NOT NULL UNIQUE,
+  description text,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS app_users (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  username text NOT NULL UNIQUE,
+  password_hash text NOT NULL,
+  full_name text,
+  is_active boolean NOT NULL DEFAULT TRUE,
+  created_at timestamptz NOT NULL DEFAULT NOW(),
+  updated_at timestamptz NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS app_user_roles (
+  user_id uuid NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  role_id bigint NOT NULL REFERENCES app_roles(id) ON DELETE CASCADE,
+  PRIMARY KEY (user_id, role_id)
+);
+
+-- NOTE: seed admin user separately (so you can set a real password).
+
+-- ---------------------------------------------------------------------------
 -- Indexes: roster/search and FK-heavy lookups
 -- ---------------------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_personnel_updated_at_desc ON personnel (updated_at DESC);

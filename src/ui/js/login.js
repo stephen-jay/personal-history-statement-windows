@@ -29,7 +29,18 @@ function submitLogin(event) {
   }
 
   setError('');
-  window.location.href = 'index.html';
+
+  if (!window.authApi || typeof window.authApi.login !== 'function') {
+    setError('Authentication is not available. Restart the application.');
+    return;
+  }
+
+  window.authApi.login(username, password).then(function () {
+    window.location.href = 'index.html';
+  }).catch(function (err) {
+    var msg = err && err.message ? err.message : String(err);
+    setError('Login failed.\n\n' + msg);
+  });
 }
 
 var form = $('login-form');

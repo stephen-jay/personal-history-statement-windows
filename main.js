@@ -26,13 +26,20 @@ const USE_REMOTE_API = /^(1|true|yes)$/i.test(String(process.env.USE_REMOTE_API 
 const REMOTE_API_BASE = String(process.env.REMOTE_API_BASE || 'http://10.10.218.144:3210');
 const DATABASE_URL = process.env.DATABASE_URL || '';
 let pgPool = null;
+const AUTH_SESSION_PATH = path.join(app.getPath('userData'), 'auth-session.json');
+let authSession = null;
 
 async function remoteApi(pathname, options) {
   const base = REMOTE_API_BASE.replace(/\/+$/, '');
   const url = base + pathname;
+  const userHeaders = (options && options.headers) || {};
+  const headers = Object.assign({ 'Content-Type': 'application/json' }, userHeaders);
+  if (authSession && authSession.token) {
+    headers.Authorization = 'Bearer ' + authSession.token;
+  }
   const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
     ...(options || {}),
+    headers: headers,
   });
   const text = await res.text();
   let body = null;
@@ -46,6 +53,32 @@ async function remoteApi(pathname, options) {
   }
   return body;
 }
+
+function loadAuthSessionFromDisk() {
+  try {
+    const raw = fs.readFileSync(AUTH_SESSION_PATH, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.token && parsed.user && Array.isArray(parsed.user.roles)) {
+      authSession = parsed;
+    }
+  } catch (_) {
+    // ignore
+  }
+}
+
+function persistAuthSessionToDisk() {
+  try {
+    if (!authSession || !authSession.token) {
+      try { fs.unlinkSync(AUTH_SESSION_PATH); } catch (_) {}
+      return;
+    }
+    fs.writeFileSync(AUTH_SESSION_PATH, JSON.stringify(authSession, null, 2), 'utf8');
+  } catch (_) {
+    // ignore
+  }
+}
+
+loadAuthSessionFromDisk();
 
 function getPgPool() {
   if (!DATABASE_URL) return null;
@@ -513,6 +546,42 @@ app.on('window-all-closed', () => {
 
 app.on('activate', () => {
   if (mainWindow === null) createWindow();
+});
+
+ipcMain.handle('auth:login', async function (_evt, creds) {
+  creds = creds || {};
+  const username = String(creds.username || '').trim();
+  const password = String(creds.password || '');
+  if (!username || !password) throw new Error('Missing username/password.');
+  const result = await remoteApi('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username: username, password: password }),
+  });
+  authSession = { token: result && result.token ? String(result.token) : '', user: result && result.user ? result.user : null };
+  persistAuthSessionToDisk();
+  return authSession ? { user: authSession.user } : null;
+});
+
+ipcMain.handle('auth:session', async function () {
+  if (!authSession || !authSession.token || !authSession.user) return null;
+  return { user: authSession.user, roles: authSession.user.roles || [] };
+});
+
+ipcMain.handle('auth:logout', async function () {
+  authSession = null;
+  persistAuthSessionToDisk();
+  return { ok: true };
+});
+
+ipcMain.handle('admin:roles', async function () {
+  return await remoteApi('/admin/roles');
+});
+
+ipcMain.handle('admin:createUser', async function (_evt, payload) {
+  return await remoteApi('/admin/users', {
+    method: 'POST',
+    body: JSON.stringify(payload || {}),
+  });
 });
 
 ipcMain.handle('personnel:getAll', async () => {

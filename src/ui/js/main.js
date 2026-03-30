@@ -8,6 +8,7 @@ import { setActiveNav, setAppView, setTopbarSection } from './views.js';
 import { createFormNav } from './form-nav.js';
 import { createPhsModalController } from './phs-modal.js';
 import { squareThumbnailDataUrl } from './photo-thumbnail.js';
+import { initAdminUsersView } from './admin-users.js';
 
 function showError(msg) {
   document.body.innerHTML = '<div style="padding:24px;font-family:sans-serif;max-width:500px"><h2>Error</h2><p>' + String(msg).replace(/</g, '&lt;') + '</p><p>Check the console (Ctrl+Shift+I) for details.</p></div>';
@@ -455,8 +456,20 @@ function buildAutoFillRecord() {
       return;
     }
 
+    if (!window.authApi || typeof window.authApi.getSession !== 'function') {
+      showError('authApi not loaded. Preload may have failed.');
+      return;
+    }
+
+    const session = await window.authApi.getSession();
+    if (!session || !session.user) {
+      window.location.href = 'login.html';
+      return;
+    }
+
     const listView = document.getElementById('list-view');
     const analyticsView = document.getElementById('analytics-view');
+    const adminView = document.getElementById('admin-view');
     const phsModalEl = document.getElementById('phs-modal');
     const phsModalBackdrop = document.getElementById('phs-modal-backdrop');
     const phsModalDialog = phsModalEl && phsModalEl.querySelector('.phs-modal-dialog');
@@ -475,6 +488,23 @@ function buildAutoFillRecord() {
     const btnLogout = document.getElementById('btn-logout');
     const btnAutoFillPhs = document.getElementById('btn-autofill-phs');
 
+    const roles = Array.isArray(session.roles) ? session.roles : [];
+    const isAdmin = roles.includes('admin');
+    const canEdit = roles.includes('admin') || roles.includes('encoder');
+    const canDelete = roles.includes('admin');
+    const canViewAnalytics = roles.includes('admin') || roles.includes('viewer');
+
+    const navAdmin = document.getElementById('nav-admin');
+    if (navAdmin) navAdmin.hidden = !isAdmin;
+    if (btnAutoFillPhs) btnAutoFillPhs.disabled = !canEdit;
+
+    var btnNew = document.getElementById('btn-new');
+    if (btnNew) btnNew.disabled = !canEdit;
+
+    if (isAdmin && adminView && window.adminApi) {
+      initAdminUsersView({ adminViewEl: adminView, adminApi: window.adminApi });
+    }
+
     /** @type {object|null} */
     var lastSummaryRecord = null;
 
@@ -483,6 +513,7 @@ function buildAutoFillRecord() {
     function applyListChrome() {
       listView.classList.add('active');
       if (analyticsView) analyticsView.classList.remove('active');
+      if (adminView) adminView.classList.remove('active');
       setActiveNav('list');
       setAppView('list');
       setTopbarSection(topbarSection, 'Personnel roster');
@@ -535,7 +566,8 @@ function buildAutoFillRecord() {
       setFormData: formData.setFormData,
       showForm: null,
       openSummary: openSummary,
-      loadList: null
+      loadList: null,
+      permissions: { canEdit: canEdit, canDelete: canDelete }
     };
 
     function loadAllDataAndRender() {
@@ -593,8 +625,13 @@ function buildAutoFillRecord() {
      * @param {{ animateEntry?: boolean }} [opts]
      */
     function showForm(opts) {
+      if (!canEdit) {
+        alert('You do not have permission to create or edit personnel records.');
+        return;
+      }
       if (analyticsView) analyticsView.classList.remove('active');
       listView.classList.add('active');
+      if (adminView) adminView.classList.remove('active');
       setActiveNav('none');
       setAppView('form');
       const rid = recordIdInput && recordIdInput.value && String(recordIdInput.value).trim();
@@ -611,11 +648,16 @@ function buildAutoFillRecord() {
     listDeps.loadList = loadList;
 
     function showAnalytics() {
+      if (!canViewAnalytics) {
+        alert('You do not have permission to view analytics.');
+        return;
+      }
       if (phsModalCtl.isOpen()) {
         if (!phsModalCtl.close(false)) return;
       }
       listView.classList.remove('active');
       if (analyticsView) analyticsView.classList.add('active');
+      if (adminView) adminView.classList.remove('active');
       setActiveNav('analytics');
       setAppView('analytics');
       setTopbarSection(topbarSection, 'Reports');
@@ -624,15 +666,33 @@ function buildAutoFillRecord() {
       });
     }
 
+    function showAdminUsers() {
+      if (!isAdmin) {
+        alert('Admin access required.');
+        return;
+      }
+      if (phsModalCtl && phsModalCtl.isOpen()) {
+        phsModalCtl.close(false);
+      }
+      listView.classList.remove('active');
+      if (analyticsView) analyticsView.classList.remove('active');
+      if (adminView) adminView.classList.add('active');
+      setActiveNav('admin');
+      setAppView('admin');
+      setTopbarSection(topbarSection, 'User management');
+    }
+
     document.querySelectorAll('.nav-item').forEach(function (tab) {
       tab.addEventListener('click', function () {
         const which = tab.getAttribute('data-tab');
         if (which === 'list') showList();
         if (which === 'analytics') showAnalytics();
+        if (which === 'admin') showAdminUsers();
       });
     });
 
     document.getElementById('btn-new').addEventListener('click', function () {
+      if (!canEdit) return;
       formData.clearForm();
       showForm({ animateEntry: true });
     });
@@ -643,6 +703,12 @@ function buildAutoFillRecord() {
 
     if (btnLogout) {
       btnLogout.addEventListener('click', function () {
+        if (window.authApi && typeof window.authApi.logout === 'function') {
+          window.authApi.logout().finally(function () {
+            window.location.href = 'login.html';
+          });
+          return;
+        }
         window.location.href = 'login.html';
       });
     }
