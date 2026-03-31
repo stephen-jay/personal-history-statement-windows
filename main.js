@@ -680,10 +680,9 @@ function createWindow() {
 
   const loginPath = path.join(__dirname, 'src', 'ui', 'login.html');
   mainWindow.loadURL(pathToFileURL(loginPath).href);
+  mainWindow.maximize();
   mainWindow.on('closed', () => { mainWindow = null; });
   mainWindow.setTitle('Personnel Database');
-  // Open DevTools so you can see any errors (Console tab)
-  mainWindow.webContents.openDevTools();
 }
 
 app.whenReady().then(createWindow);
