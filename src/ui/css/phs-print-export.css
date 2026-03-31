@@ -1,6 +1,6 @@
 /* PHS view / export: readable hierarchy — labels vs values, spacing, softer grid */
 @page {
-  size: letter;
+  size: 8.5in 13in;
   margin: 0.5in 0.55in;
 }
 
@@ -18,6 +18,10 @@ html, body {
   margin: 0;
   padding: 0;
   background: #fff;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
 body {
@@ -38,6 +42,179 @@ body {
   line-height: 1.45;
   color: var(--phs-text);
   max-width: 100%;
+}
+
+/* Match the summary-view visual approach for export output. */
+.summary-phs-document {
+  max-width: 100%;
+  margin: 0 auto;
+  background: #fff;
+  padding: 0;
+}
+
+.summary-phs-document .phs-print-doc {
+  font-size: 12pt;
+  line-height: 1.58;
+  color: #17212f;
+}
+
+.summary-phs-document .phs-print-header {
+  margin-bottom: 24px;
+  padding: 10px 12px 16px;
+  border-bottom: 2px solid #28588f;
+  background: linear-gradient(180deg, #f7fbff, #ffffff);
+  border-radius: 8px;
+}
+
+.summary-phs-document .phs-print-title {
+  font-size: 1.55rem;
+  letter-spacing: 0.03em;
+  text-transform: none;
+}
+
+.summary-phs-document .phs-print-section {
+  margin: 0 0 16px;
+  padding: 14px 14px 12px;
+  border: 1px solid #d9e2ec;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 0 rgba(15, 31, 53, 0.04);
+}
+
+.summary-phs-document .phs-print-h2 {
+  margin: 0 0 12px;
+  padding: 0 0 8px;
+  font-size: 0.92rem;
+  letter-spacing: 0.03em;
+  color: #000;
+  border-bottom: 1px solid #c6d2df;
+}
+
+.summary-phs-document .phs-print-h2--instructions {
+  text-align: left;
+  letter-spacing: 0.18em;
+  font-size: 0.82rem;
+}
+
+.summary-phs-document .phs-print-table {
+  font-size: 10.5pt;
+  border-color: #d2dce8;
+}
+
+.summary-phs-document .phs-print-table th,
+.summary-phs-document .phs-print-table td {
+  border-color: #d7e0ea;
+}
+
+.summary-phs-document .phs-print-field-label,
+.summary-phs-document .phs-print-kv-label,
+.summary-phs-document .phs-print-list-title {
+  font-size: 0.7rem;
+  color: #415a77;
+}
+
+.summary-phs-document .phs-print-kv-block,
+.summary-phs-document .phs-print-list-block,
+.summary-phs-document .phs-print-yn,
+.summary-phs-document .phs-print-certify,
+.summary-phs-document .phs-print-handwriting {
+  border-radius: 8px;
+  border-color: #d9e2ec;
+  background: #fbfdff;
+}
+
+.summary-phs-document .phs-print-val {
+  font-weight: 600;
+  color: #13263e;
+}
+
+.summary-phs-document .phs-print-section--personal .phs-print-h2,
+.summary-phs-document .phs-print-section--char .phs-print-h2,
+.summary-phs-document .phs-print-section--marital .phs-print-h2,
+.summary-phs-document .phs-print-section--family .phs-print-h2,
+.summary-phs-document .phs-print-section--education .phs-print-h2,
+.summary-phs-document .phs-print-section--residence .phs-print-h2,
+.summary-phs-document .phs-print-section--employment .phs-print-h2,
+.summary-phs-document .phs-print-section--foreign .phs-print-h2,
+.summary-phs-document .phs-print-section--credit .phs-print-h2,
+.summary-phs-document .phs-print-section--arrest .phs-print-h2,
+.summary-phs-document .phs-print-section--reputation .phs-print-h2,
+.summary-phs-document .phs-print-section--organizations .phs-print-h2,
+.summary-phs-document .phs-print-section--misc .phs-print-h2 {
+  color: #000;
+  border-bottom: 2px solid #1d4e89;
+}
+
+.summary-phs-document .phs-personal-modern-hero {
+  grid-template-columns: 120px 1fr;
+  gap: 18px;
+  padding: 6px 2px 16px;
+}
+
+.summary-phs-document .phs-personal-modern-avatar-wrap {
+  width: 120px;
+  height: 120px;
+  border-radius: 22px;
+  background: #1d4e89;
+}
+
+.summary-phs-document .phs-personal-modern-name {
+  color: #1d4e89;
+  font-size: 2rem;
+  line-height: 1.08;
+  font-weight: 800;
+}
+
+.summary-phs-document .phs-personal-modern-job {
+  margin: 8px 0 0;
+  color: #1d3557;
+  font-size: 1.08rem;
+  font-weight: 600;
+}
+
+.summary-phs-document .phs-personal-modern-cards {
+  gap: 14px;
+}
+
+.summary-phs-document .phs-modern-card,
+.summary-phs-document .phs-modern-table-card,
+.summary-phs-document .phs-personal-modern-card,
+.summary-phs-document .phs-char-modern-col,
+.summary-phs-document .phs-char-modern-footer,
+.summary-phs-document .phs-char-modern-health-item,
+.summary-phs-document .phs-marital-modern-col,
+.summary-phs-document .phs-marital-modern-children {
+  border: 1px solid #d6e0ea;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 0 rgba(15, 31, 53, 0.04);
+}
+
+.summary-phs-document .phs-modern-card-title,
+.summary-phs-document .phs-personal-modern-card-title,
+.summary-phs-document .phs-print-list-title,
+.summary-phs-document .phs-print-kv-label {
+  color: #1d4e89;
+  background: #edf3fb;
+  border-bottom: 1px solid #d6e0ea;
+  font-weight: 800;
+}
+
+.summary-phs-document .phs-modern-table,
+.summary-phs-document .phs-marital-modern-children-table {
+  border: 1px solid #d6e0ea;
+  border-radius: 10px;
+  overflow: hidden;
+  border-collapse: collapse;
+}
+
+.summary-phs-document .phs-modern-table thead th,
+.summary-phs-document .phs-marital-modern-children-table thead th {
+  color: #1d4e89;
+  background: #edf3fb;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.7rem;
 }
 
 /* Use modern summary layout in export too for clean consistency. */
@@ -113,7 +290,8 @@ body {
   border: 1px solid var(--phs-border);
   border-radius: 8px;
   background: #fff;
-  page-break-inside: avoid;
+  page-break-inside: auto;
+  break-inside: auto;
 }
 
 .phs-print-section-misc {
@@ -391,6 +569,8 @@ body {
   background: #fff;
   overflow: hidden;
   margin-top: 10px;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 .phs-modern-card-grid .phs-modern-card {
@@ -548,6 +728,42 @@ body {
   border: 1px solid var(--phs-border);
   border-radius: 6px;
   overflow: hidden;
+}
+
+.phs-print-table,
+.phs-modern-table,
+.phs-marital-modern-children-table {
+  page-break-inside: auto;
+  break-inside: auto;
+}
+
+.phs-print-table tr,
+.phs-modern-table tr,
+.phs-marital-modern-children-table tr {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+@media print {
+  .phs-personal-modern-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .phs-char-modern-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .phs-char-modern-health {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
 }
 
 .phs-print-table th,
@@ -978,4 +1194,239 @@ body {
 .phs-print-sworn .phs-print-table td {
   font-size: 0.9rem;
   line-height: 1.45;
+}
+
+/* Final print flow fixes: keep section titles with content and avoid large blank gaps. */
+@media print {
+  .summary-phs-document {
+    margin: 0;
+    padding: 0;
+  }
+
+  .summary-phs-document .phs-print-doc,
+  .summary-phs-document .phs-print-doc * {
+    widows: 2;
+    orphans: 2;
+  }
+
+  .summary-phs-document .phs-print-doc {
+    font-size: 10.1pt;
+    line-height: 1.34;
+  }
+
+  .summary-phs-document .phs-print-title {
+    font-size: 1.2rem;
+    letter-spacing: 0.02em;
+  }
+
+  .summary-phs-document .phs-print-section {
+    box-shadow: none;
+    margin: 0 0 8px;
+    padding: 8px 8px 7px;
+    page-break-inside: avoid;
+    break-inside: avoid-page;
+  }
+
+  .summary-phs-document .phs-print-section--misc {
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+
+  .summary-phs-document .phs-print-h2 {
+    margin: 0 0 6px;
+    font-size: 0.78rem;
+    padding-bottom: 5px;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  .summary-phs-document .phs-print-h2 + * {
+    page-break-before: avoid;
+    break-before: avoid;
+  }
+
+  .summary-phs-document .phs-modern-card,
+  .summary-phs-document .phs-modern-table-card,
+  .summary-phs-document .phs-personal-modern-card,
+  .summary-phs-document .phs-char-modern-col,
+  .summary-phs-document .phs-char-modern-footer,
+  .summary-phs-document .phs-char-modern-health-item,
+  .summary-phs-document .phs-marital-modern-col,
+  .summary-phs-document .phs-marital-modern-children,
+  .summary-phs-document .phs-print-kv-block,
+  .summary-phs-document .phs-print-list-block,
+  .summary-phs-document .phs-print-yn,
+  .summary-phs-document .phs-print-certify,
+  .summary-phs-document .phs-print-handwriting {
+    page-break-inside: avoid;
+    break-inside: avoid-page;
+    margin-top: 6px;
+  }
+
+  .summary-phs-document .phs-modern-table,
+  .summary-phs-document .phs-marital-modern-children-table,
+  .summary-phs-document .phs-print-table {
+    table-layout: fixed;
+    page-break-inside: auto;
+    break-inside: auto;
+    font-size: 8.8pt;
+  }
+
+  .summary-phs-document .phs-modern-table thead,
+  .summary-phs-document .phs-marital-modern-children-table thead,
+  .summary-phs-document .phs-print-table thead {
+    display: table-header-group;
+  }
+
+  .summary-phs-document .phs-modern-table tr,
+  .summary-phs-document .phs-marital-modern-children-table tr,
+  .summary-phs-document .phs-print-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .summary-phs-document .phs-modern-table th,
+  .summary-phs-document .phs-modern-table td,
+  .summary-phs-document .phs-marital-modern-children-table th,
+  .summary-phs-document .phs-marital-modern-children-table td,
+  .summary-phs-document .phs-print-table th,
+  .summary-phs-document .phs-print-table td {
+    padding: 5px 6px;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    vertical-align: top;
+  }
+
+  .summary-phs-document .phs-modern-card-title,
+  .summary-phs-document .phs-personal-modern-card-title,
+  .summary-phs-document .phs-print-list-title,
+  .summary-phs-document .phs-print-kv-label {
+    padding: 5px 7px;
+    font-size: 0.62rem;
+  }
+
+  .summary-phs-document .phs-modern-card-body {
+    padding: 6px 7px;
+  }
+
+  .summary-phs-document .phs-modern-field,
+  .summary-phs-document .phs-modern-line,
+  .summary-phs-document .phs-personal-modern-item {
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  .summary-phs-document .phs-modern-field-label,
+  .summary-phs-document .phs-modern-line-label,
+  .summary-phs-document .phs-personal-modern-label {
+    font-size: 0.58rem;
+    letter-spacing: 0.03em;
+  }
+
+  .summary-phs-document .phs-modern-field-value,
+  .summary-phs-document .phs-modern-line-value,
+  .summary-phs-document .phs-personal-modern-value,
+  .summary-phs-document .phs-print-kv-text,
+  .summary-phs-document .phs-print-ol li {
+    font-size: 0.82rem;
+    line-height: 1.28;
+  }
+
+  /* Content-driven sizing: avoid border overflow and dead spaces from fixed heights. */
+  .summary-phs-document .phs-print-section--family {
+    min-height: 0;
+    page-break-before: always;
+    break-before: page;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .summary-phs-document .phs-print-section--education {
+    min-height: 0;
+    page-break-before: always;
+    break-before: page;
+  }
+
+  .summary-phs-document .phs-page-group-v8 {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35in;
+    page-break-before: always;
+    break-before: page;
+  }
+
+  .summary-phs-document .phs-print-section--residence,
+  .summary-phs-document .phs-print-section--employment,
+  .summary-phs-document .phs-print-section--foreign {
+    min-height: 0;
+    page-break-before: avoid;
+    break-before: avoid-page;
+  }
+
+  .summary-phs-document .phs-print-section--education,
+  .summary-phs-document .phs-print-section--residence,
+  .summary-phs-document .phs-print-section--employment,
+  .summary-phs-document .phs-print-section--foreign {
+    margin-bottom: 0;
+    padding: 6px 6px 5px;
+  }
+
+  .summary-phs-document .phs-print-section--education .phs-print-h2,
+  .summary-phs-document .phs-print-section--residence .phs-print-h2,
+  .summary-phs-document .phs-print-section--employment .phs-print-h2,
+  .summary-phs-document .phs-print-section--foreign .phs-print-h2 {
+    margin-bottom: 4px;
+    font-size: 0.72rem;
+    padding-bottom: 4px;
+  }
+
+  .summary-phs-document .phs-print-section--education .phs-modern-card-title,
+  .summary-phs-document .phs-print-section--residence .phs-modern-card-title,
+  .summary-phs-document .phs-print-section--employment .phs-modern-card-title,
+  .summary-phs-document .phs-print-section--foreign .phs-modern-card-title,
+  .summary-phs-document .phs-print-section--education .phs-print-list-title,
+  .summary-phs-document .phs-print-section--residence .phs-print-list-title,
+  .summary-phs-document .phs-print-section--employment .phs-print-list-title,
+  .summary-phs-document .phs-print-section--foreign .phs-print-list-title {
+    padding: 4px 6px;
+    font-size: 0.56rem;
+  }
+
+  .summary-phs-document .phs-print-section--education .phs-modern-card-body,
+  .summary-phs-document .phs-print-section--residence .phs-modern-card-body,
+  .summary-phs-document .phs-print-section--employment .phs-modern-card-body,
+  .summary-phs-document .phs-print-section--foreign .phs-modern-card-body {
+    padding: 5px 6px;
+  }
+
+  .summary-phs-document .phs-print-section--education .phs-modern-table,
+  .summary-phs-document .phs-print-section--residence .phs-modern-table,
+  .summary-phs-document .phs-print-section--employment .phs-modern-table,
+  .summary-phs-document .phs-print-section--foreign .phs-modern-table {
+    font-size: 8.4pt;
+  }
+
+  .summary-phs-document .phs-print-section--education .phs-modern-table th,
+  .summary-phs-document .phs-print-section--education .phs-modern-table td,
+  .summary-phs-document .phs-print-section--residence .phs-modern-table th,
+  .summary-phs-document .phs-print-section--residence .phs-modern-table td,
+  .summary-phs-document .phs-print-section--employment .phs-modern-table th,
+  .summary-phs-document .phs-print-section--employment .phs-modern-table td,
+  .summary-phs-document .phs-print-section--foreign .phs-modern-table th,
+  .summary-phs-document .phs-print-section--foreign .phs-modern-table td {
+    padding: 5px 6px;
+    line-height: 1.28;
+  }
+
+  .summary-phs-document .phs-print-section--education .phs-modern-table tbody tr {
+    min-height: 0;
+    height: auto;
+  }
+
+  .summary-phs-document .phs-print-section--residence .phs-print-ol li,
+  .summary-phs-document .phs-print-section--employment .phs-print-ol li,
+  .summary-phs-document .phs-print-section--foreign .phs-print-ol li {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
 }

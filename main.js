@@ -842,6 +842,10 @@ ipcMain.handle('personnel:delete', async (_, id, version) => {
 });
 
 async function writePhsPdfFromHtml(parentWindow, html, defaultName) {
+  const FOLIO_PAGE_SIZE_MICRONS = {
+    width: 215900, // 8.5 in
+    height: 330200, // 13 in
+  };
   const tmp = path.join(
     os.tmpdir(),
     'phs-export-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9) + '.html'
@@ -861,7 +865,8 @@ async function writePhsPdfFromHtml(parentWindow, html, defaultName) {
     });
     const pdfBuffer = await win.webContents.printToPDF({
       printBackground: true,
-      pageSize: 'Letter',
+      pageSize: FOLIO_PAGE_SIZE_MICRONS,
+      preferCSSPageSize: true,
       marginsType: 0,
     });
     win.destroy();

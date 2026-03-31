@@ -528,6 +528,7 @@ export function buildOfficialPrintHtml(data) {
     '<div class="phs-print-kv-block"><span class="phs-print-kv-label">Mother-in-law</span><div class="phs-print-kv-text">' + joinData(data, ['motherInLawFullName', 'motherInLawDob', 'motherInLawAddress', 'motherInLawOccupation', 'motherInLawCitizenship']) + '</div></div>' +
     '</section>' +
 
+    '<div class="phs-page-group-v8">' +
     '<section class="phs-print-section phs-print-section--education">' +
     '<h2 class="phs-print-h2 phs-print-h2--section">V. EDUCATIONAL BACKGROUND</h2>' +
     '<div class="phs-education-modern" aria-hidden="true">' +
@@ -596,6 +597,7 @@ export function buildOfficialPrintHtml(data) {
       return escapeHtml([row.dateOfVisit, row.country, row.purpose, row.addressAbroad].filter(Boolean).join(' — ') || '—');
     }) +
     '</section>' +
+    '</div>' +
 
     '<section class="phs-print-section phs-print-section--credit">' +
     '<h2 class="phs-print-h2 phs-print-h2--section">IX. CREDIT REPUTATION</h2>' +

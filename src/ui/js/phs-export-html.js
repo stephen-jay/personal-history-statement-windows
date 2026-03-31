@@ -40,7 +40,7 @@ export async function buildStandalonePhsHtml(record) {
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<title>Personnel History Statement</title>' +
     '<style>' + cssText + '</style></head><body>' +
-    inner +
+    '<div class="summary-phs-document">' + inner + '</div>' +
     '</body></html>'
   );
 }
