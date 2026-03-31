@@ -58,10 +58,14 @@ function verifyToken(token) {
   const payloadB64 = parts[1];
   const sigB64 = parts[2];
   const expectedSig = crypto.createHmac('sha256', AUTH_SECRET).update(payloadB64).digest();
-  const expectedSigB64 = base64UrlEncodeBuf(expectedSig);
   const sigOk = (() => {
     try {
-      return crypto.timingSafeEqual(Buffer.from(sigB64), Buffer.from(expectedSigB64));
+      // Compare raw signature bytes, not base64url-encoded strings.
+      const sigBase64 = sigB64.replace(/-/g, '+').replace(/_/g, '/');
+      const pad = sigBase64.length % 4 === 0 ? '' : '='.repeat(4 - (sigBase64.length % 4));
+      const sigRaw = Buffer.from(sigBase64 + pad, 'base64');
+      if (sigRaw.length !== expectedSig.length) return false;
+      return crypto.timingSafeEqual(sigRaw, expectedSig);
     } catch (_) {
       return false;
     }
@@ -218,6 +222,7 @@ const PERSONNEL_FIELD_MAP = {
   residenceCertIssuedOn2: 'residence_cert_issued_on2',
   residenceCertIssuedAt2: 'residence_cert_issued_at2',
   administeringOfficer2: 'administering_officer2',
+  handwrittenEntryDataUrl: 'handwritten_entry_data_url',
   photoDataUrl: 'photo_data_url',
 };
 
@@ -510,13 +515,14 @@ app.post('/admin/users', requireAuth, requireAdmin, async function (req, res) {
     return res.status(400).json({ error: 'username, password, and roleName are required.' });
   }
 
+  const client = await pool.connect();
   try {
-    const roleRow = await pool.query('SELECT id FROM app_roles WHERE name = $1', [roleName]);
+    const roleRow = await client.query('SELECT id FROM app_roles WHERE name = $1', [roleName]);
     if (!roleRow.rows || !roleRow.rows.length) return res.status(400).json({ error: 'Unknown roleName.' });
     const roleId = roleRow.rows[0].id;
 
-    await pool.query('BEGIN');
-    const inserted = await pool.query(
+    await client.query('BEGIN');
+    const inserted = await client.query(
       `
         INSERT INTO app_users (username, password_hash, full_name, is_active)
         VALUES ($1, crypt($2, gen_salt('bf')), $3, TRUE)
@@ -528,15 +534,17 @@ app.post('/admin/users', requireAuth, requireAdmin, async function (req, res) {
     const userId = inserted.rows && inserted.rows[0] ? inserted.rows[0].id : null;
     if (!userId) throw new Error('Failed to create user.');
 
-    await pool.query('INSERT INTO app_user_roles (user_id, role_id) VALUES ($1, $2)', [userId, roleId]);
-    await pool.query('COMMIT');
+    await client.query('INSERT INTO app_user_roles (user_id, role_id) VALUES ($1, $2)', [userId, roleId]);
+    await client.query('COMMIT');
 
     res.json({ ok: true, user: { id: userId, username: username, fullName: fullName, roleName: roleName } });
   } catch (e) {
-    try { await pool.query('ROLLBACK'); } catch (_) {}
+    try { await client.query('ROLLBACK'); } catch (_) {}
     // 23505 = unique_violation
     if (e && e.code === '23505') return res.status(409).json({ error: 'Username already exists.' });
     res.status(500).json({ error: e && e.message ? e.message : String(e) });
+  } finally {
+    client.release();
   }
 });
 
