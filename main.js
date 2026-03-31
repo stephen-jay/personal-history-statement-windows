@@ -282,6 +282,7 @@ const PERSONNEL_FIELD_MAP = {
   residenceCertIssuedOn2: 'residence_cert_issued_on2',
   residenceCertIssuedAt2: 'residence_cert_issued_at2',
   administeringOfficer2: 'administering_officer2',
+  handwrittenEntryDataUrl: 'handwritten_entry_data_url',
   photoDataUrl: 'photo_data_url'
 };
 

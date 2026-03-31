@@ -137,6 +137,7 @@ CREATE TABLE IF NOT EXISTS personnel (
   residence_cert_issued_on2 text,
   residence_cert_issued_at2 text,
   administering_officer2 text,
+  handwritten_entry_data_url text,
 
   -- Images (compatibility now + future URL migration)
   photo_data_url text,

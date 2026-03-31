@@ -283,6 +283,14 @@ input::placeholder {
   color: rgba(234, 240, 255, 0.9);
 }
 
+.about-build {
+  margin: 10px 0 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(234, 240, 255, 0.72);
+}
+
 .about-logos {
   display: flex;
   gap: 14px;
