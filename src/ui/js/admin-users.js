@@ -20,9 +20,10 @@ export function initAdminUsersView(opts) {
   const passwordEl = adminViewEl.querySelector('#admin-password');
   const roleSelectEl = adminViewEl.querySelector('#admin-role');
   const statusEl = adminViewEl.querySelector('#admin-user-status');
+  const usersTbody = adminViewEl.querySelector('#admin-users-tbody');
 
-  if (!form || !usernameEl || !passwordEl || !roleSelectEl) return;
-  if (!adminApi || typeof adminApi.getRoles !== 'function' || typeof adminApi.createUser !== 'function') {
+  if (!form || !usernameEl || !passwordEl || !roleSelectEl || !usersTbody) return;
+  if (!adminApi || typeof adminApi.getRoles !== 'function' || typeof adminApi.createUser !== 'function' || typeof adminApi.listUsers !== 'function') {
     setStatus(statusEl, 'Admin API unavailable.', 'error');
     return;
   }
@@ -46,6 +47,31 @@ export function initAdminUsersView(opts) {
       opt.textContent = String(roleName);
       roleSelectEl.appendChild(opt);
     });
+  }
+
+  function renderUsers(users) {
+    usersTbody.innerHTML = '';
+    (users || []).forEach(function (u) {
+      var tr = document.createElement('tr');
+      var roles = Array.isArray(u.roles) ? u.roles.join(', ') : '';
+      var status = u.is_active ? 'Active' : 'Inactive';
+      tr.innerHTML =
+        '<td>' + String(u.username || '') + '</td>' +
+        '<td>' + String(u.full_name || '') + '</td>' +
+        '<td>' + roles + '</td>' +
+        '<td>' + status + '</td>';
+      usersTbody.appendChild(tr);
+    });
+  }
+
+  async function loadUsers() {
+    try {
+      const result = await adminApi.listUsers();
+      renderUsers((result && result.users) || []);
+    } catch (err) {
+      var msg = err && err.message ? err.message : String(err);
+      setStatus(statusEl, 'Could not load users. ' + msg, 'error');
+    }
   }
 
   form.addEventListener('submit', async function (e) {
@@ -74,6 +100,7 @@ export function initAdminUsersView(opts) {
       setStatus(statusEl, 'User created: ' + createdUsername, 'success');
       form.reset();
       await loadRoles();
+      await loadUsers();
     } catch (err) {
       var msg = err && err.message ? err.message : String(err);
       setStatus(statusEl, 'Create failed. ' + msg, 'error');
@@ -83,5 +110,7 @@ export function initAdminUsersView(opts) {
   loadRoles().catch(function (err) {
     setStatus(statusEl, 'Could not load roles. ' + (err && err.message ? err.message : String(err)), 'error');
   });
+
+  loadUsers().catch(function () {});
 }
 

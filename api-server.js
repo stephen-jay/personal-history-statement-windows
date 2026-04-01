@@ -222,6 +222,7 @@ const PERSONNEL_FIELD_MAP = {
   residenceCertIssuedOn2: 'residence_cert_issued_on2',
   residenceCertIssuedAt2: 'residence_cert_issued_at2',
   administeringOfficer2: 'administering_officer2',
+  signatureDataUrl: 'signature_data_url',
   handwrittenEntryDataUrl: 'handwritten_entry_data_url',
   photoDataUrl: 'photo_data_url',
 };
@@ -499,6 +500,29 @@ app.get('/admin/roles', requireAuth, requireAdmin, async function (_req, res) {
     const rows = await pool.query('SELECT name FROM app_roles ORDER BY name ASC');
     const roles = (rows.rows || []).map(function (r) { return r.name; });
     res.json({ roles: roles });
+  } catch (e) {
+    res.status(500).json({ error: e && e.message ? e.message : String(e) });
+  }
+});
+
+app.get('/admin/users', requireAuth, requireAdmin, async function (_req, res) {
+  try {
+    const rows = await pool.query(
+      `
+        SELECT
+          u.id,
+          u.username,
+          u.full_name,
+          u.is_active,
+          COALESCE(ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL), '{}') AS roles
+        FROM app_users u
+        LEFT JOIN app_user_roles ur ON ur.user_id = u.id
+        LEFT JOIN app_roles r ON r.id = ur.role_id
+        GROUP BY u.id, u.username, u.full_name, u.is_active
+        ORDER BY u.username ASC
+      `
+    );
+    res.json({ users: rows.rows || [] });
   } catch (e) {
     res.status(500).json({ error: e && e.message ? e.message : String(e) });
   }

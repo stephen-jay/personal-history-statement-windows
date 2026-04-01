@@ -690,8 +690,9 @@ export function buildOfficialPrintHtml(data) {
     '<div class="phs-modern-thumb-item"><span class="phs-modern-thumb-box"></span><span class="phs-modern-thumb-label">Right</span></div>' +
     '</div>' +
     '<div class="phs-modern-thumb-signature">' +
-    '<div class="phs-modern-thumb-sign-line"></div>' +
-    '<p class="phs-modern-thumb-sign-cap">(Signature of Applicant)</p>' +
+    (data && data.signatureDataUrl
+      ? '<img class="phs-modern-sign-img" src="' + escapeHtml(data.signatureDataUrl) + '" alt="Signature of applicant"/>'
+      : '<div class="phs-modern-thumb-sign-line"></div><p class="phs-modern-thumb-sign-cap">(Signature of Applicant)</p>') +
     '</div>' +
     '</div>' +
     '</section>' +

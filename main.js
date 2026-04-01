@@ -415,6 +415,7 @@ const PERSONNEL_FIELD_MAP = {
   residenceCertIssuedOn2: 'residence_cert_issued_on2',
   residenceCertIssuedAt2: 'residence_cert_issued_at2',
   administeringOfficer2: 'administering_officer2',
+  signatureDataUrl: 'signature_data_url',
   handwrittenEntryDataUrl: 'handwritten_entry_data_url',
   photoDataUrl: 'photo_data_url'
 };
@@ -766,6 +767,34 @@ ipcMain.handle('admin:createUser', async function (_evt, payload) {
     }
   }
   return await createAdminUserLocal(payload || {});
+});
+
+ipcMain.handle('admin:listUsers', async function () {
+  if (USE_REMOTE_API) {
+    try {
+      return await remoteApi('/admin/users');
+    } catch (e) {
+      console.error('admin:listUsers remote API failed, trying local DB:', e && e.message ? e.message : e);
+    }
+  }
+  const pool = getPgPool();
+  if (!pool) throw new Error('DATABASE_URL is required for local admin operations.');
+  const rows = await pool.query(
+    `
+      SELECT
+        u.id,
+        u.username,
+        u.full_name,
+        u.is_active,
+        COALESCE(ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL), '{}') AS roles
+      FROM app_users u
+      LEFT JOIN app_user_roles ur ON ur.user_id = u.id
+      LEFT JOIN app_roles r ON r.id = ur.role_id
+      GROUP BY u.id, u.username, u.full_name, u.is_active
+      ORDER BY u.username ASC
+    `
+  );
+  return { users: rows.rows || [] };
 });
 
 ipcMain.handle('personnel:getAll', async () => {

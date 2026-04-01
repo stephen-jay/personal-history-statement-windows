@@ -655,6 +655,16 @@ body {
   align-items: center;
 }
 
+.phs-modern-sign-img {
+  display: block;
+  max-width: min(260px, 100%);
+  max-height: 120px;
+  object-fit: contain;
+  border-bottom: 1px solid var(--phs-border-strong);
+  padding-bottom: 4px;
+  background: #fff;
+}
+
 .phs-modern-thumb-sign-line {
   width: min(260px, 100%);
   min-height: 24px;

@@ -821,6 +821,28 @@ function buildAutoFillRecord() {
       });
     }
 
+    var signatureUpload = document.getElementById('signature-upload');
+    var signatureDataUrlInput = document.getElementById('signatureDataUrl');
+    var signaturePreview = document.getElementById('signature-preview');
+    var signaturePlaceholder = document.getElementById('signature-placeholder-text');
+    if (signatureUpload && signatureDataUrlInput) {
+      signatureUpload.addEventListener('change', function () {
+        var file = signatureUpload.files && signatureUpload.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function () {
+          var raw = String(reader.result || '');
+          signatureDataUrlInput.value = raw;
+          if (signaturePreview) {
+            signaturePreview.src = raw;
+            signaturePreview.style.display = 'block';
+          }
+          if (signaturePlaceholder) signaturePlaceholder.style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
     document.addEventListener('click', function (e) {
       var btn = e.target.closest('.remove-child-row');
       if (btn) {
