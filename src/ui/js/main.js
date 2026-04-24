@@ -853,11 +853,7 @@ function buildAutoFillRecord() {
         reader.onload = function () {
           var raw = String(reader.result || '');
           signatureDataUrlInput.value = raw;
-          if (signaturePreview) {
-            signaturePreview.src = raw;
-            signaturePreview.style.display = 'block';
-          }
-          if (signaturePlaceholder) signaturePlaceholder.style.display = 'none';
+          formData.setSignaturePreview(raw);
         };
         reader.readAsDataURL(file);
       });

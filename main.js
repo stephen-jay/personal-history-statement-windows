@@ -530,15 +530,32 @@ function groupByPersonnelId(rows) {
   return map;
 }
 
-let personnelColumnSetCache = null;
-
 async function getPersonnelColumnSet(client) {
-  if (personnelColumnSetCache) return personnelColumnSetCache;
   const result = await client.query(
     "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'personnel'"
   );
-  personnelColumnSetCache = new Set((result.rows || []).map(function (r) { return r.column_name; }));
-  return personnelColumnSetCache;
+  return new Set((result.rows || []).map(function (r) { return r.column_name; }));
+}
+
+function assertPersonnelColumnsAvailable(personnelColumnSet, record) {
+  const requiredWhenPresent = [
+    ['signatureDataUrl', 'signature_data_url'],
+    ['leftThumbMarkDataUrl', 'left_thumb_mark_data_url'],
+    ['rightThumbMarkDataUrl', 'right_thumb_mark_data_url'],
+  ];
+  const missing = requiredWhenPresent.filter(function (pair) {
+    const sourceKey = pair[0];
+    const columnName = pair[1];
+    const value = record && record[sourceKey];
+    if (value == null || String(value).trim() === '') return false;
+    return !personnelColumnSet.has(columnName);
+  });
+  if (!missing.length) return;
+  throw new Error(
+    'Database schema is missing required media columns: ' +
+    missing.map(function (pair) { return pair[1]; }).join(', ') +
+    '. Apply the latest personnel schema update before saving thumb marks/signature.'
+  );
 }
 
 async function getPostgresData() {
@@ -588,6 +605,7 @@ async function savePostgresRecord(record) {
   try {
     await client.query('BEGIN');
     const personnelColumnSet = await getPersonnelColumnSet(client);
+    assertPersonnelColumnsAvailable(personnelColumnSet, safe);
     const cols = [];
     const vals = [];
     Object.keys(PERSONNEL_FIELD_MAP).forEach(function (srcKey) {
@@ -879,24 +897,41 @@ ipcMain.handle('admin:deleteUser', async function (_evt, payload) {
 });
 
 ipcMain.handle('personnel:getAll', async () => {
-  if (USE_REMOTE_API) {
-    try {
-      return await remoteApi('/personnel');
-    } catch (e) {
-      console.error('personnel:getAll remote API failed, falling back to local providers:', e && e.message ? e.message : e);
-    }
-  }
   if (USE_POSTGRES_READ) {
     try {
       return await getPostgresData();
     } catch (e) {
-      console.error('personnel:getAll postgres failed, falling back to JSON:', e && e.message ? e.message : e);
+      console.error('personnel:getAll postgres failed, trying remote/json fallback:', e && e.message ? e.message : e);
+    }
+  }
+  if (USE_REMOTE_API) {
+    try {
+      return await remoteApi('/personnel');
+    } catch (e) {
+      console.error('personnel:getAll remote API failed, falling back to JSON:', e && e.message ? e.message : e);
     }
   }
   return getData();
 });
 
 ipcMain.handle('personnel:save', async (_, record) => {
+  const shouldWritePg = USE_POSTGRES_WRITE;
+  const shouldDualWrite = ENABLE_DUAL_WRITE;
+  if (shouldWritePg) {
+    try {
+      const savedPg = await savePostgresRecord(record || {});
+      if (shouldDualWrite) {
+        try {
+          saveJsonRecord(savedPg);
+        } catch (e) {
+          console.error('personnel:save dual-write JSON failed:', e);
+        }
+      }
+      return savedPg;
+    } catch (e) {
+      console.error('personnel:save postgres failed, trying remote/json fallback:', e && e.message ? e.message : e);
+    }
+  }
   if (USE_REMOTE_API) {
     try {
       return await remoteApi('/personnel', {
@@ -904,26 +939,30 @@ ipcMain.handle('personnel:save', async (_, record) => {
         body: JSON.stringify(record || {}),
       });
     } catch (e) {
-      console.error('personnel:save remote API failed, falling back to local providers:', e && e.message ? e.message : e);
+      console.error('personnel:save remote API failed, falling back to JSON:', e && e.message ? e.message : e);
     }
-  }
-  const shouldWritePg = USE_POSTGRES_WRITE;
-  const shouldDualWrite = ENABLE_DUAL_WRITE;
-  if (shouldWritePg) {
-    const savedPg = await savePostgresRecord(record || {});
-    if (shouldDualWrite) {
-      try {
-        saveJsonRecord(savedPg);
-      } catch (e) {
-        console.error('personnel:save dual-write JSON failed:', e);
-      }
-    }
-    return savedPg;
   }
   return saveJsonRecord(record || {});
 });
 
 ipcMain.handle('personnel:delete', async (_, id, version) => {
+  const shouldWritePg = USE_POSTGRES_WRITE;
+  const shouldDualWrite = ENABLE_DUAL_WRITE;
+  if (shouldWritePg) {
+    try {
+      const ok = await deletePostgresRecord(id, version);
+      if (shouldDualWrite) {
+        try {
+          deleteJsonRecord(id);
+        } catch (e) {
+          console.error('personnel:delete dual-write JSON failed:', e);
+        }
+      }
+      return ok;
+    } catch (e) {
+      console.error('personnel:delete postgres failed, trying remote/json fallback:', e && e.message ? e.message : e);
+    }
+  }
   if (USE_REMOTE_API) {
     try {
       const qs = '?version=' + encodeURIComponent(version == null ? '' : String(version));
@@ -932,21 +971,8 @@ ipcMain.handle('personnel:delete', async (_, id, version) => {
       });
       return !!(result && result.ok);
     } catch (e) {
-      console.error('personnel:delete remote API failed, falling back to local providers:', e && e.message ? e.message : e);
+      console.error('personnel:delete remote API failed, falling back to JSON:', e && e.message ? e.message : e);
     }
-  }
-  const shouldWritePg = USE_POSTGRES_WRITE;
-  const shouldDualWrite = ENABLE_DUAL_WRITE;
-  if (shouldWritePg) {
-    const ok = await deletePostgresRecord(id, version);
-    if (shouldDualWrite) {
-      try {
-        deleteJsonRecord(id);
-      } catch (e) {
-        console.error('personnel:delete dual-write JSON failed:', e);
-      }
-    }
-    return ok;
   }
   return deleteJsonRecord(id);
 });

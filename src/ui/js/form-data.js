@@ -36,6 +36,22 @@ export function setHandwritingPreview(dataUrl) {
   }
 }
 
+export function setSignaturePreview(dataUrl) {
+  const previewImg = document.getElementById('signature-preview');
+  const placeholderText = document.getElementById('signature-placeholder-text');
+  if (!previewImg || !placeholderText) return;
+  const src = dataUrl && String(dataUrl).trim() !== '' ? String(dataUrl) : '';
+  if (src) {
+    previewImg.src = src;
+    previewImg.style.display = 'block';
+    placeholderText.style.display = 'none';
+  } else {
+    previewImg.src = '';
+    previewImg.style.display = 'none';
+    placeholderText.style.display = 'block';
+  }
+}
+
 function setThumbPreview(side, dataUrl) {
   const prefix = side === 'right' ? 'right' : 'left';
   const previewImg = document.getElementById(prefix + '-thumb-preview');
@@ -252,6 +268,7 @@ export function setFormData(record) {
   setHandwritingPreview(record.handwrittenEntryDataUrl);
   setLeftThumbPreview(record.leftThumbMarkDataUrl);
   setRightThumbPreview(record.rightThumbMarkDataUrl);
+  setSignaturePreview(record.signatureDataUrl);
 }
 
 export function clearForm() {
