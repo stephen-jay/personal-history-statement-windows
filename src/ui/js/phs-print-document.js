@@ -177,6 +177,18 @@ function handwrittenEntryHtml(data) {
   );
 }
 
+function thumbMarkHtml(data, key, label) {
+  var src = raw(data, key);
+  return (
+    '<div class="phs-modern-thumb-item">' +
+    (src
+      ? '<img class="phs-modern-thumb-box phs-modern-thumb-box--img" src="' + escapeHtml(src) + '" alt="' + escapeHtml(label) + ' thumb mark" />'
+      : '<span class="phs-modern-thumb-box"></span>') +
+    '<span class="phs-modern-thumb-label">' + escapeHtml(label) + '</span>' +
+    '</div>'
+  );
+}
+
 function joinData(data, keys) {
   var parts = keys.map(function (k) {
     var x = data && data[k];
@@ -686,8 +698,8 @@ export function buildOfficialPrintHtml(data) {
     '<h4 class="phs-modern-card-title">Thumb Mark / Signature</h4>' +
     '<div class="phs-modern-card-body">' +
     '<div class="phs-modern-thumb-pair">' +
-    '<div class="phs-modern-thumb-item"><span class="phs-modern-thumb-box"></span><span class="phs-modern-thumb-label">Left</span></div>' +
-    '<div class="phs-modern-thumb-item"><span class="phs-modern-thumb-box"></span><span class="phs-modern-thumb-label">Right</span></div>' +
+    thumbMarkHtml(data, 'leftThumbMarkDataUrl', 'Left') +
+    thumbMarkHtml(data, 'rightThumbMarkDataUrl', 'Right') +
     '</div>' +
     '<div class="phs-modern-thumb-signature">' +
     (data && data.signatureDataUrl
@@ -727,7 +739,15 @@ export function buildOfficialPrintHtml(data) {
     '<div class="phs-print-thumb-photo">' +
     '<table class="phs-print-table"><tr>' +
     '<td class="phs-print-thumb-cell"><strong>THUMB MARK</strong><br/>' +
-    '<div class="phs-print-thumb-pair"><span class="phs-print-thumb-box"></span> (Left) &nbsp; <span class="phs-print-thumb-box"></span> (Right)</div></td>' +
+    '<div class="phs-print-thumb-pair">' +
+    (data.leftThumbMarkDataUrl
+      ? '<img class="phs-print-thumb-box phs-print-thumb-box--img" src="' + escapeHtml(data.leftThumbMarkDataUrl) + '" alt="Left thumb mark" />'
+      : '<span class="phs-print-thumb-box"></span>') +
+    ' (Left) &nbsp; ' +
+    (data.rightThumbMarkDataUrl
+      ? '<img class="phs-print-thumb-box phs-print-thumb-box--img" src="' + escapeHtml(data.rightThumbMarkDataUrl) + '" alt="Right thumb mark" />'
+      : '<span class="phs-print-thumb-box"></span>') +
+    ' (Right)</div></td>' +
     '</tr></table>' +
     '</div>' +
 

@@ -108,11 +108,21 @@
         <p class="thumb-mark-title">Thumb mark</p>
         <div class="thumb-boxes">
           <div>
-            <div class="thumb-box" role="img" aria-label="Left thumb mark area"></div>
+            <label class="thumb-box thumb-upload-trigger" id="left-thumb-box" for="left-thumb-upload" title="Click to upload left thumb mark">
+              <img id="left-thumb-preview" class="thumb-preview" alt="Left thumb mark preview" style="display:none" />
+              <span id="left-thumb-placeholder-text">Click to upload</span>
+            </label>
+            <input type="file" id="left-thumb-upload" accept="image/*" class="sr-only" />
+            <input type="hidden" id="leftThumbMarkDataUrl" />
             <div class="thumb-caption">(Left)</div>
           </div>
           <div>
-            <div class="thumb-box" role="img" aria-label="Right thumb mark area"></div>
+            <label class="thumb-box thumb-upload-trigger" id="right-thumb-box" for="right-thumb-upload" title="Click to upload right thumb mark">
+              <img id="right-thumb-preview" class="thumb-preview" alt="Right thumb mark preview" style="display:none" />
+              <span id="right-thumb-placeholder-text">Click to upload</span>
+            </label>
+            <input type="file" id="right-thumb-upload" accept="image/*" class="sr-only" />
+            <input type="hidden" id="rightThumbMarkDataUrl" />
             <div class="thumb-caption">(Right)</div>
           </div>
         </div>

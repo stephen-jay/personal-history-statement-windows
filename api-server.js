@@ -224,6 +224,8 @@ const PERSONNEL_FIELD_MAP = {
   administeringOfficer2: 'administering_officer2',
   signatureDataUrl: 'signature_data_url',
   handwrittenEntryDataUrl: 'handwritten_entry_data_url',
+  leftThumbMarkDataUrl: 'left_thumb_mark_data_url',
+  rightThumbMarkDataUrl: 'right_thumb_mark_data_url',
   photoDataUrl: 'photo_data_url',
 };
 
@@ -566,6 +568,54 @@ app.post('/admin/users', requireAuth, requireAdmin, async function (req, res) {
     try { await client.query('ROLLBACK'); } catch (_) {}
     // 23505 = unique_violation
     if (e && e.code === '23505') return res.status(409).json({ error: 'Username already exists.' });
+    res.status(500).json({ error: e && e.message ? e.message : String(e) });
+  } finally {
+    client.release();
+  }
+});
+
+app.put('/admin/users/:id/role', requireAuth, requireAdmin, async function (req, res) {
+  const userId = req.params.id;
+  const body = req.body || {};
+  const roleName = String(body.roleName || body.role || '').trim();
+  if (!userId || !roleName) {
+    return res.status(400).json({ error: 'userId and roleName are required.' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const roleRow = await client.query('SELECT id FROM app_roles WHERE name = $1', [roleName]);
+    if (!roleRow.rows || !roleRow.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Unknown roleName.' });
+    }
+    const roleId = roleRow.rows[0].id;
+    await client.query('DELETE FROM app_user_roles WHERE user_id = $1', [userId]);
+    await client.query('INSERT INTO app_user_roles (user_id, role_id) VALUES ($1, $2)', [userId, roleId]);
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    res.status(500).json({ error: e && e.message ? e.message : String(e) });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/admin/users/:id', requireAuth, requireAdmin, async function (req, res) {
+  const userId = req.params.id;
+  if (!userId) {
+    return res.status(400).json({ error: 'userId is required.' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM app_user_roles WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM app_users WHERE id = $1', [userId]);
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
     res.status(500).json({ error: e && e.message ? e.message : String(e) });
   } finally {
     client.release();

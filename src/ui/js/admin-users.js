@@ -55,11 +55,18 @@ export function initAdminUsersView(opts) {
       var tr = document.createElement('tr');
       var roles = Array.isArray(u.roles) ? u.roles.join(', ') : '';
       var status = u.is_active ? 'Active' : 'Inactive';
+      tr.setAttribute('data-user-id', String(u.id));
+      tr.setAttribute('data-username', String(u.username || ''));
+      tr.setAttribute('data-roles', roles);
       tr.innerHTML =
         '<td>' + String(u.username || '') + '</td>' +
         '<td>' + String(u.full_name || '') + '</td>' +
         '<td>' + roles + '</td>' +
-        '<td>' + status + '</td>';
+        '<td>' + status + '</td>' +
+        '<td class="table-actions">' +
+          '<button type="button" class="btn btn-quiet admin-user-edit">Edit roles</button>' +
+          '<button type="button" class="btn btn-quiet admin-user-delete">Delete</button>' +
+        '</td>';
       usersTbody.appendChild(tr);
     });
   }
@@ -73,6 +80,54 @@ export function initAdminUsersView(opts) {
       setStatus(statusEl, 'Could not load users. ' + msg, 'error');
     }
   }
+
+  usersTbody.addEventListener('click', async function (event) {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const row = target.closest('tr');
+    if (!row) return;
+    const userId = row.getAttribute('data-user-id');
+    const username = row.getAttribute('data-username') || '';
+    if (!userId) return;
+
+    if (target.classList.contains('admin-user-edit')) {
+      const currentRolesText = row.getAttribute('data-roles') || '';
+      const nextRole = window.prompt('Enter new role for ' + username + ' (e.g., admin, encoder, viewer):', currentRolesText.split(',')[0] || '');
+      const trimmed = (nextRole || '').trim();
+      if (!trimmed) return;
+      try {
+        setStatus(statusEl, 'Updating role…', 'success');
+        if (typeof adminApi.updateUserRole === 'function') {
+          await adminApi.updateUserRole(userId, trimmed);
+        } else {
+          throw new Error('Role update API not available.');
+        }
+        await loadUsers();
+        setStatus(statusEl, 'Updated role for ' + username + ' to ' + trimmed + '.', 'success');
+      } catch (err) {
+        var msg = err && err.message ? err.message : String(err);
+        setStatus(statusEl, 'Update failed. ' + msg, 'error');
+      }
+    }
+
+    if (target.classList.contains('admin-user-delete')) {
+      const confirmed = window.confirm('Delete user "' + username + '"? This cannot be undone.');
+      if (!confirmed) return;
+      try {
+        setStatus(statusEl, 'Deleting user…', 'success');
+        if (typeof adminApi.deleteUser === 'function') {
+          await adminApi.deleteUser(userId);
+        } else {
+          throw new Error('Delete user API not available.');
+        }
+        await loadUsers();
+        setStatus(statusEl, 'Deleted user ' + username + '.', 'success');
+      } catch (err) {
+        var msgDel = err && err.message ? err.message : String(err);
+        setStatus(statusEl, 'Delete failed. ' + msgDel, 'error');
+      }
+    }
+  });
 
   form.addEventListener('submit', async function (e) {
     e.preventDefault();

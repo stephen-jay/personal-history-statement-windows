@@ -255,6 +255,47 @@ async function createAdminUserLocal(payload) {
   }
 }
 
+async function updateAdminUserRoleLocal(userId, roleName) {
+  const pool = getPgPool();
+  if (!pool) throw new Error('DATABASE_URL is required for local admin operations.');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const roleRow = await client.query('SELECT id FROM app_roles WHERE name = $1', [roleName]);
+    if (!roleRow.rows || !roleRow.rows.length) {
+      throw new Error('Unknown roleName.');
+    }
+    const roleId = roleRow.rows[0].id;
+    await client.query('DELETE FROM app_user_roles WHERE user_id = $1', [userId]);
+    await client.query('INSERT INTO app_user_roles (user_id, role_id) VALUES ($1, $2)', [userId, roleId]);
+    await client.query('COMMIT');
+    return { ok: true };
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+async function deleteAdminUserLocal(userId) {
+  const pool = getPgPool();
+  if (!pool) throw new Error('DATABASE_URL is required for local admin operations.');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM app_user_roles WHERE user_id = $1', [userId]);
+    await client.query('DELETE FROM app_users WHERE id = $1', [userId]);
+    await client.query('COMMIT');
+    return { ok: true };
+  } catch (e) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 
 
 function ensureDataFile() {
@@ -417,6 +458,8 @@ const PERSONNEL_FIELD_MAP = {
   administeringOfficer2: 'administering_officer2',
   signatureDataUrl: 'signature_data_url',
   handwrittenEntryDataUrl: 'handwritten_entry_data_url',
+  leftThumbMarkDataUrl: 'left_thumb_mark_data_url',
+  rightThumbMarkDataUrl: 'right_thumb_mark_data_url',
   photoDataUrl: 'photo_data_url'
 };
 
@@ -797,6 +840,44 @@ ipcMain.handle('admin:listUsers', async function () {
   return { users: rows.rows || [] };
 });
 
+ipcMain.handle('admin:updateUserRole', async function (_evt, payload) {
+  const body = payload || {};
+  const userId = body.userId;
+  const roleName = String(body.roleName || '').trim();
+  if (!userId || !roleName) {
+    throw new Error('userId and roleName are required.');
+  }
+  if (USE_REMOTE_API) {
+    try {
+      return await remoteApi('/admin/users/' + encodeURIComponent(String(userId)) + '/role', {
+        method: 'PUT',
+        body: JSON.stringify({ roleName: roleName }),
+      });
+    } catch (e) {
+      console.error('admin:updateUserRole remote API failed, trying local DB:', e && e.message ? e.message : e);
+    }
+  }
+  return await updateAdminUserRoleLocal(userId, roleName);
+});
+
+ipcMain.handle('admin:deleteUser', async function (_evt, payload) {
+  const body = payload || {};
+  const userId = body.userId;
+  if (!userId) {
+    throw new Error('userId is required.');
+  }
+  if (USE_REMOTE_API) {
+    try {
+      return await remoteApi('/admin/users/' + encodeURIComponent(String(userId)), {
+        method: 'DELETE',
+      });
+    } catch (e) {
+      console.error('admin:deleteUser remote API failed, trying local DB:', e && e.message ? e.message : e);
+    }
+  }
+  return await deleteAdminUserLocal(userId);
+});
+
 ipcMain.handle('personnel:getAll', async () => {
   if (USE_REMOTE_API) {
     try {
@@ -947,4 +1028,3 @@ ipcMain.handle('export:phsWord', async function (event, payload) {
   fs.writeFileSync(result.filePath, bom + html, 'utf8');
   return { ok: true, filePath: result.filePath };
 });
-

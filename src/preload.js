@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('adminApi', {
   getRoles: () => ipcRenderer.invoke('admin:roles'),
   createUser: (payload) => ipcRenderer.invoke('admin:createUser', payload),
   listUsers: () => ipcRenderer.invoke('admin:listUsers'),
+  updateUserRole: (userId, roleName) => ipcRenderer.invoke('admin:updateUserRole', { userId, roleName }),
+  deleteUser: (userId) => ipcRenderer.invoke('admin:deleteUser', { userId }),
 });
 
 contextBridge.exposeInMainWorld('exportApi', {

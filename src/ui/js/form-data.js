@@ -36,6 +36,31 @@ export function setHandwritingPreview(dataUrl) {
   }
 }
 
+function setThumbPreview(side, dataUrl) {
+  const prefix = side === 'right' ? 'right' : 'left';
+  const previewImg = document.getElementById(prefix + '-thumb-preview');
+  const placeholderText = document.getElementById(prefix + '-thumb-placeholder-text');
+  if (!previewImg || !placeholderText) return;
+  const src = dataUrl && String(dataUrl).trim() !== '' ? String(dataUrl) : '';
+  if (src) {
+    previewImg.src = src;
+    previewImg.style.display = 'block';
+    placeholderText.style.display = 'none';
+  } else {
+    previewImg.src = '';
+    previewImg.style.display = 'none';
+    placeholderText.style.display = 'block';
+  }
+}
+
+export function setLeftThumbPreview(dataUrl) {
+  setThumbPreview('left', dataUrl);
+}
+
+export function setRightThumbPreview(dataUrl) {
+  setThumbPreview('right', dataUrl);
+}
+
 export function createChildRow(rowData) {
   const row = document.createElement('div');
   row.className = 'row child-row';
@@ -225,6 +250,8 @@ export function setFormData(record) {
   });
   setPhotoPreview(record.photoDataUrl);
   setHandwritingPreview(record.handwrittenEntryDataUrl);
+  setLeftThumbPreview(record.leftThumbMarkDataUrl);
+  setRightThumbPreview(record.rightThumbMarkDataUrl);
 }
 
 export function clearForm() {
