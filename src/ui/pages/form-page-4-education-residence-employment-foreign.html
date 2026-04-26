@@ -5,29 +5,29 @@
     <div class="row three-cols">
       <div>
         <label>Elementary — Location</label>
-        <input type="text" id="elemLocation" placeholder="School name, address" />
+        <input type="text" id="elemLocation" placeholder="School name, address" required />
       </div>
       <div>
         <label>Elementary — Date of Attendance</label>
-        <input type="text" id="elemAttendance" placeholder="e.g. 1990-1996" />
+        <input type="text" id="elemAttendance" placeholder="YYYY-YYYY" pattern="\d{4}-\d{4}" title="Use format YYYY-YYYY" required />
       </div>
       <div>
         <label>Elementary — Year Graduated</label>
-        <input type="text" id="elemGraduated" placeholder="e.g. 1996" />
+        <input type="text" id="elemGraduated" placeholder="YYYY" pattern="\d{4}" title="Use format YYYY" required />
       </div>
     </div>
     <div class="row three-cols">
       <div>
         <label>High School — Location</label>
-        <input type="text" id="hsLocation" placeholder="School name, address" />
+        <input type="text" id="hsLocation" placeholder="School name, address" required />
       </div>
       <div>
         <label>High School — Date of Attendance</label>
-        <input type="text" id="hsAttendance" placeholder="e.g. 1996-2000" />
+        <input type="text" id="hsAttendance" placeholder="YYYY-YYYY" pattern="\d{4}-\d{4}" title="Use format YYYY-YYYY" required />
       </div>
       <div>
         <label>High School — Year Graduated</label>
-        <input type="text" id="hsGraduated" placeholder="e.g. 2000" />
+        <input type="text" id="hsGraduated" placeholder="YYYY" pattern="\d{4}" title="Use format YYYY" required />
       </div>
     </div>
     <div class="row three-cols">
@@ -37,11 +37,11 @@
       </div>
       <div>
         <label>College — Date of Attendance</label>
-        <input type="text" id="collegeAttendance" placeholder="e.g. 2000-2004" />
+        <input type="text" id="collegeAttendance" placeholder="YYYY-YYYY" pattern="(\d{4}-\d{4})?" title="Use format YYYY-YYYY if applicable" />
       </div>
       <div>
         <label>College — Year Graduated</label>
-        <input type="text" id="collegeGraduated" placeholder="e.g. 2004" />
+        <input type="text" id="collegeGraduated" placeholder="YYYY" pattern="(\d{4})?" title="Use format YYYY if applicable" />
       </div>
     </div>
     <div class="row three-cols">
@@ -55,7 +55,7 @@
       </div>
       <div>
         <label>Post Graduate — Year Graduated</label>
-        <input type="text" id="pgGraduated" placeholder="e.g. 2010" />
+        <input type="text" id="pgGraduated" placeholder="YYYY" pattern="(\d{4})?" title="Use format YYYY if applicable" />
       </div>
     </div>
     <div class="row">

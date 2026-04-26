@@ -31,23 +31,23 @@ CREATE TABLE IF NOT EXISTS personnel (
   present_job text,
   business_address text,
   home_address text,
-  date_of_birth text,
+  date_of_birth date,
   place_of_birth text,
   change_in_name text,
   nicknames text,
   nationality text,
-  tax_id text,
+  tax_id text CHECK (tax_id ~ '^\d{3}-\d{3}-\d{3}-\d{4}$'),
   tel_no text,
-  mobile text,
-  email text,
+  mobile text CHECK (mobile ~ '^09\d{9}$'),
+  email text CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
   passport_nr text,
-  passport_expiry text,
+  passport_expiry date,
 
   -- Section II
   sex text,
-  age text,
-  height text,
-  weight text,
+  age integer,
+  height numeric(3,2),
+  weight numeric(5,2),
   build text,
   complexion text,
   color_eyes text,
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS personnel (
   marital_status text,
   spouse_name text,
   marriage_date_place text,
-  spouse_dob text,
+  spouse_dob date,
   spouse_place_birth text,
   spouse_occupation text,
   spouse_contact text,
@@ -169,7 +169,7 @@ CREATE TABLE IF NOT EXISTS personnel_children (
   id bigserial PRIMARY KEY,
   personnel_id text NOT NULL REFERENCES personnel(id) ON DELETE CASCADE,
   name text,
-  dob text,
+  dob date,
   citizenship_address text,
   father_mother text,
   created_at timestamptz NOT NULL DEFAULT NOW(),
@@ -350,6 +350,76 @@ CREATE TABLE IF NOT EXISTS app_user_roles (
 );
 
 -- NOTE: seed admin user separately (so you can set a real password).
+
+-- ---------------------------------------------------------------------------
+-- Audit Trail & Versioning System
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id bigserial PRIMARY KEY,
+  table_name text NOT NULL,
+  record_id text NOT NULL,
+  action text NOT NULL CHECK (action IN ('INSERT', 'UPDATE', 'DELETE')),
+  old_data jsonb,
+  new_data jsonb,
+  changed_by uuid, -- Can be linked to app_users.id
+  changed_at timestamptz NOT NULL DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION apollo_audit_trigger()
+RETURNS trigger AS $$
+DECLARE
+  v_old_data jsonb;
+  v_new_data jsonb;
+  v_user_id text;
+BEGIN
+  -- Attempt to get the application user from a session variable (set by Node.js backend)
+  BEGIN
+    v_user_id := current_setting('app.current_user_id', true);
+  EXCEPTION WHEN OTHERS THEN
+    v_user_id := NULL;
+  END;
+
+  IF (TG_OP = 'UPDATE') THEN
+    v_old_data := to_jsonb(OLD);
+    v_new_data := to_jsonb(NEW);
+    
+    -- Auto-increment version for optimistic locking
+    IF TG_TABLE_NAME = 'personnel' THEN
+      NEW.version := OLD.version + 1;
+      v_new_data := to_jsonb(NEW); -- refresh with new version
+    END IF;
+
+    -- Only log if actual data changed
+    IF v_old_data = v_new_data THEN
+        RETURN NEW;
+    END IF;
+
+    INSERT INTO audit_logs (table_name, record_id, action, old_data, new_data, changed_by)
+    VALUES (TG_TABLE_NAME::text, NEW.id::text, TG_OP, v_old_data, v_new_data, NULLIF(v_user_id, '')::uuid);
+    RETURN NEW;
+    
+  ELSIF (TG_OP = 'DELETE') THEN
+    v_old_data := to_jsonb(OLD);
+    INSERT INTO audit_logs (table_name, record_id, action, old_data, changed_by)
+    VALUES (TG_TABLE_NAME::text, OLD.id::text, TG_OP, v_old_data, NULLIF(v_user_id, '')::uuid);
+    RETURN OLD;
+    
+  ELSIF (TG_OP = 'INSERT') THEN
+    v_new_data := to_jsonb(NEW);
+    INSERT INTO audit_logs (table_name, record_id, action, old_data, new_data, changed_by)
+    VALUES (TG_TABLE_NAME::text, NEW.id::text, TG_OP, NULL, v_new_data, NULLIF(v_user_id, '')::uuid);
+    RETURN NEW;
+  END IF;
+  
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Attach audit trigger to main personnel table
+DROP TRIGGER IF EXISTS trg_personnel_audit ON personnel;
+CREATE TRIGGER trg_personnel_audit
+BEFORE INSERT OR UPDATE OR DELETE ON personnel
+FOR EACH ROW EXECUTE FUNCTION apollo_audit_trigger();
 
 -- ---------------------------------------------------------------------------
 -- Indexes: roster/search and FK-heavy lookups

@@ -12,6 +12,12 @@ const { Pool } = require('pg');
 const dotenv = require('dotenv');
 dotenv.config({ override: true });
 
+const imageStorage = require('./image-storage');
+const IMAGE_UPLOAD_DIR = path.join(app.getPath('userData'), 'personnel-images');
+if (!fs.existsSync(IMAGE_UPLOAD_DIR)) {
+  fs.mkdirSync(IMAGE_UPLOAD_DIR, { recursive: true });
+}
+
 const CONFIG_KEYS = new Set([
   'DATABASE_URL',
   'USE_REMOTE_API',
@@ -604,6 +610,9 @@ async function savePostgresRecord(record) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    if (authSession && authSession.user && authSession.user.id) {
+      await client.query("SELECT set_config('app.current_user_id', $1, true)", [String(authSession.user.id)]);
+    }
     const personnelColumnSet = await getPersonnelColumnSet(client);
     assertPersonnelColumnsAvailable(personnelColumnSet, safe);
     const cols = [];
@@ -617,14 +626,9 @@ async function savePostgresRecord(record) {
     const insertCols = ['id'].concat(cols, ['updated_at']);
     const insertVals = [id].concat(vals, [new Date().toISOString()]);
     const insertPlaceholders = insertVals.map(function (_v, idx) { return '$' + (idx + 1); }).join(', ');
-    const insertRes = await client.query(
-      'INSERT INTO personnel (' +
-        insertCols.join(', ') +
-        ') VALUES (' +
-        insertPlaceholders +
-        ') ON CONFLICT (id) DO NOTHING RETURNING version, updated_at',
-      insertVals
-    );
+    const insertSql = 'INSERT INTO personnel (' + insertCols.join(', ') + ') VALUES (' + insertPlaceholders + ') ON CONFLICT (id) DO NOTHING RETURNING version, updated_at';
+    console.log('DEBUG PERSONNEL INSERT:', { colCount: insertCols.length, valCount: insertVals.length });
+    const insertRes = await client.query(insertSql, insertVals);
 
     var nextVersion = null;
     var nextUpdatedAt = null;
@@ -649,6 +653,7 @@ async function savePostgresRecord(record) {
         (cols.length + 2) +
         ' AND deleted_at IS NULL RETURNING version, updated_at';
       const updateVals = vals.concat([id, expectedVersion]);
+      console.log('DEBUG PERSONNEL UPDATE:', { setParts: setParts.length, valCount: updateVals.length });
       const updRes = await client.query(updateSql, updateVals);
       if (updRes.rowCount === 0) {
         throw new Error(
@@ -664,16 +669,16 @@ async function savePostgresRecord(record) {
       const rows = Array.isArray(safe[def.sourceKey]) ? safe[def.sourceKey] : [];
       for (const row of rows) {
         const item = row || {};
-        const childCols = ['personnel_id'].concat(Object.values(def.map));
+        const mapKeys = Object.keys(def.map);
+        const childCols = ['personnel_id'].concat(mapKeys.map(k => def.map[k]));
         const childVals = [id];
-        Object.keys(def.map).forEach(function (srcKey) {
+        mapKeys.forEach(function (srcKey) {
           childVals.push(item[srcKey] == null ? null : item[srcKey]);
         });
         const childPlaceholders = childVals.map(function (_v, idx) { return '$' + (idx + 1); }).join(', ');
-        await client.query(
-          'INSERT INTO ' + def.table + ' (' + childCols.join(', ') + ') VALUES (' + childPlaceholders + ')',
-          childVals
-        );
+        const childSql = 'INSERT INTO ' + def.table + ' (' + childCols.join(', ') + ') VALUES (' + childPlaceholders + ')';
+        console.log('DEBUG CHILD INSERT:', { table: def.table, colCount: childCols.length, valCount: childVals.length });
+        await client.query(childSql, childVals);
       }
     }
 
@@ -705,6 +710,9 @@ async function deletePostgresRecord(id, expectedVersion) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    if (authSession && authSession.user && authSession.user.id) {
+      await client.query("SELECT set_config('app.current_user_id', $1, true)", [String(authSession.user.id)]);
+    }
     const res = await client.query(
       'UPDATE personnel SET deleted_at = NOW(), updated_at = NOW(), version = version + 1 WHERE id = $1 AND version = $2 AND deleted_at IS NULL RETURNING id',
       [id, ver]
@@ -896,53 +904,111 @@ ipcMain.handle('admin:deleteUser', async function (_evt, payload) {
   return await deleteAdminUserLocal(userId);
 });
 
+ipcMain.handle('admin:auditLogs', async function () {
+  if (USE_REMOTE_API) {
+    try {
+      return await remoteApi('/admin/audit-logs');
+    } catch (e) {
+      console.error('admin:auditLogs remote API failed, trying local DB:', e && e.message ? e.message : e);
+    }
+  }
+  const pool = getPgPool();
+  if (!pool) throw new Error('DATABASE_URL is required for audit logs.');
+  const res = await pool.query(
+    `SELECT 
+      a.id,
+      a.table_name,
+      a.record_id,
+      a.action,
+      a.changed_at,
+      a.old_data,
+      a.new_data,
+      u.full_name as admin_name,
+      p.full_name as target_personnel_name
+     FROM audit_logs a
+     LEFT JOIN app_users u ON a.changed_by = u.id
+     LEFT JOIN personnel p ON a.record_id = p.id
+     ORDER BY a.changed_at DESC
+     LIMIT 500`
+  );
+  return res.rows;
+});
+
 ipcMain.handle('personnel:getAll', async () => {
+  let records = null;
   if (USE_POSTGRES_READ) {
     try {
-      return await getPostgresData();
+      records = await getPostgresData();
     } catch (e) {
       console.error('personnel:getAll postgres failed, trying remote/json fallback:', e && e.message ? e.message : e);
     }
   }
-  if (USE_REMOTE_API) {
+  if (!records && USE_REMOTE_API) {
     try {
-      return await remoteApi('/personnel');
+      records = await remoteApi('/personnel');
     } catch (e) {
       console.error('personnel:getAll remote API failed, falling back to JSON:', e && e.message ? e.message : e);
     }
   }
-  return getData();
+  if (!records) {
+    records = getData();
+  }
+  return (records || []).map(function (r) {
+    return imageStorage.hydrateRecordImages(IMAGE_UPLOAD_DIR, r);
+  });
 });
 
 ipcMain.handle('personnel:save', async (_, record) => {
   const shouldWritePg = USE_POSTGRES_WRITE;
   const shouldDualWrite = ENABLE_DUAL_WRITE;
-  if (shouldWritePg) {
-    try {
-      const savedPg = await savePostgresRecord(record || {});
-      if (shouldDualWrite) {
-        try {
-          saveJsonRecord(savedPg);
-        } catch (e) {
-          console.error('personnel:save dual-write JSON failed:', e);
-        }
-      }
-      return savedPg;
-    } catch (e) {
-      console.error('personnel:save postgres failed, trying remote/json fallback:', e && e.message ? e.message : e);
-    }
-  }
+  const recordToSave = record || {};
+  let saved = null;
+
+  // 1. If using Remote API, send raw record (with data URLs) and let server handle storage
   if (USE_REMOTE_API) {
     try {
-      return await remoteApi('/personnel', {
+      saved = await remoteApi('/personnel', {
         method: 'POST',
-        body: JSON.stringify(record || {}),
+        body: JSON.stringify(recordToSave),
       });
+      // If remote save succeeded and we want to dual-write locally
+      if (saved && shouldDualWrite) {
+        try {
+          const processedLocally = imageStorage.processRecordImages(IMAGE_UPLOAD_DIR, saved);
+          saveJsonRecord(processedLocally);
+        } catch (e) {
+          console.error('personnel:save dual-write local JSON failed:', e);
+        }
+      }
     } catch (e) {
-      console.error('personnel:save remote API failed, falling back to JSON:', e && e.message ? e.message : e);
+      console.error('personnel:save remote API failed, falling back to local:', e && e.message ? e.message : e);
     }
   }
-  return saveJsonRecord(record || {});
+
+  // 2. If not saved yet (no remote or remote failed), save locally
+  if (!saved) {
+    const processed = imageStorage.processRecordImages(IMAGE_UPLOAD_DIR, recordToSave);
+    if (shouldWritePg) {
+      try {
+        saved = await savePostgresRecord(processed);
+        if (shouldDualWrite) {
+          try {
+            saveJsonRecord(saved);
+          } catch (e) {
+            console.error('personnel:save dual-write JSON failed:', e);
+          }
+        }
+      } catch (e) {
+        console.error('personnel:save local postgres failed, trying JSON fallback:', e && e.message ? e.message : e);
+      }
+    }
+    
+    if (!saved) {
+      saved = saveJsonRecord(processed);
+    }
+  }
+
+  return imageStorage.hydrateRecordImages(IMAGE_UPLOAD_DIR, saved);
 });
 
 ipcMain.handle('personnel:delete', async (_, id, version) => {
@@ -975,6 +1041,32 @@ ipcMain.handle('personnel:delete', async (_, id, version) => {
     }
   }
   return deleteJsonRecord(id);
+});
+
+ipcMain.handle('personnel:getHistory', async (_, recordId) => {
+  if (USE_REMOTE_API) {
+    try {
+      return await remoteApi('/personnel/' + encodeURIComponent(String(recordId)) + '/history');
+    } catch (e) {
+      console.error('personnel:getHistory remote API failed, trying local:', e && e.message ? e.message : e);
+    }
+  }
+  const pool = getPgPool();
+  if (!pool) return [];
+  try {
+    const res = await pool.query(
+      `SELECT a.*, u.full_name as admin_name 
+       FROM audit_logs a 
+       LEFT JOIN app_users u ON a.changed_by = u.id 
+       WHERE a.record_id = $1 
+       ORDER BY a.changed_at DESC`,
+      [String(recordId)]
+    );
+    return res.rows;
+  } catch (e) {
+    console.error('Failed to fetch audit logs:', e);
+    return [];
+  }
 });
 
 async function writePhsPdfFromHtml(parentWindow, html, defaultName) {

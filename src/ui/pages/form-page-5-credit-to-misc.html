@@ -4,7 +4,7 @@
     <legend>IX. CREDIT REPUTATION</legend>
     <div class="row">
       <label>Entirely dependent on salary? If NO, state other source of income</label>
-      <input type="text" id="salaryDependent" placeholder="YES or NO + other source" />
+      <input type="text" id="salaryDependent" placeholder="YES or NO + other source" required />
     </div>
     <div class="row">
       <label>Banks/Credit Institutions (Name, Address, Nature of Accounts)</label>
@@ -30,23 +30,23 @@
     <legend>X. ARREST RECORD AND CONDUCT</legend>
     <div class="row">
       <label>Ever investigated/arrested, indicted or convicted? If YES, state court, offense, disposition</label>
-      <input type="text" id="arrestRecord" placeholder="NO or details if YES" />
+      <input type="text" id="arrestRecord" placeholder="NO or details if YES" required />
     </div>
     <div class="row">
       <label>Immediate family member investigated/arrested? If YES, state details</label>
-      <input type="text" id="familyArrest" placeholder="NO or details if YES" />
+      <input type="text" id="familyArrest" placeholder="NO or details if YES" required />
     </div>
     <div class="row">
       <label>Charged in any Administrative Case? If YES, explain</label>
-      <input type="text" id="adminCase" placeholder="NO or explain if YES" />
+      <input type="text" id="adminCase" placeholder="NO or explain if YES" required />
     </div>
     <div class="row">
       <label>Arrested/detained pursuant to PD 1081? If YES, state nature & place of detention</label>
-      <input type="text" id="pd1081" placeholder="NO or details if YES" />
+      <input type="text" id="pd1081" placeholder="NO or details if YES" required />
     </div>
     <div class="row">
       <label>Use intoxicating liquor or Illegal Drugs? If YES, to what extent?</label>
-      <input type="text" id="liquorDrugs" placeholder="NO or extent if YES" />
+      <input type="text" id="liquorDrugs" placeholder="NO or extent if YES" required />
     </div>
   </fieldset>
 
@@ -86,7 +86,7 @@
     </div>
     <div class="row">
       <label>Willing to undergo periodic lie detector test?</label>
-      <select id="lieDetector"><option value="">—</option><option value="Yes">Yes</option><option value="No">No</option></select>
+      <select id="lieDetector" required><option value="">—</option><option value="Yes">Yes</option><option value="No">No</option></select>
     </div>
 
     <div class="row">

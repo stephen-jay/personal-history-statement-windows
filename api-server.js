@@ -1,7 +1,15 @@
 const express = require('express');
 const { Pool } = require('pg');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config({ override: true });
+
+const imageStorage = require('./image-storage');
+const IMAGE_UPLOAD_DIR = path.join(__dirname, 'personnel-images');
+if (!fs.existsSync(IMAGE_UPLOAD_DIR)) {
+  fs.mkdirSync(IMAGE_UPLOAD_DIR, { recursive: true });
+}
 
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const PORT = Number(process.env.API_PORT || process.env.PORT || 3210);
@@ -326,7 +334,7 @@ async function getPostgresData() {
   }
 }
 
-async function savePostgresRecord(record) {
+async function savePostgresRecord(record, userId) {
   const safe = sanitizeRecord(record);
   const id = safe.id || String(Date.now());
   const expectedVersion =
@@ -338,6 +346,9 @@ async function savePostgresRecord(record) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    if (userId) {
+      await client.query("SELECT set_config('app.current_user_id', $1, true)", [String(userId)]);
+    }
     const cols = [];
     const vals = [];
     Object.keys(PERSONNEL_FIELD_MAP).forEach(function (srcKey) {
@@ -347,14 +358,9 @@ async function savePostgresRecord(record) {
     const insertCols = ['id'].concat(cols, ['updated_at']);
     const insertVals = [id].concat(vals, [new Date().toISOString()]);
     const insertPlaceholders = insertVals.map(function (_v, idx) { return '$' + (idx + 1); }).join(', ');
-    const insertRes = await client.query(
-      'INSERT INTO personnel (' +
-        insertCols.join(', ') +
-        ') VALUES (' +
-        insertPlaceholders +
-        ') ON CONFLICT (id) DO NOTHING RETURNING version, updated_at',
-      insertVals
-    );
+    const insertSql = 'INSERT INTO personnel (' + insertCols.join(', ') + ') VALUES (' + insertPlaceholders + ') ON CONFLICT (id) DO NOTHING RETURNING version, updated_at';
+    console.log('DEBUG PERSONNEL INSERT:', { colCount: insertCols.length, valCount: insertVals.length });
+    const insertRes = await client.query(insertSql, insertVals);
 
     var nextVersion = null;
     var nextUpdatedAt = null;
@@ -377,6 +383,7 @@ async function savePostgresRecord(record) {
         (cols.length + 2) +
         ' AND deleted_at IS NULL RETURNING version, updated_at';
       const updateVals = vals.concat([id, expectedVersion]);
+      console.log('DEBUG PERSONNEL UPDATE:', { setParts: setParts.length, valCount: updateVals.length });
       const updRes = await client.query(updateSql, updateVals);
       if (updRes.rowCount === 0) {
         throw new Error('Concurrency conflict: this record was updated by someone else. Reload and apply your changes again.');
@@ -390,16 +397,16 @@ async function savePostgresRecord(record) {
       const rows = Array.isArray(safe[def.sourceKey]) ? safe[def.sourceKey] : [];
       for (const row of rows) {
         const item = row || {};
-        const childCols = ['personnel_id'].concat(Object.values(def.map));
+        const mapKeys = Object.keys(def.map);
+        const childCols = ['personnel_id'].concat(mapKeys.map(k => def.map[k]));
         const childVals = [id];
-        Object.keys(def.map).forEach(function (srcKey) {
+        mapKeys.forEach(function (srcKey) {
           childVals.push(item[srcKey] == null ? null : item[srcKey]);
         });
         const childPlaceholders = childVals.map(function (_v, idx) { return '$' + (idx + 1); }).join(', ');
-        await client.query(
-          'INSERT INTO ' + def.table + ' (' + childCols.join(', ') + ') VALUES (' + childPlaceholders + ')',
-          childVals
-        );
+        const childSql = 'INSERT INTO ' + def.table + ' (' + childCols.join(', ') + ') VALUES (' + childPlaceholders + ')';
+        console.log('DEBUG CHILD INSERT:', { table: def.table, colCount: childCols.length, valCount: childVals.length });
+        await client.query(childSql, childVals);
       }
     }
 
@@ -418,7 +425,7 @@ async function savePostgresRecord(record) {
   }
 }
 
-async function deletePostgresRecord(id, expectedVersion) {
+async function deletePostgresRecord(id, expectedVersion, userId) {
   if (expectedVersion == null || expectedVersion === '') {
     throw new Error('Concurrency conflict: missing record version for delete.');
   }
@@ -429,6 +436,9 @@ async function deletePostgresRecord(id, expectedVersion) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    if (userId) {
+      await client.query("SELECT set_config('app.current_user_id', $1, true)", [String(userId)]);
+    }
     const res = await client.query(
       'UPDATE personnel SET deleted_at = NOW(), updated_at = NOW(), version = version + 1 WHERE id = $1 AND version = $2 AND deleted_at IS NULL RETURNING id',
       [id, ver]
@@ -527,6 +537,31 @@ app.get('/admin/users', requireAuth, requireAdmin, async function (_req, res) {
     res.json({ users: rows.rows || [] });
   } catch (e) {
     res.status(500).json({ error: e && e.message ? e.message : String(e) });
+  }
+});
+
+app.get('/admin/audit-logs', requireAuth, requireAdmin, async function (_req, res) {
+  try {
+    const rows = await pool.query(
+      `SELECT 
+        a.id,
+        a.table_name,
+        a.record_id,
+        a.action,
+        a.changed_at,
+        a.old_data,
+        a.new_data,
+        u.full_name as admin_name,
+        p.full_name as target_personnel_name
+       FROM audit_logs a
+       LEFT JOIN app_users u ON a.changed_by = u.id
+       LEFT JOIN personnel p ON a.record_id = p.id
+       ORDER BY a.changed_at DESC
+       LIMIT 500`
+    );
+    res.json(rows.rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message || String(e) });
   }
 });
 
@@ -634,7 +669,10 @@ app.get('/health', async function (_req, res) {
 app.get('/personnel', requireAuth, requirePersonnelRead, async function (_req, res) {
   try {
     const rows = await getPostgresData();
-    res.json(rows);
+    const hydrated = rows.map(function (r) {
+      return imageStorage.hydrateRecordImages(IMAGE_UPLOAD_DIR, r);
+    });
+    res.json(hydrated);
   } catch (e) {
     res.status(500).json({ error: e.message || String(e) });
   }
@@ -642,9 +680,14 @@ app.get('/personnel', requireAuth, requirePersonnelRead, async function (_req, r
 
 app.post('/personnel', requireAuth, requirePersonnelWrite, async function (req, res) {
   try {
-    const saved = await savePostgresRecord(req.body || {});
-    res.json(saved);
+    console.log(`[${new Date().toISOString()}] Incoming save request for: ${req.body.nameLast || 'Unknown'}`);
+    const processed = imageStorage.processRecordImages(IMAGE_UPLOAD_DIR, req.body || {});
+    const saved = await savePostgresRecord(processed, req.auth.userId);
+    console.log(`[${new Date().toISOString()}] Successfully saved record: ${saved.id}`);
+    const hydrated = imageStorage.hydrateRecordImages(IMAGE_UPLOAD_DIR, saved);
+    res.json(hydrated);
   } catch (e) {
+    console.error(`[${new Date().toISOString()}] Save failed:`, e.message);
     const msg = e && e.message ? e.message : String(e);
     const status = /Concurrency conflict/i.test(msg) ? 409 : 500;
     res.status(status).json({ error: msg });
@@ -655,12 +698,29 @@ app.delete('/personnel/:id', requireAuth, requirePersonnelDelete, async function
   try {
     const id = req.params.id;
     const version = req.query.version;
-    const ok = await deletePostgresRecord(id, version);
+    const ok = await deletePostgresRecord(id, version, req.auth.userId);
     res.json({ ok: ok });
   } catch (e) {
     const msg = e && e.message ? e.message : String(e);
     const status = /Concurrency conflict/i.test(msg) ? 409 : 500;
     res.status(status).json({ error: msg });
+  }
+});
+
+app.get('/personnel/:id/history', requireAuth, requirePersonnelRead, async function (req, res) {
+  try {
+    const id = req.params.id;
+    const rows = await pool.query(
+      `SELECT a.*, u.full_name as admin_name 
+       FROM audit_logs a 
+       LEFT JOIN app_users u ON a.changed_by = u.id 
+       WHERE a.record_id = $1 
+       ORDER BY a.changed_at DESC`,
+      [id]
+    );
+    res.json(rows.rows);
+  } catch (e) {
+    res.status(500).json({ error: e.message || String(e) });
   }
 });
 
