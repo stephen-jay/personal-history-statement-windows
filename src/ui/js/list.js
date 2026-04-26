@@ -150,13 +150,14 @@ export function renderList(records, deps) {
       '<td class="cell-multiline">' + escapeHtml(edu) + '</td>' +
       '<td class="cell-multiline">' + escapeHtml(sem) + '</td>' +
       '<td>' + contact + '</td>' +
-      '<td class="updated-cell">' +
-        '<div class="updated-meter" style="--completion:' + pct + '">' +
+      '<td class="progress-cell">' +
+        '<div class="updated-meter" style="--completion:' + pct + '" title="' + pct + '% Complete">' +
         '<div class="updated-meter__ring" aria-hidden="true"></div>' +
-        '<div class="updated-meter__meta">' +
-        '<span class="updated-meter__pct">' + pct + '%</span>' +
-        '<span class="updated-meter__date">' + escapeHtml(dateStr) + '</span>' +
-        '</div></div></td>' +
+        '<div class="updated-meter__pct">' + pct + '%</div>' +
+        '</div></td>' +
+      '<td class="date-cell">' +
+        '<span class="updated-date">' + escapeHtml(dateStr) + '</span>' +
+      '</td>' +
       '<td class="table-actions-cell">' +
         '<div class="table-actions table-actions--stacked" role="group" aria-label="Row actions">' +
         '<button type="button" class="btn roster-action-btn roster-action-btn--view view-btn" data-id="' + safeId + '"><span class="roster-action-btn__glyph" aria-hidden="true"></span>View</button>' +
@@ -195,7 +196,7 @@ export function renderList(records, deps) {
         window.personnelApi.delete(id, version).then(function () {
           deps.loadList();
         }).catch(function (err) {
-          alert('Delete failed.\n\n' + (err && err.message ? err.message : String(err)));
+          window.toast.error('Delete failed: ' + (err && err.message ? err.message : String(err)));
         });
       }
     });

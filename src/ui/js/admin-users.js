@@ -93,7 +93,7 @@ export function initAdminUsersView(opts) {
         '<td class="admin-roles-cell">' + rolesPillsHtml + '</td>' +
         '<td><span class="admin-status-pill ' + statusPillClass + '">' + status + '</span></td>' +
         '<td class="table-actions">' +
-          '<button type="button" class="btn btn-sm btn-danger admin-user-delete" title="Delete user">Delete</button>' +
+          '<button type="button" class="btn danger small admin-user-delete" title="Delete user">Delete</button>' +
         '</td>';
       usersTbody.appendChild(tr);
     });
