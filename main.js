@@ -4,17 +4,16 @@ if (!electron || typeof electron === 'string' || !electron.app) {
   process.exit(1);
 }
 const { app, BrowserWindow, ipcMain } = electron;
-const { REMOVED_FIELDS, PERSONNEL_FIELD_MAP, CHILD_TABLES } = require('./src/shared/schema.js');
-const { registerExportHandlers } = require('./src/main/export.js');
-const { initDatabase, getPgPool, getData, saveJsonRecord, deleteJsonRecord, getPostgresData, savePostgresRecord, deletePostgresRecord } = require('./src/main/database.js');
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
 const dotenv = require('dotenv');
 
 // --- Internal Modules ---
-const { registerIpcHandlers } = require('./src/main/ipc');
+const { initDatabase } = require('./src/main/database');
+const { registerExportHandlers } = require('./src/main/export');
 const auth = require('./src/main/auth');
+const { registerIpcHandlers } = require('./src/main/ipc');
 
 // --- Configuration Setup ---
 dotenv.config({ override: true });

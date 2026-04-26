@@ -1,24 +1,19 @@
+const { getPgPool } = require('./database');
 const fs = require('fs');
 const path = require('path');
-const { getPgPool } = require('./database');
 
 let authSessionPath = null;
-function getAuthSessionPath(userDataPath) {
-  if (!authSessionPath && userDataPath) {
-    authSessionPath = path.join(userDataPath, 'auth-session.json');
-  }
-  return authSessionPath;
+
+function initAuth(userDataPath) {
+  authSessionPath = path.join(userDataPath, 'auth-session.json');
 }
 
 let authSession = null;
 
-function initAuth(userDataPath) {
-  getAuthSessionPath(userDataPath);
-}
-
 function loadAuthSessionFromDisk() {
+  if (!authSessionPath) return;
   try {
-    const raw = fs.readFileSync(getAuthSessionPath(), 'utf8');
+    const raw = fs.readFileSync(authSessionPath, 'utf8');
     const parsed = JSON.parse(raw);
     if (parsed && parsed.token && parsed.user && Array.isArray(parsed.user.roles)) {
       authSession = parsed;
@@ -29,13 +24,13 @@ function loadAuthSessionFromDisk() {
 }
 
 function persistAuthSessionToDisk() {
+  if (!authSessionPath) return;
   try {
-    const sessionPath = getAuthSessionPath();
     if (!authSession || !authSession.token) {
-      try { fs.unlinkSync(sessionPath); } catch (_) {}
+      try { fs.unlinkSync(authSessionPath); } catch (_) {}
       return;
     }
-    fs.writeFileSync(sessionPath, JSON.stringify(authSession, null, 2), 'utf8');
+    fs.writeFileSync(authSessionPath, JSON.stringify(authSession, null, 2), 'utf8');
   } catch (_) {
     // ignore
   }
