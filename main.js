@@ -4,6 +4,7 @@ if (!electron || typeof electron === 'string' || !electron.app) {
   process.exit(1);
 }
 const { app, BrowserWindow, ipcMain } = electron;
+const { REMOVED_FIELDS, PERSONNEL_FIELD_MAP, CHILD_TABLES } = require('./src/shared/schema.js');
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
