@@ -6,13 +6,13 @@ if (!electron || typeof electron === 'string' || !electron.app) {
 const { app, BrowserWindow, ipcMain } = electron;
 const { REMOVED_FIELDS, PERSONNEL_FIELD_MAP, CHILD_TABLES } = require('./src/shared/schema.js');
 const { registerExportHandlers } = require('./src/main/export.js');
+const { initDatabase, getPgPool, getData, saveJsonRecord, deleteJsonRecord, getPostgresData, savePostgresRecord, deletePostgresRecord } = require('./src/main/database.js');
 const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
 const dotenv = require('dotenv');
 
 // --- Internal Modules ---
-const { initDatabase } = require('./src/main/database');
 const { registerIpcHandlers } = require('./src/main/ipc');
 const auth = require('./src/main/auth');
 
