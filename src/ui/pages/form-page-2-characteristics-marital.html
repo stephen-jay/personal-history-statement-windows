@@ -5,37 +5,37 @@
     <div class="row four-cols">
       <div>
         <label>Sex</label>
-        <select id="sex"><option value="">—</option><option value="Male">Male</option><option value="Female">Female</option></select>
+        <select id="sex" required><option value="">—</option><option value="Male">Male</option><option value="Female">Female</option></select>
       </div>
       <div>
         <label>Age</label>
-        <input type="number" id="age" min="1" max="120" placeholder="Age" />
+        <input type="number" id="age" min="1" max="120" placeholder="Age" required />
       </div>
       <div>
         <label>Height (m)</label>
-        <input type="text" id="height" placeholder="e.g. 1.70" />
+        <input type="number" id="height" step="0.01" min="0" placeholder="e.g. 1.70" required />
       </div>
       <div>
         <label>Weight (kgs)</label>
-        <input type="number" id="weight" min="0" placeholder="kgs" />
+        <input type="number" id="weight" min="0" placeholder="kgs" required />
       </div>
     </div>
     <div class="row four-cols">
       <div>
         <label>Build</label>
-        <select id="build"><option value="">—</option><option value="Heavy">Heavy</option><option value="Medium">Medium</option><option value="Light">Light</option></select>
+        <select id="build" required><option value="">—</option><option value="Heavy">Heavy</option><option value="Medium">Medium</option><option value="Light">Light</option></select>
       </div>
       <div>
         <label>Complexion</label>
-        <select id="complexion"><option value="">—</option><option value="Dark">Dark</option><option value="Fair">Fair</option><option value="Light">Light</option></select>
+        <select id="complexion" required><option value="">—</option><option value="Dark">Dark</option><option value="Fair">Fair</option><option value="Light">Light</option></select>
       </div>
       <div>
         <label>Color of Eyes</label>
-        <input type="text" id="colorEyes" placeholder="e.g. Brown" />
+        <input type="text" id="colorEyes" placeholder="e.g. Brown" required />
       </div>
       <div>
         <label>Color of Hair</label>
-        <input type="text" id="colorHair" placeholder="e.g. Black" />
+        <input type="text" id="colorHair" placeholder="e.g. Black" required />
       </div>
     </div>
     <div class="row">
@@ -45,7 +45,7 @@
     <div class="row three-cols">
       <div>
         <label>Present State of Health</label>
-        <select id="healthState"><option value="">—</option><option value="Excellent">Excellent</option><option value="Good">Good</option><option value="Poor">Poor</option></select>
+        <select id="healthState" required><option value="">—</option><option value="Excellent">Excellent</option><option value="Good">Good</option><option value="Poor">Poor</option></select>
       </div>
       <div>
         <label>Recent Serious Illness</label>
@@ -53,7 +53,7 @@
       </div>
       <div>
         <label>Blood Type</label>
-        <select id="bloodType"><option value="">—</option><option value="A+">A+</option><option value="A-">A-</option><option value="B+">B+</option><option value="B-">B-</option><option value="AB+">AB+</option><option value="AB-">AB-</option><option value="O+">O+</option><option value="O-">O-</option></select>
+        <select id="bloodType" required><option value="">—</option><option value="A+">A+</option><option value="A-">A-</option><option value="B+">B+</option><option value="B-">B-</option><option value="AB+">AB+</option><option value="AB-">AB-</option><option value="O+">O+</option><option value="O-">O-</option></select>
       </div>
     </div>
   </fieldset>
@@ -63,7 +63,7 @@
     <div class="row two-cols">
       <div>
         <label>MARITAL STATUS</label>
-        <select id="maritalStatus"><option value="">—</option><option value="Single">Single</option><option value="Married">Married</option><option value="Separated">Separated</option><option value="Widow">Widow</option></select>
+        <select id="maritalStatus" required><option value="">—</option><option value="Single">Single</option><option value="Married">Married</option><option value="Separated">Separated</option><option value="Widow">Widow</option></select>
       </div>
       <div>
         <label>NAME OF SPOUSE (Full Name)</label>

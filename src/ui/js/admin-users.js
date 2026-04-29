@@ -49,23 +49,51 @@ export function initAdminUsersView(opts) {
     });
   }
 
+  function getAvatarInitials(username, fullName) {
+    var name = (fullName || username || '').trim();
+    var parts = name.split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+    }
+    return String(username || 'U').charAt(0).toUpperCase();
+  }
+
+  function getRoleColor(roleName) {
+    var role = String(roleName || '').toLowerCase();
+    if (role === 'admin') return 'admin';
+    if (role === 'encoder') return 'encoder';
+    if (role === 'viewer') return 'viewer';
+    return 'default';
+  }
+
   function renderUsers(users) {
     usersTbody.innerHTML = '';
     (users || []).forEach(function (u) {
       var tr = document.createElement('tr');
-      var roles = Array.isArray(u.roles) ? u.roles.join(', ') : '';
+      var roles = Array.isArray(u.roles) ? u.roles : [];
       var status = u.is_active ? 'Active' : 'Inactive';
+      var initials = getAvatarInitials(u.username, u.full_name);
       tr.setAttribute('data-user-id', String(u.id));
       tr.setAttribute('data-username', String(u.username || ''));
-      tr.setAttribute('data-roles', roles);
+      tr.setAttribute('data-roles', roles.join(', '));
+      
+      var rolesPillsHtml = roles.map(function (role) {
+        var color = getRoleColor(role);
+        return '<span class="admin-role-pill admin-role-pill--' + color + '">' + String(role) + '</span>';
+      }).join('');
+      
+      var statusPillClass = status === 'Active' ? 'admin-status-pill--active' : 'admin-status-pill--inactive';
+      
       tr.innerHTML =
-        '<td>' + String(u.username || '') + '</td>' +
-        '<td>' + String(u.full_name || '') + '</td>' +
-        '<td>' + roles + '</td>' +
-        '<td>' + status + '</td>' +
+        '<td class="admin-user-cell">' +
+          '<div class="admin-user-avatar admin-avatar--' + (u.username === 'admin' ? 'admin' : 'standard') + '">' + initials + '</div>' +
+          '<span class="admin-username">' + String(u.username || '') + '</span>' +
+        '</td>' +
+        '<td>' + String(u.full_name || '—') + '</td>' +
+        '<td class="admin-roles-cell">' + rolesPillsHtml + '</td>' +
+        '<td><span class="admin-status-pill ' + statusPillClass + '">' + status + '</span></td>' +
         '<td class="table-actions">' +
-          '<button type="button" class="btn btn-quiet admin-user-edit">Edit roles</button>' +
-          '<button type="button" class="btn btn-quiet admin-user-delete">Delete</button>' +
+          '<button type="button" class="btn danger small admin-user-delete" title="Delete user">Delete</button>' +
         '</td>';
       usersTbody.appendChild(tr);
     });
@@ -89,26 +117,6 @@ export function initAdminUsersView(opts) {
     const userId = row.getAttribute('data-user-id');
     const username = row.getAttribute('data-username') || '';
     if (!userId) return;
-
-    if (target.classList.contains('admin-user-edit')) {
-      const currentRolesText = row.getAttribute('data-roles') || '';
-      const nextRole = window.prompt('Enter new role for ' + username + ' (e.g., admin, encoder, viewer):', currentRolesText.split(',')[0] || '');
-      const trimmed = (nextRole || '').trim();
-      if (!trimmed) return;
-      try {
-        setStatus(statusEl, 'Updating role…', 'success');
-        if (typeof adminApi.updateUserRole === 'function') {
-          await adminApi.updateUserRole(userId, trimmed);
-        } else {
-          throw new Error('Role update API not available.');
-        }
-        await loadUsers();
-        setStatus(statusEl, 'Updated role for ' + username + ' to ' + trimmed + '.', 'success');
-      } catch (err) {
-        var msg = err && err.message ? err.message : String(err);
-        setStatus(statusEl, 'Update failed. ' + msg, 'error');
-      }
-    }
 
     if (target.classList.contains('admin-user-delete')) {
       const confirmed = window.confirm('Delete user "' + username + '"? This cannot be undone.');

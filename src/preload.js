@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('personnelApi', {
   getAll: () => ipcRenderer.invoke('personnel:getAll'),
   save: (record) => ipcRenderer.invoke('personnel:save', record),
   delete: (id, version) => ipcRenderer.invoke('personnel:delete', id, version),
+  getHistory: (id) => ipcRenderer.invoke('personnel:getHistory', id),
 });
 
 contextBridge.exposeInMainWorld('authApi', {
@@ -18,6 +19,7 @@ contextBridge.exposeInMainWorld('adminApi', {
   listUsers: () => ipcRenderer.invoke('admin:listUsers'),
   updateUserRole: (userId, roleName) => ipcRenderer.invoke('admin:updateUserRole', { userId, roleName }),
   deleteUser: (userId) => ipcRenderer.invoke('admin:deleteUser', { userId }),
+  getAuditLogs: () => ipcRenderer.invoke('admin:auditLogs'),
 });
 
 contextBridge.exposeInMainWorld('exportApi', {

@@ -47,6 +47,11 @@
           <span class="nav-text">Admin Users</span>
         </button>
 
+        <button type="button" class="nav-item" data-tab="audit" id="nav-audit" hidden>
+          <span class="nav-icon" aria-hidden="true">📜</span>
+          <span class="nav-text">Audit Logs</span>
+        </button>
+
       </nav>
 
       <div class="sidebar-footer">
@@ -118,31 +123,24 @@
               <col />
               <col />
               <col />
-              <col />
+              <col class="personnel-col-progress" />
+              <col class="personnel-col-date" />
               <col />
             </colgroup>
-
             <thead>
-
               <tr>
-
                 <th scope="col" class="personnel-th-photo"><span class="sr-only">Photo</span></th>
-
                 <th scope="col">Name</th>
-
                 <th scope="col">Position</th>
-
                 <th scope="col">Organization</th>
-
                 <th scope="col">Education</th>
-
                 <th scope="col">Training</th>
-
                 <th scope="col">Contact</th>
-
-                <th scope="col">Updated</th>
-
+                <th scope="col">Progress</th>
+                <th scope="col">Last Updated</th>
                 <th scope="col" class="table-actions-heading">Actions</th>
+              </tr>
+            </thead>
 
               </tr>
 
@@ -171,49 +169,91 @@
           <h2 class="admin-users-title">User Management</h2>
         </div>
 
-        <div class="admin-users-panel">
-          <form id="admin-user-form" class="admin-user-form" novalidate>
-            <div class="admin-field">
-              <label for="admin-username">Username</label>
-              <input id="admin-username" name="admin-username" type="text" autocomplete="username" required />
+        <div class="admin-users-container">
+          <!-- Create New User Card -->
+          <div class="admin-card admin-card--create">
+            <div class="admin-card-header">
+              <h3 class="admin-card-title">Create New User</h3>
+              <p class="admin-card-subtitle">Add a new team member to the system</p>
             </div>
+            <form id="admin-user-form" class="admin-user-form" novalidate>
+              <div class="admin-form-grid">
+                <div class="admin-field">
+                  <label for="admin-username">Username</label>
+                  <input id="admin-username" name="admin-username" type="text" autocomplete="username" placeholder="e.g., john_doe" required />
+                </div>
 
-            <div class="admin-field">
-              <label for="admin-fullname">Full Name (optional)</label>
-              <input id="admin-fullname" name="admin-fullname" type="text" autocomplete="name" />
+                <div class="admin-field">
+                  <label for="admin-fullname">Full Name (optional)</label>
+                  <input id="admin-fullname" name="admin-fullname" type="text" autocomplete="name" placeholder="e.g., John Doe" />
+                </div>
+
+                <div class="admin-field">
+                  <label for="admin-password">Password</label>
+                  <input id="admin-password" name="admin-password" type="password" autocomplete="new-password" placeholder="Min 8 characters" required />
+                </div>
+
+                <div class="admin-field">
+                  <label for="admin-role">Role</label>
+                  <select id="admin-role" name="admin-role" required>
+                    <option value="" selected disabled>Select a role…</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="admin-actions">
+                <button type="submit" class="btn btn-primary" id="admin-create-user-btn">Create User</button>
+              </div>
+            </form>
+            <p id="admin-user-status" class="admin-user-status" role="alert" aria-live="polite"></p>
+          </div>
+
+          <!-- Existing Users Card -->
+          <div class="admin-card admin-card--users">
+            <div class="admin-card-header">
+              <h3 class="admin-card-title">Existing Users</h3>
+              <p class="admin-card-subtitle">Manage team members and permissions</p>
             </div>
-
-            <div class="admin-field">
-              <label for="admin-password">Password</label>
-              <input id="admin-password" name="admin-password" type="password" autocomplete="new-password" required />
+            <div class="admin-users-table-wrapper">
+              <table class="admin-users-table">
+                <thead>
+                  <tr>
+                    <th scope="col">User</th>
+                    <th scope="col">Full Name</th>
+                    <th scope="col">Role</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="table-actions-heading">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-users-tbody"></tbody>
+              </table>
             </div>
+          </div>
+        </div>
+      </section>
 
-            <div class="admin-field">
-              <label for="admin-role">Role</label>
-              <select id="admin-role" name="admin-role" required>
-                <option value="" selected disabled>Select a role…</option>
-              </select>
+      <section id="audit-view" class="view" aria-hidden="true">
+        <div class="toolbar roster-toolbar" style="flex-wrap: wrap; gap: 16px;">
+          <h2 class="admin-users-title">System Audit Logs</h2>
+          <div class="audit-controls" style="display: flex; gap: 12px; flex: 1; justify-content: flex-end; align-items: center;">
+            <input type="search" id="audit-search" placeholder="Search personnel or admin..." class="search" style="max-width: 250px;">
+            <select id="audit-filter-action" class="search" style="max-width: 150px; cursor: pointer;">
+              <option value="">All Actions</option>
+              <option value="INSERT">Created</option>
+              <option value="UPDATE">Updated</option>
+              <option value="DELETE">Deleted</option>
+            </select>
+            <button type="button" class="btn secondary" id="btn-refresh-audit">Refresh</button>
+          </div>
+        </div>
+
+        <div style="max-width: 100%; padding-top: 10px;">
+          <div id="audit-logs-container" class="audit-list">
+            <!-- Audit Cards will be rendered here -->
+            <div style="text-align: center; padding: 40px; color: #64748b;">
+              Loading audit records...
             </div>
-
-            <div class="admin-actions">
-              <button type="submit" class="btn primary" id="admin-create-user-btn">Create User</button>
-            </div>
-          </form>
-
-          <p id="admin-user-status" class="admin-user-status" role="alert" aria-live="polite"></p>
-
-          <table class="personnel-table admin-users-table">
-            <thead>
-              <tr>
-                <th scope="col">Username</th>
-                <th scope="col">Full name</th>
-                <th scope="col">Roles</th>
-                <th scope="col">Status</th>
-                <th scope="col" class="table-actions-heading">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="admin-users-tbody"></tbody>
-          </table>
+          </div>
         </div>
       </section>
 
@@ -285,6 +325,11 @@
 
 
 
+          <div id="validation-summary" class="validation-summary" hidden>
+            <h3>Please fix the following errors:</h3>
+            <ul id="validation-summary-list"></ul>
+          </div>
+
           <div class="form-nav">
 
             <button type="button" class="btn secondary" id="btn-prev" disabled>Previous</button>
@@ -330,6 +375,9 @@
     </div>
 
   </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container" role="region" aria-live="polite" aria-atomic="true"></div>
 
   <script type="module" src="js/main.js"></script>
 
