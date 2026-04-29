@@ -5,6 +5,12 @@ var EMPTY_CHART = '<div class="chart-empty">No data available yet.</div>';
 
 /** @type {Array} full roster for scope dropdown (updated each render) */
 var cachedRecords = [];
+var breakdownPaginationState = {};
+var analyticsCardPageState = {
+  education: 1,
+  training: 1,
+  eligibility: 1
+};
 
 function monthKey(date) {
   return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
@@ -277,6 +283,10 @@ function bindAnalyticsTabsOnce() {
         panel.classList.toggle('active', show);
         panel.hidden = !show;
       });
+
+      if (selected === 'education' || selected === 'training' || selected === 'eligibility') {
+        setAnalyticsCardPage(selected, 1);
+      }
     });
   });
 }
@@ -295,9 +305,73 @@ function bindAnalyticsViewTabsOnce() {
       });
       document.querySelectorAll('.analytics-view-panel').forEach(function (panel) {
         var show = panel.getAttribute('data-analytics-view-panel') === selected;
+        panel.classList.toggle('active', show);
         panel.hidden = !show;
       });
     });
+  });
+}
+
+function getAnalyticsCardPageCount(domain) {
+  return document.querySelectorAll('[data-analytics-card-page-group="' + domain + '"]').length || 1;
+}
+
+function updateAnalyticsCardPager(domain) {
+  var page = Number(analyticsCardPageState[domain] || 1);
+  var pages = Array.from(document.querySelectorAll('[data-analytics-card-page-group="' + domain + '"]'));
+  var totalPages = pages.length || 1;
+
+  if (page < 1) page = 1;
+  if (page > totalPages) page = totalPages;
+  analyticsCardPageState[domain] = page;
+
+  pages.forEach(function (node) {
+    var pageNumber = Number(node.getAttribute('data-analytics-card-page') || 1);
+    node.hidden = pageNumber !== page;
+  });
+
+  var controls = document.querySelector('[data-analytics-card-pager="' + domain + '"]');
+  var status = document.querySelector('[data-analytics-card-page-status="' + domain + '"]');
+  if (status) {
+    status.textContent = page + ' of ' + totalPages;
+  }
+  if (controls) {
+    controls.classList.toggle('analytics-card-pager--single', totalPages <= 1);
+    controls.querySelectorAll('[data-analytics-card-page-action]').forEach(function (btn) {
+      btn.hidden = totalPages <= 1;
+      var action = btn.getAttribute('data-analytics-card-page-action');
+      if (action === 'prev') btn.disabled = page <= 1;
+      if (action === 'next') btn.disabled = page >= totalPages;
+    });
+  }
+}
+
+function setAnalyticsCardPage(domain, page) {
+  analyticsCardPageState[domain] = page;
+  updateAnalyticsCardPager(domain);
+}
+
+function bindAnalyticsCardPagerOnce() {
+  var pager = document.querySelector('[data-analytics-card-pager]');
+  if (!pager || pager.dataset.analyticsPagerBound === '1') return;
+  document.querySelectorAll('[data-analytics-card-pager]').forEach(function (node) {
+    node.dataset.analyticsPagerBound = '1';
+    node.addEventListener('click', function (event) {
+      var button = event.target.closest('[data-analytics-card-page-action]');
+      if (!button) return;
+      var domain = button.getAttribute('data-analytics-card-domain');
+      if (!domain) return;
+      var page = Number(analyticsCardPageState[domain] || 1);
+      if (button.getAttribute('data-analytics-card-page-action') === 'prev') page -= 1;
+      else page += 1;
+      setAnalyticsCardPage(domain, page);
+    });
+  });
+}
+
+function syncAnalyticsCardPages() {
+  ['education', 'training', 'eligibility'].forEach(function (domain) {
+    updateAnalyticsCardPager(domain);
   });
 }
 
@@ -317,33 +391,111 @@ function updateScopeHint(selectedId, records) {
   hint.hidden = false;
 }
 
+function getBreakdownPageSize() {
+  return 4;
+}
+
+function clampBreakdownPage(slotId, totalPages) {
+  var current = Number(breakdownPaginationState[slotId] || 1);
+  if (!totalPages || totalPages < 1) return 1;
+  if (current < 1) current = 1;
+  if (current > totalPages) current = totalPages;
+  breakdownPaginationState[slotId] = current;
+  return current;
+}
+
+function bindBreakdownPaginationOnce(el) {
+  if (!el || el.dataset.analyticsBreakdownBound === '1') return;
+  el.dataset.analyticsBreakdownBound = '1';
+  el.addEventListener('click', function (event) {
+    var button = event.target.closest('[data-breakdown-page-action]');
+    if (!button) return;
+    var action = button.getAttribute('data-breakdown-page-action');
+    var slotId = button.getAttribute('data-breakdown-slot');
+    if (!slotId) return;
+    var totalPages = Number(button.getAttribute('data-breakdown-total-pages') || 1);
+    var current = Number(breakdownPaginationState[slotId] || 1);
+    if (action === 'prev') current -= 1;
+    if (action === 'next') current += 1;
+    if (current < 1) current = 1;
+    if (totalPages && current > totalPages) current = totalPages;
+    breakdownPaginationState[slotId] = current;
+    renderAnalytics(cachedRecords);
+  });
+}
+
 function setBreakdownSlot(slotId, namesMap, orderedKeys, summaryTitle, showAggregate) {
   var el = document.getElementById(slotId);
   if (!el) return;
+  bindBreakdownPaginationOnce(el);
   if (!showAggregate) {
     el.innerHTML = '';
     el.hidden = true;
     return;
   }
   var keys = orderedKeys || Object.keys(namesMap || {}).sort();
-  var parts = [];
+  var groups = [];
+  var pageSize = getBreakdownPageSize();
+  var MAX_PREVIEW_NAMES = 4;
+
   keys.forEach(function (k) {
     var arr = namesMap[k];
     if (!arr || !arr.length) return;
     var sorted = arr.slice().sort(function (a, b) { return a.localeCompare(b, undefined, { sensitivity: 'base' }); });
-    parts.push('<dt>' + escapeHtml(k) + '</dt><dd>' + escapeHtml(sorted.join('; ')) + '</dd>');
+    var preview = sorted.slice(0, MAX_PREVIEW_NAMES);
+    var hiddenCount = Math.max(0, sorted.length - preview.length);
+    var previewText = escapeHtml(preview.join(', '));
+    var overflow = hiddenCount > 0
+      ? '<span class="analytics-breakdown-overflow"> + ' + hiddenCount + ' more</span>'
+      : '';
+    var allNamesTooltip = escapeAttr(sorted.join('; '));
+
+    groups.push(
+      '<article class="analytics-breakdown-row" title="' + allNamesTooltip + '">' +
+        '<p class="analytics-breakdown-row-label">' + escapeHtml(k) + '</p>' +
+        '<p class="analytics-breakdown-row-count">' + sorted.length + '</p>' +
+        '<p class="analytics-breakdown-row-preview">' + previewText + overflow + '</p>' +
+      '</article>'
+    );
   });
-  if (!parts.length) {
+  if (!groups.length) {
     el.innerHTML = '';
     el.hidden = true;
     return;
   }
+
+  var totalPages = Math.max(1, Math.ceil(groups.length / pageSize));
+  var page = clampBreakdownPage(slotId, totalPages);
+  var startIndex = (page - 1) * pageSize;
+  var pageRows = groups.slice(startIndex, startIndex + pageSize);
+  var showingStart = Math.min(groups.length, startIndex + 1);
+  var showingEnd = Math.min(groups.length, startIndex + pageRows.length);
+  var paginationHtml = '';
+  if (totalPages > 1) {
+    paginationHtml =
+      '<div class="analytics-breakdown-pagination" role="group" aria-label="' + escapeAttr(summaryTitle) + ' pagination">' +
+        '<button type="button" class="analytics-breakdown-page-btn" data-breakdown-page-action="prev" data-breakdown-slot="' + escapeAttr(slotId) + '" data-breakdown-total-pages="' + totalPages + '"' + (page <= 1 ? ' disabled' : '') + '>Prev</button>' +
+        '<span class="analytics-breakdown-page-status">' + showingStart + '–' + showingEnd + ' of ' + groups.length + '</span>' +
+        '<button type="button" class="analytics-breakdown-page-btn" data-breakdown-page-action="next" data-breakdown-slot="' + escapeAttr(slotId) + '" data-breakdown-total-pages="' + totalPages + '"' + (page >= totalPages ? ' disabled' : '') + '>Next</button>' +
+      '</div>';
+  } else {
+    paginationHtml = '<p class="analytics-breakdown-page-status analytics-breakdown-page-status--single">' + groups.length + ' group' + (groups.length === 1 ? '' : 's') + '</p>';
+  }
+
   el.innerHTML =
-    '<details class="analytics-breakdown">' +
-    '<summary>' + escapeHtml(summaryTitle) + '</summary>' +
-    '<dl class="analytics-breakdown-dl">' + parts.join('') + '</dl>' +
-    '</details>';
+    '<section class="analytics-breakdown analytics-breakdown--compact" aria-label="' + escapeAttr(summaryTitle) + '">' +
+    '<p class="analytics-breakdown-title">' + escapeHtml(summaryTitle) + '</p>' +
+    paginationHtml +
+    '<div class="analytics-breakdown-groups">' + pageRows.join('') + '</div>' +
+    '</section>';
   el.hidden = false;
+}
+
+function setChartCardState(host, hasData) {
+  if (!host) return;
+  var card = host.closest('.analytics-card');
+  if (!card) return;
+  card.classList.toggle('analytics-card--empty', !hasData);
 }
 
 function renderBarChart(containerId, dataMap, options) {
@@ -370,14 +522,17 @@ function renderBarChart(containerId, dataMap, options) {
     entries = top;
   }
   if (!entries.length) {
+    setChartCardState(host, false);
     host.innerHTML = EMPTY_CHART;
     return;
   }
   var sum = entries.reduce(function (acc, e) { return acc + e[1]; }, 0);
   if (options.treatAllZeroAsEmpty && sum === 0) {
+    setChartCardState(host, false);
     host.innerHTML = EMPTY_CHART;
     return;
   }
+  setChartCardState(host, true);
   var percentBase = Number(options.percentBase || 0);
   var denominator = percentBase > 0 ? percentBase : sum;
   var max = Math.max.apply(null, entries.map(function (e) { return e[1]; })) || 1;
@@ -411,15 +566,18 @@ function renderPieChart(containerId, dataMap, options) {
   ).filter(function (e) { return Number(e[1]) > 0; });
 
   if (!entries.length) {
+    setChartCardState(host, false);
     host.innerHTML = EMPTY_CHART;
     return;
   }
 
   var total = entries.reduce(function (acc, e) { return acc + Number(e[1] || 0); }, 0);
   if (!total) {
+    setChartCardState(host, false);
     host.innerHTML = EMPTY_CHART;
     return;
   }
+  setChartCardState(host, true);
 
   var palette = options.colors || ['#1f4e79', '#2a7f9e', '#5aa469', '#f2a541', '#8e7dbe', '#cc6f6f'];
   var mode = options.valueMode === 'percent' ? 'percent' : 'count';
@@ -531,6 +689,7 @@ export function renderAnalytics(records) {
   cachedRecords = records;
   bindAnalyticsViewTabsOnce();
   bindAnalyticsTabsOnce();
+  bindAnalyticsCardPagerOnce();
   bindScopeChangeOnce();
   bindMetricModeChangeOnce();
   bindSearchFiltersOnce();
@@ -832,4 +991,6 @@ export function renderAnalytics(records) {
     topProgram: topLabelFromEntries(topProgramEntries),
     topEligibility: topLabelFromEntries(civilServiceEntries)
   }, valueMode);
+
+  syncAnalyticsCardPages();
 }

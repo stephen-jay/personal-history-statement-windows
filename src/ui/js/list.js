@@ -1,6 +1,6 @@
 import { FIELD_IDS } from './constants.js';
 import { buildDisplayFullName } from './form-data.js';
-import { escapeHtml, normalizeValue } from './escape.js';
+import { escapeHtml, normalizeValue, normalizeOrganizationValue } from './escape.js';
 
 /** Roster label + search string: prefer recomputed "Last, First Middle" when name parts exist. */
 function rosterDisplayName(record) {
@@ -113,7 +113,7 @@ export function renderList(records, deps) {
     ? records.filter(function (r) {
         const fn = rosterDisplayName(r).toLowerCase();
         const pos = (r.presentJob || '').toLowerCase();
-        const org = (r.organization || '').toLowerCase();
+          const org = (normalizeOrganizationValue(r.organization) || '').toLowerCase();
         const mob = (r.mobile || '').toString().toLowerCase();
         const em = (r.email || '').toLowerCase();
         const edu = (formatEducationBackground(r) || '').toLowerCase();
@@ -130,7 +130,7 @@ export function renderList(records, deps) {
     const sem = formatSeminarsTraining(r);
     const nameCell = escapeHtml(rosterDisplayName(r) || '—');
     const position = escapeHtml(r.presentJob || '—');
-    const organization = escapeHtml(r.organization || '—');
+      const organization = escapeHtml(normalizeOrganizationValue(r.organization) || '—');
     const contact = escapeHtml(r.mobile || r.email || '—');
     const safeId = escapeHtml(r.id || '');
     const pct = getRecordCompletenessPercent(r);

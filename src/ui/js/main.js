@@ -146,11 +146,25 @@ async function loadAnalyticsPage() {
 
     const { showPage, goNext, goPrev } = createFormNav(phsForm);
 
+    function setPrimaryView(activeViewName) {
+      var views = {
+        list: listView,
+        analytics: analyticsView,
+        admin: adminView,
+        audit: auditView
+      };
+
+      Object.keys(views).forEach(function (key) {
+        var el = views[key];
+        if (!el) return;
+        var isActive = key === activeViewName;
+        el.classList.toggle('active', isActive);
+        el.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+      });
+    }
+
     function applyListChrome() {
-      listView.classList.add('active');
-      if (analyticsView) analyticsView.classList.remove('active');
-      if (adminView) adminView.classList.remove('active');
-      if (auditView) auditView.classList.remove('active');
+      setPrimaryView('list');
       setActiveNav('list');
       setAppView('list');
       setTopbarSection(topbarSection, 'Personnel roster');
@@ -319,9 +333,7 @@ async function loadAnalyticsPage() {
         window.toast.warning('You do not have permission to create or edit personnel records.');
         return;
       }
-      if (analyticsView) analyticsView.classList.remove('active');
-      listView.classList.add('active');
-      if (adminView) adminView.classList.remove('active');
+      setPrimaryView('list');
       setActiveNav('none');
       setAppView('form');
       const rid = recordIdInput && recordIdInput.value && String(recordIdInput.value).trim();
@@ -345,9 +357,7 @@ async function loadAnalyticsPage() {
       if (phsModalCtl.isOpen()) {
         if (!phsModalCtl.close(false)) return;
       }
-      listView.classList.remove('active');
-      if (analyticsView) analyticsView.classList.add('active');
-      if (adminView) adminView.classList.remove('active');
+      setPrimaryView('analytics');
       setActiveNav('analytics');
       setAppView('analytics');
       setTopbarSection(topbarSection, 'Reports');
@@ -364,9 +374,7 @@ async function loadAnalyticsPage() {
       if (phsModalCtl && phsModalCtl.isOpen()) {
         phsModalCtl.close(false);
       }
-      listView.classList.remove('active');
-      if (analyticsView) analyticsView.classList.remove('active');
-      if (adminView) adminView.classList.add('active');
+      setPrimaryView('admin');
       setActiveNav('admin');
       setAppView('admin');
       setTopbarSection(topbarSection, 'User management');

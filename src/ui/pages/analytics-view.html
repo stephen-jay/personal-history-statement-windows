@@ -1,120 +1,185 @@
-<div class="analytics-wrap">
-  <h2>Personnel Graphing Analysis</h2>
-  <p class="analytics-subtitle">Education, training, and seminars from submitted personnel records.</p>
+<div class="analytics-wrap analytics-redesign">
+  <header class="analytics-hero">
+    <div class="analytics-hero-copy">
+      <h2>Analysis Command Center</h2>
+      <p class="analytics-subtitle">A cleaner reading flow: filter first, scan headline numbers, then drill into one domain at a time.</p>
+    </div>
+    <div class="analytics-view-tabs" role="tablist" aria-label="Analytics view mode">
+      <button type="button" class="analytics-view-tab-btn active" role="tab" aria-selected="true" data-analytics-view="analysis">Command View</button>
+      <button type="button" class="analytics-view-tab-btn" role="tab" aria-selected="false" data-analytics-view="findings">Executive Summary</button>
+    </div>
+  </header>
 
-  <div class="analytics-toolbar" role="region" aria-label="Analysis scope">
-    <label for="analytics-scope" class="analytics-toolbar-label">Show data for</label>
-    <select id="analytics-scope" class="analytics-scope-select">
-      <option value="">All personnel (combined totals)</option>
-    </select>
+  <section class="analytics-controls" aria-label="Analysis controls">
+    <div class="analytics-toolbar" role="region" aria-label="Analysis scope">
+      <div class="analytics-control-block">
+        <label for="analytics-scope" class="analytics-toolbar-label">Personnel scope</label>
+        <select id="analytics-scope" class="analytics-scope-select">
+          <option value="">All personnel (combined totals)</option>
+        </select>
+      </div>
 
-    <label for="analytics-metric-mode" class="analytics-toolbar-label">Display values as</label>
-    <select id="analytics-metric-mode" class="analytics-scope-select">
-      <option value="count">Count</option>
-      <option value="percent">Percent</option>
-    </select>
-  </div>
+      <div class="analytics-control-block">
+        <label for="analytics-metric-mode" class="analytics-toolbar-label">Number style</label>
+        <select id="analytics-metric-mode" class="analytics-scope-select">
+          <option value="count">Count</option>
+          <option value="percent">Percent</option>
+        </select>
+      </div>
 
-  <div class="analytics-toolbar analytics-toolbar--search" role="region" aria-label="Analysis search filters">
-    <label for="analytics-search-type" class="analytics-toolbar-label">Search In</label>
-    <select id="analytics-search-type" class="analytics-scope-select">
-      <option value="all">All</option>
-      <option value="name">Name</option>
-      <option value="education">Education</option>
-      <option value="training">Training/Seminar</option>
-    </select>
+      <div class="analytics-control-block analytics-control-block--wide">
+        <label for="analytics-search-type" class="analytics-toolbar-label">Search field</label>
+        <select id="analytics-search-type" class="analytics-scope-select">
+          <option value="all">All</option>
+          <option value="name">Name</option>
+          <option value="education">Education</option>
+          <option value="training">Training/Seminar</option>
+        </select>
+      </div>
 
-    <label for="analytics-search-query" class="analytics-toolbar-label">Search</label>
-    <input type="search" id="analytics-search-query" class="analytics-search-input" placeholder="Type a keyword" />
-  </div>
+      <div class="analytics-control-block analytics-control-block--wide">
+        <label for="analytics-search-query" class="analytics-toolbar-label">Keyword</label>
+        <input type="search" id="analytics-search-query" class="analytics-search-input" placeholder="Type a keyword" />
+      </div>
+    </div>
+  </section>
 
   <p class="analytics-scope-hint" id="analytics-scope-hint" hidden></p>
 
-  <div class="analytics-view-tabs" role="tablist" aria-label="Analytics view mode">
-    <button type="button" class="analytics-view-tab-btn active" role="tab" aria-selected="true" data-analytics-view="analysis">Personnel Graphing Analysis</button>
-    <button type="button" class="analytics-view-tab-btn" role="tab" aria-selected="false" data-analytics-view="findings">Key Findings Graph</button>
-  </div>
-
   <section class="analytics-view-panel active" data-analytics-view-panel="analysis">
-    <div class="analytics-kpis">
-      <div class="analytics-kpi">
-        <div class="analytics-kpi-label">Total Personnel</div>
-        <div class="analytics-kpi-value" id="kpi-total">0</div>
-      </div>
-      <div class="analytics-kpi">
-        <div class="analytics-kpi-label">With Education Records</div>
-        <div class="analytics-kpi-value" id="kpi-education-records">0</div>
-      </div>
-      <div class="analytics-kpi">
-        <div class="analytics-kpi-label">Trained This Month</div>
-        <div class="analytics-kpi-value" id="kpi-trained-month">0</div>
-      </div>
+    <section class="analytics-kpis" aria-label="Overview metrics">
+      <article class="analytics-kpi">
+        <p class="analytics-kpi-label">Total Personnel</p>
+        <p class="analytics-kpi-value" id="kpi-total">0</p>
+      </article>
+      <article class="analytics-kpi">
+        <p class="analytics-kpi-label">With Education Records</p>
+        <p class="analytics-kpi-value" id="kpi-education-records">0</p>
+      </article>
+      <article class="analytics-kpi">
+        <p class="analytics-kpi-label">Trained This Month</p>
+        <p class="analytics-kpi-value" id="kpi-trained-month">0</p>
+      </article>
+    </section>
+
+    <div class="analytics-shell">
+      <aside class="analytics-domain-nav" aria-label="Analysis domains">
+        <h3 class="analytics-domain-title">Domains</h3>
+        <p class="analytics-domain-subtitle">Open one section to reduce noise and read data faster.</p>
+        <div class="analytics-tabs" role="tablist" aria-label="Analytics sections">
+          <button type="button" class="analytics-tab-btn active" role="tab" aria-selected="true" data-analytics-tab="education">
+            <span class="analytics-tab-btn-title">Education</span>
+            <span class="analytics-tab-btn-meta">Attainment, years, fields</span>
+          </button>
+          <button type="button" class="analytics-tab-btn" role="tab" aria-selected="false" data-analytics-tab="training">
+            <span class="analytics-tab-btn-title">Training</span>
+            <span class="analytics-tab-btn-meta">Programs and monthly trends</span>
+          </button>
+          <button type="button" class="analytics-tab-btn" role="tab" aria-selected="false" data-analytics-tab="eligibility">
+            <span class="analytics-tab-btn-title">Eligibility</span>
+            <span class="analytics-tab-btn-meta">Civil service records</span>
+          </button>
+        </div>
+      </aside>
+
+      <section class="analytics-domain-content" aria-label="Selected analytics domain">
+        <section class="analytics-panel active" data-analytics-panel="education">
+          <div class="analytics-card-pager" data-analytics-card-pager="education">
+            <div class="analytics-card-pager__controls">
+              <button type="button" class="analytics-card-page-btn" data-analytics-card-page-action="prev" data-analytics-card-domain="education">Prev</button>
+              <span class="analytics-card-page-status" data-analytics-card-page-status="education">1 of 2</span>
+              <button type="button" class="analytics-card-page-btn" data-analytics-card-page-action="next" data-analytics-card-domain="education">Next</button>
+            </div>
+
+            <div class="analytics-card-page" data-analytics-card-page-group="education" data-analytics-card-page="1">
+              <div class="analytics-grid">
+                <article class="analytics-card">
+                  <h4>Educational Attainment Distribution</h4>
+                  <div id="chart-education-level"></div>
+                  <div class="analytics-breakdown-slot" id="breakdown-education-level" hidden></div>
+                </article>
+                <article class="analytics-card">
+                  <h4>Graduation Year Brackets</h4>
+                  <div id="chart-grad-year"></div>
+                  <div class="analytics-breakdown-slot" id="breakdown-grad-year" hidden></div>
+                </article>
+              </div>
+            </div>
+
+            <div class="analytics-card-page" data-analytics-card-page-group="education" data-analytics-card-page="2" hidden>
+              <div class="analytics-grid">
+                <article class="analytics-card analytics-card--span">
+                  <h4>Field / Strand / Course Distribution</h4>
+                  <div id="chart-field-course"></div>
+                  <div class="analytics-breakdown-slot" id="breakdown-field-course" hidden></div>
+                </article>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="analytics-panel" data-analytics-panel="training" hidden>
+          <div class="analytics-card-pager" data-analytics-card-pager="training">
+            <div class="analytics-card-pager__controls">
+              <button type="button" class="analytics-card-page-btn" data-analytics-card-page-action="prev" data-analytics-card-domain="training">Prev</button>
+              <span class="analytics-card-page-status" data-analytics-card-page-status="training">1 of 2</span>
+              <button type="button" class="analytics-card-page-btn" data-analytics-card-page-action="next" data-analytics-card-domain="training">Next</button>
+            </div>
+
+            <div class="analytics-card-page" data-analytics-card-page-group="training" data-analytics-card-page="1">
+              <div class="analytics-grid">
+                <article class="analytics-card">
+                  <h4>Seminars &amp; Trainings Completed (Last 6 Months)</h4>
+                  <div id="chart-training-monthly"></div>
+                  <div class="analytics-breakdown-slot" id="breakdown-training-monthly" hidden></div>
+                </article>
+                <article class="analytics-card">
+                  <h4>Other Schools/Training Attended and Date of Attendance</h4>
+                  <div id="chart-other-schools-training"></div>
+                  <div class="analytics-breakdown-slot" id="breakdown-other-schools-training" hidden></div>
+                </article>
+              </div>
+            </div>
+
+            <div class="analytics-card-page" data-analytics-card-page-group="training" data-analytics-card-page="2" hidden>
+              <div class="analytics-grid">
+                <article class="analytics-card analytics-card--span">
+                  <h4>Top Training Programs / Seminars Attended</h4>
+                  <div id="chart-top-programs"></div>
+                  <div class="analytics-breakdown-slot" id="breakdown-top-programs" hidden></div>
+                </article>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="analytics-panel" data-analytics-panel="eligibility" hidden>
+          <div class="analytics-card-pager analytics-card-pager--single" data-analytics-card-pager="eligibility">
+            <div class="analytics-card-page" data-analytics-card-page-group="eligibility" data-analytics-card-page="1">
+              <div class="analytics-grid">
+                <article class="analytics-card analytics-card--span">
+                  <h4>Civil Service Eligibility/Date Acquired</h4>
+                  <div id="chart-civil-service-eligibility"></div>
+                  <div class="analytics-breakdown-slot" id="breakdown-civil-service-eligibility" hidden></div>
+                </article>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
     </div>
-
-    <div class="analytics-tabs" role="tablist" aria-label="Analytics sections">
-      <button type="button" class="analytics-tab-btn active" role="tab" aria-selected="true" data-analytics-tab="education">Education</button>
-      <button type="button" class="analytics-tab-btn" role="tab" aria-selected="false" data-analytics-tab="training">Training</button>
-      <button type="button" class="analytics-tab-btn" role="tab" aria-selected="false" data-analytics-tab="eligibility">Eligibility</button>
-    </div>
-
-    <section class="analytics-panel active" data-analytics-panel="education">
-      <div class="analytics-grid">
-        <div class="analytics-card">
-          <h3>Educational Attainment Distribution</h3>
-          <div id="chart-education-level"></div>
-          <div class="analytics-breakdown-slot" id="breakdown-education-level" hidden></div>
-        </div>
-        <div class="analytics-card">
-          <h3>Graduation Year Brackets</h3>
-          <div id="chart-grad-year"></div>
-          <div class="analytics-breakdown-slot" id="breakdown-grad-year" hidden></div>
-        </div>
-        <div class="analytics-card analytics-card--span">
-          <h3>Field / Strand / Course Distribution</h3>
-          <div id="chart-field-course"></div>
-          <div class="analytics-breakdown-slot" id="breakdown-field-course" hidden></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="analytics-panel" data-analytics-panel="training" hidden>
-      <div class="analytics-grid">
-        <div class="analytics-card">
-          <h3>Seminars &amp; Trainings Completed (Last 6 Months)</h3>
-          <div id="chart-training-monthly"></div>
-          <div class="analytics-breakdown-slot" id="breakdown-training-monthly" hidden></div>
-        </div>
-        <div class="analytics-card">
-          <h3>Other Schools/Training Attended and Date of Attendance</h3>
-          <div id="chart-other-schools-training"></div>
-          <div class="analytics-breakdown-slot" id="breakdown-other-schools-training" hidden></div>
-        </div>
-        <div class="analytics-card analytics-card--span">
-          <h3>Top Training Programs / Seminars Attended</h3>
-          <div id="chart-top-programs"></div>
-          <div class="analytics-breakdown-slot" id="breakdown-top-programs" hidden></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="analytics-panel" data-analytics-panel="eligibility" hidden>
-      <div class="analytics-grid">
-        <div class="analytics-card analytics-card--span">
-          <h3>Civil Service Eligibility/Date Acquired</h3>
-          <div id="chart-civil-service-eligibility"></div>
-          <div class="analytics-breakdown-slot" id="breakdown-civil-service-eligibility" hidden></div>
-        </div>
-      </div>
-    </section>
   </section>
 
   <section class="analytics-view-panel" data-analytics-view-panel="findings" hidden>
-    <div class="analytics-grid">
-      <div class="analytics-card analytics-card--span analytics-key-findings-card">
-        <h3>Key Findings Overview</h3>
+    <section class="analytics-findings-wrap" aria-label="Key findings">
+      <article class="analytics-card analytics-key-findings-card">
+        <h4>Executive Snapshot</h4>
         <div id="chart-key-findings-overview"></div>
+      </article>
+      <article class="analytics-card analytics-findings-note-card">
+        <h4>Reading Guide</h4>
         <p class="analytics-key-findings-note" id="analytics-key-findings-note"></p>
-      </div>
-    </div>
+      </article>
+    </section>
   </section>
 </div>

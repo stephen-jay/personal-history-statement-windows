@@ -2,7 +2,7 @@
  * Official PHS layout matching the structure and wording of PERSONNEL HISTORY STATEMENT.docx
  * (government form: Personal Details grid with lettered rows A–K.)
  */
-import { escapeHtml } from './escape.js';
+import { escapeHtml, normalizeOrganizationValue } from './escape.js';
 
 /** Sample paragraph for handwriting exercise (Misc. — per standard PHS). */
 export const HANDWRITING_SAMPLE =
@@ -677,11 +677,11 @@ export function buildOfficialPrintHtml(data) {
     '<h2 class="phs-print-h2 phs-print-h2--section">XII. ORGANIZATIONS</h2>' +
     '<div class="phs-organizations-modern" aria-hidden="true">' +
     modernTableCard('Organizations', ['Organization', 'Address', 'Membership Date', 'Position Held'], (Array.isArray(data.organizations) ? data.organizations : []).map(function (row) {
-      return [row && row.organization, row && row.address, row && row.membershipDate, row && row.positionHeld];
+      return [normalizeOrganizationValue(row && row.organization), row && row.address, row && row.membershipDate, row && row.positionHeld];
     })) +
     '</div>' +
     listRows('Organizations', data.organizations, function (row) {
-      return escapeHtml([row.organization, row.address, row.membershipDate, row.positionHeld].filter(Boolean).join(' — ') || '—');
+      return escapeHtml([normalizeOrganizationValue(row.organization), row.address, row.membershipDate, row.positionHeld].filter(Boolean).join(' — ') || '—');
     }) +
     '</section>' +
 

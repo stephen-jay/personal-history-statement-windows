@@ -4,6 +4,12 @@ export function normalizeValue(val) {
   return trimmed === '' ? null : trimmed;
 }
 
+export function normalizeOrganizationValue(val) {
+  const cleaned = normalizeValue(val);
+  if (!cleaned) return null;
+  return cleaned.replace(/^Member\s*-\s*/i, '').trim();
+}
+
 export function escapeHtml(value) {
   return String(value == null ? 'N/A' : value)
     .replace(/&/g, '&amp;')

@@ -112,7 +112,7 @@ function randomFieldValue(fieldId, el, seed) {
     nameLast: seed.lastName,
     nameFirst: seed.firstName,
     nameMiddle: seed.middleName,
-    organization: pickRandom(['Member - DepEd', 'Member - DOH', 'Member - PNP', 'Member - AFP']),
+    organization: pickRandom(['DepEd', 'DOH', 'PNP', 'AFP']),
     presentJob: pickRandom(['Operations Analyst', 'Administrative Officer', 'Data Compliance Associate']),
     businessAddress: seed.businessAddress,
     homeAddress: seed.homeAddress,

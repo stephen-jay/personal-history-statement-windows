@@ -26,10 +26,22 @@ export function initAuditLogs({
       if (phsModalCtl && phsModalCtl.isOpen()) {
         phsModalCtl.close(false);
       }
-      listView.classList.remove('active');
-      if (analyticsView) analyticsView.classList.remove('active');
-      if (adminView) adminView.classList.remove('active');
-      if (auditView) auditView.classList.add('active');
+      if (listView) {
+        listView.classList.remove('active');
+        listView.setAttribute('aria-hidden', 'true');
+      }
+      if (analyticsView) {
+        analyticsView.classList.remove('active');
+        analyticsView.setAttribute('aria-hidden', 'true');
+      }
+      if (adminView) {
+        adminView.classList.remove('active');
+        adminView.setAttribute('aria-hidden', 'true');
+      }
+      if (auditView) {
+        auditView.classList.add('active');
+        auditView.setAttribute('aria-hidden', 'false');
+      }
       setActiveNav('audit');
       setAppView('audit');
       setTopbarSection(topbarSection, 'System Audit Logs');
