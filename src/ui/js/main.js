@@ -326,7 +326,7 @@ async function loadAnalyticsPage() {
           // Small delay to allow the browser to paint the skeleton.
           window.setTimeout(function () {
             renderList(rosterCache.records, listDeps);
-            renderAnalytics(rosterCache.records);
+            renderAnalytics(rosterCache.records, { openSummary: openSummary });
             try { hideLoader(); } catch (_) {}
             resolve(rosterCache.records);
           }, 80);
@@ -349,7 +349,7 @@ async function loadAnalyticsPage() {
         rosterCache.records = records;
         rosterCache.ts = Date.now();
         renderList(records, listDeps);
-        renderAnalytics(records);
+        renderAnalytics(records, { openSummary: openSummary });
         hideLoader();
         return records;
       }).catch(function (err) {
@@ -365,7 +365,7 @@ async function loadAnalyticsPage() {
         console.error(err);
         window.toast.error('Could not load data: ' + (err && err.message ? err.message : 'Unknown error'));
         renderList([], listDeps);
-        renderAnalytics([]);
+        renderAnalytics([], { openSummary: openSummary });
       });
     }
 
@@ -444,9 +444,9 @@ async function loadAnalyticsPage() {
       if (auditView) auditView.classList.remove('active');
       setActiveNav('analytics');
       setAppView('analytics');
-      setTopbarSection(topbarSection, 'Reports');
+      setTopbarSection(topbarSection, 'Personnel Graphing Analysis');
       loadAllDataAndRender().catch(function () {
-        renderAnalytics([]);
+        renderAnalytics([], { openSummary: openSummary });
       });
     }
 
@@ -464,7 +464,7 @@ async function loadAnalyticsPage() {
       if (auditView) auditView.classList.remove('active');
       setActiveNav('admin');
       setAppView('admin');
-      setTopbarSection(topbarSection, 'User management');
+      setTopbarSection(topbarSection, 'User Management');
     }
 
     document.querySelectorAll('.nav-item').forEach(function (tab) {
@@ -704,7 +704,20 @@ async function loadAnalyticsPage() {
 
     phsForm.addEventListener('submit', function (e) {
       e.preventDefault();
-      const data = formData.getFormData();
+      let data;
+      try {
+        data = formData.getFormData();
+      } catch (err) {
+        console.error('getFormData failed', err);
+        window.toast.error('Could not read form: ' + (err && err.message ? err.message : String(err)));
+        return;
+      }
+
+      // Basic validation: ensure there's at least a name or organization so user knows
+      if (!data || (!data.nameFirst && !data.nameLast && !data.fullName && !data.organization)) {
+        if (!confirm('Form appears empty. Save anyway?')) return;
+      }
+
       var isUpdate = !!(data && data.id);
       var confirmed = confirm(
         isUpdate
@@ -712,11 +725,25 @@ async function loadAnalyticsPage() {
           : 'Save this new personnel record?'
       );
       if (!confirmed) return;
-      window.personnelApi.save(data).then(function () {
+
+      try { showLoader('Saving personnel record…'); } catch (_) {}
+      console.log('[MAIN] Saving personnel record:', data);
+
+      if (!window.personnelApi || typeof window.personnelApi.save !== 'function') {
+        try { hideLoader(); } catch (_) {}
+        console.error('personnelApi.save not available');
+        window.toast.error('Save API not available. Restart the application.');
+        return;
+      }
+
+      window.personnelApi.save(data).then(function (saved) {
+        try { hideLoader(); } catch (_) {}
+        console.log('[MAIN] Save successful, saved:', saved);
         // After saving, force refresh the roster so cache is updated
         showList({ forceCloseModal: true, forceRefresh: true });
       }).catch(function (err) {
-        console.error(err);
+        try { hideLoader(); } catch (_) {}
+        console.error('Save failed', err);
         window.toast.error('Could not save: ' + (err && err.message ? err.message : 'Unknown error'));
       });
     });
@@ -727,7 +754,7 @@ async function loadAnalyticsPage() {
     });
     setActiveNav('list');
     setAppView('list');
-    setTopbarSection(topbarSection, 'Personnel roster');
+    setTopbarSection(topbarSection, 'Personnel Roster');
     await loadList();
     // Ensure loader hidden after initial load (defensive)
     try { hideLoader(); } catch (_) {}

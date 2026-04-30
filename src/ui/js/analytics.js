@@ -5,6 +5,8 @@ var EMPTY_CHART = '<div class="chart-empty">No data available yet.</div>';
 
 /** @type {Array} full roster for scope dropdown (updated each render) */
 var cachedRecords = [];
+/** @type {object} last render options (keeps openSummary callback across internal rerenders) */
+var cachedRenderOptions = {};
 
 function monthKey(date) {
   return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
@@ -169,7 +171,7 @@ function bindScopeChangeOnce() {
   if (!sel || sel.dataset.analyticsBound === '1') return;
   sel.dataset.analyticsBound = '1';
   sel.addEventListener('change', function () {
-    renderAnalytics(cachedRecords);
+    renderAnalytics(cachedRecords, cachedRenderOptions);
   });
 }
 
@@ -178,7 +180,7 @@ function bindMetricModeChangeOnce() {
   if (!sel || sel.dataset.analyticsBound === '1') return;
   sel.dataset.analyticsBound = '1';
   sel.addEventListener('change', function () {
-    renderAnalytics(cachedRecords);
+    renderAnalytics(cachedRecords, cachedRenderOptions);
   });
 }
 
@@ -195,7 +197,7 @@ function bindSearchFiltersOnce() {
     input.dataset.analyticsBound = '1';
     var eventName = input.tagName === 'SELECT' ? 'change' : 'input';
     input.addEventListener(eventName, function () {
-      renderAnalytics(cachedRecords);
+      renderAnalytics(cachedRecords, cachedRenderOptions);
     });
   });
 }
@@ -388,9 +390,14 @@ function renderBarChart(containerId, dataMap, options) {
     var shortLabel = labelText.length > 68 ? labelText.slice(0, 65) + '...' : labelText;
     var width = Math.max(4, Math.round((entry[1] / max) * 100));
     var pct = denominator > 0 ? (entry[1] / denominator) * 100 : 0;
-    var valueText = mode === 'percent'
-      ? pct.toFixed(pct >= 10 ? 0 : 1) + '% (' + entry[1] + ')'
-      : String(entry[1]) + ' (' + pct.toFixed(pct >= 10 ? 0 : 1) + '%)';
+    var valueText;
+    if (options.showCountOnly) {
+      valueText = String(entry[1]);
+    } else {
+      valueText = mode === 'percent'
+        ? pct.toFixed(pct >= 10 ? 0 : 1) + '% (' + entry[1] + ')'
+        : String(entry[1]) + ' (' + pct.toFixed(pct >= 10 ? 0 : 1) + '%)';
+    }
     return '' +
       '<div class="bar-row">' +
         '<div class="bar-row__label' + labelClass + '"><span class="bar-row__label-text" title="' + escapeAttr(labelText) + '">' + escapeHtml(shortLabel) + '</span></div>' +
@@ -526,8 +533,12 @@ function renderKeyFindingsGraph(summary, valueMode) {
   }
 }
 
-export function renderAnalytics(records) {
+export function renderAnalytics(records, opts) {
   records = records || [];
+  var options = opts || cachedRenderOptions || {};
+  // persist options so internal handlers can re-render with same callbacks
+  cachedRenderOptions = options;
+  var openSummaryCallback = options.openSummary || function () {};
   cachedRecords = records;
   bindAnalyticsViewTabsOnce();
   bindAnalyticsTabsOnce();
@@ -620,6 +631,164 @@ export function renderAnalytics(records) {
     showAggregateBreakdowns
   );
 
+  // --- Education hero cards and post-grad KPI ---
+  (function () {
+    var postCount = eduMap['Post-Graduate'] || 0;
+    var collegeCount = eduMap['College Graduate'] || 0;
+    var noneCount = eduMap['No Education Background'] || 0;
+    var pct = total > 0 ? Math.round((postCount / total) * 100) : 0;
+    var kpiPost = document.getElementById('kpi-post-grad-rate');
+    if (kpiPost) kpiPost.textContent = String(pct) + '%';
+
+    var setHero = function(countElId, pctElId, fillElId, countVal) {
+      var c = document.getElementById(countElId);
+      var p = document.getElementById(pctElId);
+      var f = document.getElementById(fillElId);
+      var pval = total > 0 ? Math.round((countVal / total) * 100) : 0;
+      if (c) c.textContent = String(countVal);
+      if (p) p.textContent = String(pval) + '%';
+      if (f) f.style.width = String(pval) + '%';
+    };
+
+    setHero('edu-post-count', 'edu-post-pct', 'edu-post-fill', postCount);
+    setHero('edu-college-count', 'edu-college-pct', 'edu-college-fill', collegeCount);
+    setHero('edu-none-count', 'edu-none-pct', 'edu-none-fill', noneCount);
+
+    // ensure progress fill colors match the card accent (border-top)
+    try {
+      var postCard = document.getElementById('edu-card-postgrad');
+      var collegeCard = document.getElementById('edu-card-college');
+      var noneCard = document.getElementById('edu-card-none');
+      function setFillColor(cardEl, fillId) {
+        if (!cardEl) return;
+        var fill = document.getElementById(fillId);
+        if (!fill) return;
+        var accent = window.getComputedStyle(cardEl).borderTopColor || '#1f3b63';
+        fill.style.background = accent;
+      }
+      setFillColor(postCard, 'edu-post-fill');
+      setFillColor(collegeCard, 'edu-college-fill');
+      setFillColor(noneCard, 'edu-none-fill');
+    } catch (e) { /* ignore */ }
+
+    function getAccent(el) {
+      try {
+        var c = window.getComputedStyle(el).borderTopColor;
+        return c || '#1f3b63';
+      } catch (e) { return '#1f3b63'; }
+    }
+
+    function openEduModal(title, rows, accent) {
+      var modal = document.getElementById('analysis-edu-modal');
+      var backdrop = document.getElementById('analysis-edu-backdrop');
+      var dialog = modal && modal.querySelector('.analysis-edu-dialog');
+      var titleEl = document.getElementById('analysis-edu-title');
+      var listEl = document.getElementById('analysis-edu-list');
+      var closeBtn = document.getElementById('analysis-edu-close');
+
+      var buildRows = (rows || []).map(function (r) {
+        var initials = ((normalizeValue(r.nameFirst) || '').charAt(0) + (normalizeValue(r.nameLast) || '').charAt(0)).toUpperCase();
+        var name = rosterLabel(r);
+        var pos = normalizeValue(r.position || r.jobTitle) || '';
+        var org = normalizeValue(r.organization) || '';
+        var avatarColor = accent || '#1f3b63';
+        var recordId = r.id ? escapeAttr(String(r.id)) : '';
+        return '<div class="edu-row" data-record-id="' + recordId + '" style="cursor:pointer;">' +
+          '<div class="edu-avatar" style="background:' + avatarColor + '">' + escapeHtml(initials) + '</div>' +
+          '<div class="edu-meta"><div class="edu-name">' + escapeHtml(name) + '</div><div class="edu-sub">' + escapeHtml(pos) + (pos && org ? ' · ' : '') + escapeHtml(org) + '</div></div>' +
+        '</div>';
+      }).join('');
+
+      if (titleEl) titleEl.textContent = String(title || 'Personnel');
+      if (listEl) listEl.innerHTML = buildRows || '<p style="color:#64748b;padding:8px">No personnel found.</p>';
+
+      if (!modal || !backdrop || !dialog) {
+        // fallback to summary modal if analysis modal not present
+        var summaryModal = document.getElementById('summary-modal');
+        var summaryContent = document.getElementById('summary-content');
+        if (!summaryModal || !summaryContent) return;
+        summaryContent.innerHTML = '<div style="padding:8px 4px"><h3 style="margin:0 0 8px;color:' + (accent || '#1f3b63') + '">' + escapeHtml(title) + ' (' + (rows ? rows.length : 0) + ')</h3><div style="max-height:420px;overflow:auto;border-radius:6px;background:#fff">' + (buildRows) + '</div></div>';
+        summaryModal.classList.add('open');
+        summaryModal.setAttribute('aria-hidden', 'false');
+        return;
+      }
+
+      function close() {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+
+      function onKey(e) { if (e.key === 'Escape') close(); }
+
+      // Attach close handlers once to avoid duplicate listeners
+      if (!modal.dataset.bound) {
+        modal.dataset.bound = '1';
+        closeBtn && closeBtn.addEventListener('click', close);
+        backdrop && backdrop.addEventListener('click', close);
+        document.addEventListener('keydown', onKey);
+      }
+
+      // Wire up row clicks to open person profile
+      (function () {
+        var rowEls = listEl && listEl.querySelectorAll('.edu-row[data-record-id]');
+        if (!rowEls || rowEls.length === 0) {
+          console.warn('No row elements found for education modal');
+          return;
+        }
+        rowEls.forEach(function (row) {
+          row.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var recordId = row.getAttribute('data-record-id');
+            console.log('[Edu Modal] Row clicked, recordId:', recordId, 'cachedRecords count:', cachedRecords.length);
+            if (!recordId) {
+              console.warn('[Edu Modal] No recordId found on row');
+              return;
+            }
+            var record = cachedRecords.find(function (r) { return String(r.id) === recordId; });
+            console.log('[Edu Modal] Found record:', record);
+            if (record) {
+              console.log('[Edu Modal] Opening summary, callback:', typeof openSummaryCallback);
+              close();
+              // Defer opening the summary to avoid race with modal close/animations
+              setTimeout(function () {
+                console.log('[Org Modal] deferred call to openSummaryCallback executing for id:', recordId);
+                try { openSummaryCallback(record); } catch (e) { console.error('openSummaryCallback failed', e); }
+                // Fallback: call global openSummary if available and different
+                try {
+                  if (typeof window !== 'undefined' && typeof window.openSummary === 'function' && window.openSummary !== openSummaryCallback) {
+                    console.log('[Org Modal] calling window.openSummary fallback for id:', recordId);
+                    try { window.openSummary(record); } catch (e) { console.error('window.openSummary failed', e); }
+                  }
+                } catch (e) { /* ignore */ }
+              }, 120);
+            } else {
+              console.warn('[Edu Modal] Record not found in cachedRecords for id:', recordId);
+            }
+          });
+        });
+      })();
+
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    ['edu-card-postgrad','edu-card-college','edu-card-none'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (el.dataset.analyticsBound === '1') return;
+      el.dataset.analyticsBound = '1';
+      el.addEventListener('click', function () {
+        var category = el.getAttribute('data-category');
+        var filtered = subset.filter(function (r) {
+          var lvl = educationAttainmentLevel(r);
+          if (!lvl) lvl = 'No Education Background';
+          return lvl === category;
+        });
+        openEduModal(category + ' Personnel', filtered, getAccent(el));
+      });
+    });
+  })();
+
   var fieldMap = {};
   var fieldToNames = {};
   subset.forEach(function (r) {
@@ -661,12 +830,30 @@ export function renderAnalytics(records) {
       pushUnique(bracketToNames[b], rosterLabel(r));
     }
   });
-  renderBarChart('chart-grad-year', bracketMap, {
+  renderBarChart('chart-grad-brackets', bracketMap, {
     fixedOrder: bracketOrder,
     omitZeroRows: true,
     wideLabels: true,
     valueMode: valueMode
   });
+  // Post-process grad bracket rows to color 'Unknown' differently
+  (function () {
+    var host = document.getElementById('chart-grad-brackets');
+    if (!host) return;
+    var rows = host.querySelectorAll('.bar-row');
+    rows.forEach(function (row) {
+      var labelEl = row.querySelector('.bar-row__label-text');
+      var label = labelEl ? labelEl.textContent.trim() : '';
+      row.setAttribute('data-label', label);
+      var fill = row.querySelector('.bar-fill');
+      if (!fill) return;
+      if (/Unknown/i.test(label)) {
+        fill.style.background = '#94a3b8';
+      } else if (/2020/i.test(label)) {
+        fill.style.background = '#3b82f6';
+      }
+    });
+  })();
   setBreakdownSlot(
     'breakdown-grad-year',
     bracketToNames,
@@ -739,7 +926,7 @@ export function renderAnalytics(records) {
   var topProgramEntries = Object.entries(programCounts).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 12);
   var topPrograms = Object.fromEntries(topProgramEntries);
   var topProgramKeys = topProgramEntries.map(function (e) { return e[0]; });
-  renderBarChart('chart-top-programs', topPrograms, {
+  renderBarChart('chart-training-breakdown', topPrograms, {
     wideLabels: true,
     valueMode: valueMode,
     maxItems: 10,
@@ -820,6 +1007,145 @@ export function renderAnalytics(records) {
     'Which personnel reported each civil service eligibility/date-acquired entry',
     showAggregateBreakdowns
   );
+
+  // Organization breakdown and Recent Activity (outside of charts)
+  try {
+    var orgMap = {};
+    subset.forEach(function (r) {
+      var org = normalizeValue(r.organization) || 'Unknown';
+      orgMap[org] = (orgMap[org] || 0) + 1;
+    });
+    renderBarChart('chart-org-breakdown', orgMap, { valueMode: valueMode, wideLabels: true, maxItems: 12, showCountOnly: true });
+
+    // Wire up org row clicks to show personnel in modal
+    (function () {
+      var host = document.getElementById('chart-org-breakdown');
+      if (!host) return;
+      var rows = host.querySelectorAll('.bar-row');
+      rows.forEach(function (row) {
+        var labelEl = row.querySelector('.bar-row__label-text');
+        var orgName = labelEl ? labelEl.textContent.trim() : '';
+        if (!orgName) return;
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', function () {
+          var filtered = subset.filter(function (r) {
+            var org = normalizeValue(r.organization) || 'Unknown';
+            return org === orgName;
+          });
+          openOrgModal(orgName, filtered);
+        });
+      });
+    })();
+
+    function openOrgModal(title, rows) {
+      var modal = document.getElementById('analysis-org-modal');
+      var backdrop = document.getElementById('analysis-org-backdrop');
+      var dialog = modal && modal.querySelector('.analysis-edu-dialog');
+      var titleEl = document.getElementById('analysis-org-title');
+      var listEl = document.getElementById('analysis-org-list');
+      var closeBtn = document.getElementById('analysis-org-close');
+
+      var buildRows = (rows || []).map(function (r) {
+        var initials = ((normalizeValue(r.nameFirst) || '').charAt(0) + (normalizeValue(r.nameLast) || '').charAt(0)).toUpperCase();
+        var name = rosterLabel(r);
+        var pos = normalizeValue(r.position || r.jobTitle) || '';
+        var recordId = r.id ? escapeAttr(String(r.id)) : '';
+        return '<div class="edu-row" data-record-id="' + recordId + '" role="button" tabindex="0" aria-label="Open profile summary for ' + escapeAttr(name) + '" title="Open profile summary" style="cursor:pointer;">' +
+          '<div class="edu-avatar" style="background:#1f3b63">' + escapeHtml(initials) + '</div>' +
+          '<div class="edu-meta"><div class="edu-name">' + escapeHtml(name) + '</div><div class="edu-sub">' + escapeHtml(pos) + '</div></div>' +
+        '</div>';
+      }).join('');
+
+      if (titleEl) titleEl.textContent = String(title || 'Organization');
+      if (listEl) listEl.innerHTML = buildRows || '<p style="color:#64748b;padding:8px">No personnel found.</p>';
+
+      if (!modal || !backdrop || !dialog) return;
+
+      function close() {
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+
+      function onKey(e) { if (e.key === 'Escape') close(); }
+
+      if (!modal.dataset.orgBound) {
+        modal.dataset.orgBound = '1';
+        closeBtn && closeBtn.addEventListener('click', close);
+        backdrop && backdrop.addEventListener('click', close);
+        document.addEventListener('keydown', onKey);
+      }
+
+      function openPersonSummary(recordId) {
+        console.log('[Org Modal] Row activated, recordId:', recordId, 'cachedRecords count:', cachedRecords.length);
+        if (!recordId) {
+          console.warn('[Org Modal] No recordId found on row');
+          return;
+        }
+        var record = cachedRecords.find(function (r) { return String(r.id) === String(recordId); });
+        console.log('[Org Modal] Found record:', record);
+        if (!record) {
+          console.warn('[Org Modal] Record not found in cachedRecords for id:', recordId);
+          return;
+        }
+
+        console.log('[Org Modal] Opening summary, callback:', typeof openSummaryCallback);
+        close();
+        setTimeout(function () {
+          console.log('[Org Modal] deferred call to openSummaryCallback executing for id:', recordId);
+          try { openSummaryCallback(record); } catch (e) { console.error('openSummaryCallback failed', e); }
+          try {
+            if (typeof window !== 'undefined' && typeof window.openSummary === 'function' && window.openSummary !== openSummaryCallback) {
+              console.log('[Org Modal] calling window.openSummary fallback for id:', recordId);
+              try { window.openSummary(record); } catch (e) { console.error('window.openSummary failed', e); }
+            }
+          } catch (e) { /* ignore */ }
+        }, 120);
+      }
+
+      if (listEl && !listEl.dataset.orgRowsBound) {
+        listEl.dataset.orgRowsBound = '1';
+        listEl.addEventListener('click', function (e) {
+          var row = e.target && e.target.closest ? e.target.closest('.edu-row[data-record-id]') : null;
+          if (!row || !listEl.contains(row)) return;
+          e.stopPropagation();
+          openPersonSummary(row.getAttribute('data-record-id'));
+        });
+        listEl.addEventListener('keydown', function (e) {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          var row = e.target && e.target.closest ? e.target.closest('.edu-row[data-record-id]') : null;
+          if (!row || !listEl.contains(row)) return;
+          e.preventDefault();
+          openPersonSummary(row.getAttribute('data-record-id'));
+        });
+      }
+
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    var recentContainer = document.getElementById('recent-activity-list');
+    if (recentContainer) {
+      function recUpdated(r) {
+        var d = r.updatedAt || r.updated_at || r.modified_at || r.modified || r.version_date || r.createdAt || r.created_at || null;
+        var dt = d ? new Date(d) : new Date(0);
+        return dt;
+      }
+      var recent = subset.slice().filter(function (r) { return recUpdated(r) && !isNaN(recUpdated(r).getTime()); })
+        .sort(function (a, b) { return recUpdated(b) - recUpdated(a); }).slice(0, 5);
+      recentContainer.innerHTML = recent.map(function (r) {
+        var initials = ((normalizeValue(r.nameFirst) || '').charAt(0) + (normalizeValue(r.nameLast) || '').charAt(0)).toUpperCase();
+        var name = rosterLabel(r);
+        var org = normalizeValue(r.organization) || '';
+        var date = recUpdated(r);
+        var dateStr = isNaN(date.getTime()) ? '' : date.toLocaleDateString();
+        return '<div class="recent-item"><div class="recent-avatar">' + escapeHtml(initials) + '</div>' +
+          '<div class="recent-meta"><div class="recent-name">' + escapeHtml(name) + '</div><div class="recent-org">' + escapeHtml(org) + '</div></div>' +
+          '<div class="recent-date">' + escapeHtml(dateStr) + '</div></div>';
+      }).join('');
+    }
+  } catch (e) {
+    console.error('Org/recent render failed', e);
+  }
 
   renderKeyFindingsGraph({
     total: total,

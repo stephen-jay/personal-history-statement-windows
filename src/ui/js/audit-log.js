@@ -1,4 +1,6 @@
 
+import { escapeHtml } from './escape.js';
+
 export function initAuditLogs({
   isAdmin,
   phsModalCtl,
@@ -17,35 +19,150 @@ export function initAuditLogs({
   toast
 }) {
   let allAuditLogs = [];
+  let actionFilter = '';
+  const dateFilterEl = auditFilterAction;
+  const actionButtons = Array.from(document.querySelectorAll('[data-audit-action]'));
+  const statInsertEl = document.getElementById('audit-stat-inserts');
+  const statUpdateEl = document.getElementById('audit-stat-updates');
+  const statDeleteEl = document.getElementById('audit-stat-deletes');
+  const statUsersEl = document.getElementById('audit-stat-users');
+
+  function getDateValue(value) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function startOfDay(date) {
+    const copy = new Date(date);
+    copy.setHours(0, 0, 0, 0);
+    return copy;
+  }
+
+  function isSameDay(left, right) {
+    return left && right && left.toDateString() === right.toDateString();
+  }
+
+  function formatLongDate(date) {
+    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase();
+  }
+
+  function formatShortTime(date) {
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function getActionMeta(action) {
+    const normalized = String(action || '').toUpperCase();
+    if (normalized === 'INSERT') return { label: 'INSERT', className: 'insert', verb: 'created' };
+    if (normalized === 'UPDATE') return { label: 'UPDATE', className: 'update', verb: 'updated' };
+    if (normalized === 'DELETE') return { label: 'DELETE', className: 'delete', verb: 'deleted' };
+    return { label: normalized || 'CHANGE', className: 'update', verb: 'updated' };
+  }
+
+  function getRecordTarget(log) {
+    const name = log && log.target_personnel_name ? String(log.target_personnel_name) : '';
+    if (name) return name;
+    const recordId = log && log.record_id != null ? String(log.record_id) : '';
+    if (recordId) return 'Record ' + recordId.slice(0, 8);
+    return 'Unknown record';
+  }
+
+  function getSummaryText(log) {
+    if (!log) return 'Updated record';
+    if (log.action === 'UPDATE' && log.old_data && log.new_data) {
+      let changeCount = 0;
+      Object.keys(log.new_data).forEach(function (key) {
+        if (['updated_at', 'version', 'created_at', 'deleted_at'].includes(key)) return;
+        if (JSON.stringify(log.old_data[key]) !== JSON.stringify(log.new_data[key])) changeCount++;
+      });
+      return changeCount > 0 ? ('Modified ' + changeCount + ' field' + (changeCount === 1 ? '' : 's')) : 'System metadata updated';
+    }
+    if (log.action === 'INSERT') return 'Created new record';
+    if (log.action === 'DELETE') return 'Removed record from active roster';
+    return 'Updated record';
+  }
+
+  function getDateFilterBounds() {
+    const now = new Date();
+    const todayStart = startOfDay(now);
+    if (!dateFilterEl || dateFilterEl.value === 'all') return null;
+    if (dateFilterEl.value === 'today') {
+      return { start: todayStart, end: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000) };
+    }
+    if (dateFilterEl.value === 'yesterday') {
+      const start = new Date(todayStart);
+      start.setDate(start.getDate() - 1);
+      const end = new Date(todayStart);
+      return { start, end };
+    }
+    if (dateFilterEl.value === '7d') {
+      const start = new Date(todayStart);
+      start.setDate(start.getDate() - 6);
+      return { start, end: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000) };
+    }
+    if (dateFilterEl.value === '30d') {
+      const start = new Date(todayStart);
+      start.setDate(start.getDate() - 29);
+      return { start, end: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000) };
+    }
+    return null;
+  }
+
+  function matchesDateFilter(log) {
+    const date = getDateValue(log && log.changed_at);
+    const bounds = getDateFilterBounds();
+    if (!bounds) return true;
+    if (!date) return false;
+    return date >= bounds.start && date < bounds.end;
+  }
+
+  function updateActionButtons() {
+    actionButtons.forEach(function (button) {
+      const isActive = String(button.getAttribute('data-audit-action') || '') === actionFilter;
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+  }
+
+  function updateStats() {
+    const today = new Date();
+    const todayLogs = allAuditLogs.filter(function (log) {
+      const date = getDateValue(log && log.changed_at);
+      return date ? isSameDay(date, today) : false;
+    });
+
+    const insertsToday = todayLogs.filter(function (log) { return log.action === 'INSERT'; }).length;
+    const updatesToday = todayLogs.filter(function (log) { return log.action === 'UPDATE'; }).length;
+    const deletesToday = todayLogs.filter(function (log) { return log.action === 'DELETE'; }).length;
+    const activeUsers = new Set(todayLogs.map(function (log) {
+      return String(log && log.admin_name ? log.admin_name : 'System User').trim();
+    }).filter(Boolean)).size;
+
+    if (statInsertEl) statInsertEl.textContent = String(insertsToday);
+    if (statUpdateEl) statUpdateEl.textContent = String(updatesToday);
+    if (statDeleteEl) statDeleteEl.textContent = String(deletesToday);
+    if (statUsersEl) statUsersEl.textContent = String(activeUsers);
+  }
 
   function renderAuditSkeleton(count) {
     if (!auditLogsContainer) return;
     const skeletonCount = Math.max(3, Number(count) || 6);
-    let html = '<div class="timeline-container">';
+    let html = '<div class="audit-list">';
     for (let i = 0; i < skeletonCount; i++) {
       html += `
-        <div class="timeline-group" style="animation-delay: ${i * 50}ms;">
-          <div class="timeline-date-header" style="visibility:hidden; height:0; margin:0; padding:0;"></div>
-          <div class="timeline-items">
-            <div class="timeline-item audit-card" style="pointer-events:none; opacity:0.8;">
-              <div class="timeline-marker" style="background:#e8e8e8; opacity:0.5;"></div>
-              <div class="timeline-content">
-                <div class="timeline-header">
-                  <div style="flex:1;">
-                    <div class="skeleton-cell skeleton--wide" style="height:16px; margin-bottom:8px;"></div>
-                    <div class="skeleton-cell skeleton--medium" style="height:14px; width:120px;"></div>
-                  </div>
-                  <div class="skeleton-cell skeleton--short" style="height:14px; width:60px;"></div>
-                </div>
-                <div class="timeline-body">
-                  <div class="timeline-summary">
-                    <div class="timeline-summary-info">
-                      <div class="skeleton-cell skeleton--short" style="height:20px; width:70px; display:inline-block;"></div>
-                      <div class="skeleton-cell skeleton--medium" style="height:14px; width:200px; display:inline-block; margin-left:12px;"></div>
-                    </div>
-                  </div>
-                </div>
+        <div class="audit-date-group">
+          <div class="audit-date-group__header audit-date-group__header--skeleton">
+            <span class="audit-date-group__label skeleton-cell skeleton--wide" style="height:12px; max-width:280px;"></span>
+            <span class="audit-date-group__line"></span>
+            <span class="audit-date-group__count skeleton-cell skeleton--short" style="height:12px; max-width:72px;"></span>
+          </div>
+          <div class="audit-date-group__items">
+            <div class="audit-log-card audit-log-card--skeleton">
+              <span class="audit-log-card__dot"></span>
+              <div class="audit-log-card__body">
+                <div class="skeleton-cell skeleton--wide" style="height:14px; margin-bottom:10px;"></div>
+                <div class="skeleton-cell skeleton--medium" style="height:12px; max-width:220px;"></div>
               </div>
+              <span class="skeleton-cell skeleton--short" style="height:12px; width:72px;"></span>
             </div>
           </div>
         </div>
@@ -69,7 +186,8 @@ export function initAuditLogs({
       if (auditView) auditView.classList.add('active');
       setActiveNav('audit');
       setAppView('audit');
-      setTopbarSection(topbarSection, 'System Audit Logs');
+      setTopbarSection(topbarSection, 'Audit Logs');
+      updateActionButtons();
       loadAuditLogs();
     }
 
@@ -79,6 +197,7 @@ export function initAuditLogs({
       
       adminApi.getAuditLogs().then(function (logs) {
         allAuditLogs = logs || [];
+        updateStats();
         applyAuditFilters();
       }).catch(function (err) {
         console.error(err);
@@ -88,191 +207,103 @@ export function initAuditLogs({
 
     function applyAuditFilters() {
       const searchTerm = (auditSearch && auditSearch.value ? auditSearch.value : '').toLowerCase().trim();
-      const actionFilter = auditFilterAction && auditFilterAction.value ? auditFilterAction.value : '';
+      const selectedDateFilter = auditFilterAction && auditFilterAction.value ? auditFilterAction.value : 'all';
 
-      const filteredLogs = allAuditLogs.filter(log => {
-        const matchesAction = !actionFilter || log.action === actionFilter;
-        const searchTarget = `${log.admin_name || ''} ${log.target_personnel_name || ''} ${log.action} ${log.table_name}`.toLowerCase();
+      const filteredLogs = allAuditLogs.filter(function (log) {
+        const matchesAction = !actionFilter || String(log.action || '').toUpperCase() === actionFilter;
+        const searchTarget = [log.admin_name || '', log.target_personnel_name || '', log.action || '', log.table_name || ''].join(' ').toLowerCase();
         const matchesSearch = !searchTerm || searchTarget.includes(searchTerm);
-        return matchesAction && matchesSearch;
+        return matchesAction && matchesSearch && matchesDateFilter(log);
       });
 
       renderAuditLogs(filteredLogs);
+      if (dateFilterEl && selectedDateFilter !== dateFilterEl.value) {
+        dateFilterEl.value = selectedDateFilter;
+      }
     }
 
     if (auditSearch) auditSearch.addEventListener('input', applyAuditFilters);
     if (auditFilterAction) auditFilterAction.addEventListener('change', applyAuditFilters);
-    
-    if (auditLogsContainer) {
-      auditLogsContainer.addEventListener('click', function(e) {
-        const header = e.target.closest('.timeline-summary.expandable');
-        if (header) {
-          const item = header.closest('.timeline-item');
-          if (item) item.classList.toggle('expanded');
-        }
+
+    actionButtons.forEach(function (button) {
+      button.addEventListener('click', function () {
+        actionFilter = String(button.getAttribute('data-audit-action') || '');
+        updateActionButtons();
+        applyAuditFilters();
       });
+    });
+
+    if (dateFilterEl) {
+      dateFilterEl.addEventListener('change', applyAuditFilters);
     }
 
     function renderAuditLogs(logs) {
       if (!auditLogsContainer) return;
       if (!logs || logs.length === 0) {
-        auditLogsContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #64748b;">No activity logs found matching your criteria.</div>';
+        auditLogsContainer.innerHTML = '<div class="audit-empty-state">No activity logs found matching your criteria.</div>';
         return;
       }
 
-      const imageFields = [
-        'photoDataUrl', 'signatureDataUrl', 'leftThumbMarkDataUrl', 
-        'rightThumbMarkDataUrl', 'handwrittenEntryDataUrl',
-        'photo_data_url', 'signature_data_url', 'left_thumb_mark_data_url',
-        'right_thumb_mark_data_url', 'handwritten_entry_data_url'
-      ];
-      
-      // Group logs by date
-      const groupedLogs = {};
-      logs.forEach(log => {
-        const d = new Date(log.changed_at);
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        
-        let dateKey;
-        if (d.toDateString() === today.toDateString()) dateKey = 'Today';
-        else if (d.toDateString() === yesterday.toDateString()) dateKey = 'Yesterday';
-        else dateKey = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-        
-        if (!groupedLogs[dateKey]) groupedLogs[dateKey] = [];
-        groupedLogs[dateKey].push(log);
+      const sortedLogs = logs.slice().sort(function (left, right) {
+        return new Date(right.changed_at).getTime() - new Date(left.changed_at).getTime();
+      });
+      const grouped = [];
+      const today = new Date();
+      let currentKey = '';
+      let currentGroup = null;
+
+      sortedLogs.forEach(function (log) {
+        const date = getDateValue(log.changed_at);
+        if (!date) return;
+        const key = startOfDay(date).getTime();
+        if (!currentGroup || currentKey !== key) {
+          currentKey = key;
+          currentGroup = {
+            date: date,
+            logs: []
+          };
+          grouped.push(currentGroup);
+        }
+        currentGroup.logs.push(log);
       });
 
-      let html = '<div class="timeline-container">';
-      let index = 0;
-      
-      for (const [dateGrp, grpLogs] of Object.entries(groupedLogs)) {
-        html += `
-          <div class="timeline-group">
-            <div class="timeline-date-header">${dateGrp}</div>
-            <div class="timeline-items">
-        `;
-        
-        for (const log of grpLogs) {
-          const actionClass = log.action.toLowerCase();
-          const dateObj = new Date(log.changed_at);
-          const timeStr = dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                          
-          const adminName = log.admin_name || 'System User';
-          let targetName = log.target_personnel_name || `Record ID: ${log.record_id.slice(0,8)}...`;
-          if (log.table_name !== 'personnel') {
-             targetName += ` (${log.table_name.replace('personnel_', '').replace(/_/g, ' ')})`;
-          }
-          
-          let summaryText = '';
-          let diffGridHtml = '';
-          let hasDiff = false;
-  
-          if (log.action === 'UPDATE' && log.old_data && log.new_data) {
-            let changeCount = 0;
-            const diffRows = [];
-            
-            for (const key in log.new_data) {
-              if (JSON.stringify(log.old_data[key]) !== JSON.stringify(log.new_data[key])) {
-                if (['updated_at', 'version', 'created_at', 'deleted_at'].includes(key)) continue;
-                
-                changeCount++;
-                const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                
-                if (imageFields.includes(key)) {
-                  diffRows.push(`
-                    <tr>
-                      <td class="diff-label">${label}</td>
-                      <td colspan="3" class="diff-media"><span class="diff-media-badge">Media File Updated</span></td>
-                    </tr>
-                  `);
-                  continue;
-                }
-  
-                const oldVal = log.old_data[key] == null || log.old_data[key] === '' ? '<span class="diff-empty">empty</span>' : String(log.old_data[key]);
-                const newVal = log.new_data[key] == null || log.new_data[key] === '' ? '<span class="diff-empty">empty</span>' : String(log.new_data[key]);
-                
-                const displayOld = oldVal.length > 80 ? oldVal.slice(0, 77) + '...' : oldVal;
-                const displayNew = newVal.length > 80 ? newVal.slice(0, 77) + '...' : newVal;
-  
-                diffRows.push(`
-                  <tr>
-                    <td class="diff-label">${label}</td>
-                    <td class="diff-old">${displayOld}</td>
-                    <td class="diff-arrow">→</td>
-                    <td class="diff-new">${displayNew}</td>
-                  </tr>
-                `);
-              }
-            }
-            
-            if (changeCount > 0) {
-              summaryText = `Modified ${changeCount} field${changeCount !== 1 ? 's' : ''}`;
-              diffGridHtml = `
-                <table class="timeline-diff-table">
-                  <tbody>${diffRows.join('')}</tbody>
-                </table>
-              `;
-              hasDiff = true;
-            } else {
-              summaryText = `System metadata updated`;
-              diffGridHtml = `<div class="timeline-no-diff">Only internal system fields (like timestamps) were modified.</div>`;
-            }
-          } else if (log.action === 'INSERT') {
-             summaryText = `Created new record`;
-             diffGridHtml = `<div class="timeline-no-diff success">Initial record data saved successfully.</div>`;
-          } else if (log.action === 'DELETE') {
-             summaryText = `Removed record from active roster`;
-             diffGridHtml = `<div class="timeline-no-diff danger">Record moved to archive/trash.</div>`;
-          }
-          
-          let titleHtml = '';
-          if (log.action === 'UPDATE') {
-             titleHtml = `<strong>${adminName}</strong> updated record for <strong>${targetName}</strong>`;
-          } else if (log.action === 'INSERT') {
-             titleHtml = `<strong>${adminName}</strong> created record for <strong>${targetName}</strong>`;
-          } else if (log.action === 'DELETE') {
-             titleHtml = `<strong>${adminName}</strong> deleted record for <strong>${targetName}</strong>`;
-          }
-          
-          html += `
-            <div class="timeline-item audit-card" data-index="${index}">
-              <div class="timeline-marker ${actionClass}"></div>
-              <div class="timeline-content">
-                <div class="timeline-header">
-                  <div class="timeline-title">${titleHtml}</div>
-                  <div class="timeline-time">${timeStr}</div>
-                </div>
-                <div class="timeline-body">
-                  <div class="timeline-summary ${hasDiff ? 'audit-card-header expandable' : ''}">
-                    <div class="timeline-summary-info">
-                      <span class="timeline-action-badge ${actionClass}">${log.action}</span>
-                      <span class="timeline-summary-text">${summaryText}</span>
-                    </div>
-                    ${hasDiff ? '<div class="timeline-expand-icon audit-toggle-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></div>' : ''}
-                  </div>
-                  ${hasDiff ? `
-                  <div class="timeline-details audit-details-container">
-                    ${diffGridHtml}
-                  </div>` : `
-                  <div class="timeline-details-inline">
-                    ${diffGridHtml}
-                  </div>
-                  `}
-                </div>
-              </div>
-            </div>
-          `;
-          index++;
-        }
-        
-        html += `
-            </div>
-          </div>
-        `;
-      }
-      
+      let html = '<div class="audit-list">';
+
+      grouped.forEach(function (group) {
+        const isToday = isSameDay(group.date, today);
+        const label = isToday ? ('TODAY — ' + formatLongDate(group.date)) : formatLongDate(group.date);
+        const count = group.logs.length;
+
+        html += '<section class="audit-date-group">';
+        html += '<div class="audit-date-group__header">';
+        html += '<span class="audit-date-group__label">' + escapeHtml(label) + '</span>';
+        html += '<span class="audit-date-group__line" aria-hidden="true"></span>';
+        html += '<span class="audit-date-group__count">' + count + ' EVENT' + (count === 1 ? '' : 'S') + '</span>';
+        html += '</div>';
+        html += '<div class="audit-date-group__items">';
+
+        group.logs.forEach(function (log) {
+          const meta = getActionMeta(log.action);
+          const date = getDateValue(log.changed_at) || new Date();
+          const title = escapeHtml((log.admin_name || 'System User') + ' ' + meta.verb + ' record for ' + getRecordTarget(log));
+          const summary = escapeHtml(getSummaryText(log));
+          const badge = escapeHtml(meta.label);
+          const adminName = escapeHtml(log.admin_name || 'System User');
+          const targetName = escapeHtml(getRecordTarget(log));
+
+          html += '<article class="audit-log-card audit-log-card--' + meta.className + '">';
+          html += '<span class="audit-log-card__dot audit-log-card__dot--' + meta.className + '" aria-hidden="true"></span>';
+          html += '<div class="audit-log-card__body">';
+          html += '<div class="audit-log-card__title"><strong>' + adminName + '</strong> ' + meta.verb + ' record for <strong>' + targetName + '</strong></div>';
+          html += '<div class="audit-log-card__meta"><span class="audit-log-card__badge audit-log-card__badge--' + meta.className + '">' + badge + '</span><span class="audit-log-card__summary">' + summary + '</span></div>';
+          html += '</div>';
+          html += '<time class="audit-log-card__time" datetime="' + escapeHtml(date.toISOString()) + '">' + escapeHtml(formatShortTime(date)) + '</time>';
+          html += '</article>';
+        });
+
+        html += '</div></section>';
+      });
+
       html += '</div>';
       auditLogsContainer.innerHTML = html;
     }

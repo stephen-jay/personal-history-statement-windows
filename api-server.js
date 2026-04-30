@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ override: true });
+const logger = require('./src/main/logger');
 const { REMOVED_FIELDS, PERSONNEL_FIELD_MAP, CHILD_TABLES } = require('./src/shared/schema');
 const { initDatabase, getPgPool, getPostgresData, savePostgresRecord, deletePostgresRecord } = require('./src/main/database');
 const auth = require('./src/main/auth');
@@ -16,9 +17,15 @@ if (!fs.existsSync(IMAGE_UPLOAD_DIR)) {
 
 const DATABASE_URL = process.env.DATABASE_URL || '';
 const PORT = Number(process.env.API_PORT || process.env.PORT || 3210);
+const AUTH_SECRET = process.env.AUTH_SECRET || '';
 
 if (!DATABASE_URL) {
-  console.error('Missing DATABASE_URL');
+  logger.error('Missing DATABASE_URL');
+  process.exit(1);
+}
+
+if (!AUTH_SECRET) {
+  logger.error('Missing AUTH_SECRET');
   process.exit(1);
 }
 
@@ -31,7 +38,6 @@ app.use(express.json({ limit: '6mb' }));
 // ---------------------------------------------------------------------------
 // Minimal auth (no extra npm deps): HMAC-signed tokens + pgcrypto password check.
 // ---------------------------------------------------------------------------
-const AUTH_SECRET = process.env.AUTH_SECRET || '';
 
 function base64UrlEncode(input) {
   const b64 = Buffer.from(input).toString('base64');
@@ -374,6 +380,57 @@ try {
   }
 });
 
-app.listen(PORT, function () {
-  console.log('APOLLO API listening on port', PORT);
+// Error handling middleware
+app.use(function (err, req, res, next) {
+  logger.error('Unhandled error', { message: err.message, stack: err.stack });
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+// 404 handler
+app.use(function (req, res) {
+  res.status(404).json({ error: 'Not found' });
+});
+
+const server = app.listen(PORT, function () {
+  logger.info(`APOLLO API listening on port ${PORT}`);
+});
+
+// Graceful shutdown
+function gracefulShutdown(signal) {
+  logger.info(`Received ${signal}, starting graceful shutdown...`);
+  
+  server.close(function () {
+    logger.info('HTTP server closed');
+    
+    const pgPool = getPgPool();
+    if (pgPool) {
+      pgPool.end(function () {
+        logger.info('Database connection pool closed');
+        process.exit(0);
+      }).catch(function (err) {
+        logger.error('Error closing database pool', { message: err.message });
+        process.exit(1);
+      });
+    } else {
+      process.exit(0);
+    }
+  });
+  
+  // Force shutdown after 15 seconds
+  setTimeout(function () {
+    logger.error('Graceful shutdown timeout, forcing exit');
+    process.exit(1);
+  }, 15000);
+}
+
+process.on('SIGTERM', function () { gracefulShutdown('SIGTERM'); });
+process.on('SIGINT', function () { gracefulShutdown('SIGINT'); });
+
+process.on('uncaughtException', function (err) {
+  logger.error('Uncaught exception', { message: err.message, stack: err.stack });
+  process.exit(1);
+});
+
+process.on('unhandledRejection', function (reason, promise) {
+  logger.error('Unhandled rejection', { reason: String(reason), promise: String(promise) });
 });

@@ -15,7 +15,11 @@ function getPersonFolderName(record) {
   const middleName = (record.nameMiddle || '').trim();
 
   const parts = [lastName, firstName, middleName].filter(Boolean);
-  if (!parts.length) return null;
+  if (!parts.length) {
+    // Fallback to using an identifier so we can still save images when names are missing
+    const id = record.id ? String(record.id).slice(0, 12) : null;
+    return id ? ('person-' + id) : ('person-' + Date.now());
+  }
 
   return parts.join(' ');
 }
@@ -53,13 +57,16 @@ function generateImageFilename(record, imageType) {
   const lastNameNoSpaces = getLastNameNoSpaces(record);
   const initials = getPersonInitials(record);
 
-  if (!lastNameNoSpaces) {
-    throw new Error('Cannot generate filename: person must have nameLast');
+  // If last name is missing, fall back to using an id or timestamp so we don't throw
+  let base = lastNameNoSpaces;
+  if (!base) {
+    if (record.id) base = 'id' + String(record.id).slice(0, 12);
+    else base = 'person' + Date.now();
   }
 
   // The user requested LastNameInitials-ImageType
   // Example: DelaCruzCT-LeftThumb
-  return `${lastNameNoSpaces}${initials}-${imageType}`;
+  return `${base}${initials}-${imageType}`;
 }
 
 /**
