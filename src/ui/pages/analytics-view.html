@@ -1,120 +1,95 @@
-<div class="analytics-wrap">
+<link rel="stylesheet" href="css/analysis.css">
+<div class="analysis-wrap">
   <h2>Personnel Graphing Analysis</h2>
-  <p class="analytics-subtitle">Education, training, and seminars from submitted personnel records.</p>
+  <p class="analysis-subtitle">Education, training, and seminars from submitted personnel records.</p>
 
-  <div class="analytics-toolbar" role="region" aria-label="Analysis scope">
-    <label for="analytics-scope" class="analytics-toolbar-label">Show data for</label>
-    <select id="analytics-scope" class="analytics-scope-select">
-      <option value="">All personnel (combined totals)</option>
-    </select>
-
-    <label for="analytics-metric-mode" class="analytics-toolbar-label">Display values as</label>
-    <select id="analytics-metric-mode" class="analytics-scope-select">
-      <option value="count">Count</option>
-      <option value="percent">Percent</option>
-    </select>
+  <div class="kpi-row" role="region" aria-label="Key performance indicators">
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpi-total">0</div>
+      <div class="kpi-label">Total Personnel</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpi-education-records">0</div>
+      <div class="kpi-label">With Education Records</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpi-trained-month">0</div>
+      <div class="kpi-label">Trained This Month</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-value" id="kpi-post-grad-rate">0%</div>
+      <div class="kpi-label">Post-Graduate Rate</div>
+    </div>
   </div>
 
-  <div class="analytics-toolbar analytics-toolbar--search" role="region" aria-label="Analysis search filters">
-    <label for="analytics-search-type" class="analytics-toolbar-label">Search In</label>
-    <select id="analytics-search-type" class="analytics-scope-select">
-      <option value="all">All</option>
-      <option value="name">Name</option>
-      <option value="education">Education</option>
-      <option value="training">Training/Seminar</option>
-    </select>
-
-    <label for="analytics-search-query" class="analytics-toolbar-label">Search</label>
-    <input type="search" id="analytics-search-query" class="analytics-search-input" placeholder="Type a keyword" />
+  <div class="section-label">EDUCATION ATTAINMENT — CLICK A CARD TO VIEW PERSONNEL</div>
+  <div class="edu-hero-row">
+    <div class="edu-card" id="edu-card-postgrad" data-category="Post-Graduate" style="border-top:4px solid #1f3b63">
+      <div class="edu-count" id="edu-post-count">0</div>
+      <div class="edu-pct" id="edu-post-pct">0%</div>
+      <div class="edu-label">Post-Graduate</div>
+      <div class="edu-progress"><div class="edu-progress-fill" id="edu-post-fill" style="width:0%"></div></div>
+      <div class="edu-hint">Click to view list</div>
+    </div>
+    <div class="edu-card" id="edu-card-college" data-category="College Graduate" style="border-top:4px solid #3b82f6">
+      <div class="edu-count" id="edu-college-count">0</div>
+      <div class="edu-pct" id="edu-college-pct">0%</div>
+      <div class="edu-label">College Graduate</div>
+      <div class="edu-progress"><div class="edu-progress-fill" id="edu-college-fill" style="width:0%"></div></div>
+      <div class="edu-hint">Click to view list</div>
+    </div>
+    <div class="edu-card" id="edu-card-none" data-category="No Education Background" style="border-top:4px solid #94a3b8">
+      <div class="edu-count" id="edu-none-count">0</div>
+      <div class="edu-pct" id="edu-none-pct">0%</div>
+      <div class="edu-label">No Education Record</div>
+      <div class="edu-progress"><div class="edu-progress-fill" id="edu-none-fill" style="width:0%"></div></div>
+      <div class="edu-hint">Click to view list</div>
+    </div>
   </div>
 
-  <p class="analytics-scope-hint" id="analytics-scope-hint" hidden></p>
-
-  <div class="analytics-view-tabs" role="tablist" aria-label="Analytics view mode">
-    <button type="button" class="analytics-view-tab-btn active" role="tab" aria-selected="true" data-analytics-view="analysis">Personnel Graphing Analysis</button>
-    <button type="button" class="analytics-view-tab-btn" role="tab" aria-selected="false" data-analytics-view="findings">Key Findings Graph</button>
+  <div class="middle-row">
+    <div class="card left-card">
+      <h3>Organization Breakdown</h3>
+      <div id="chart-org-breakdown"></div>
+    </div>
+    <div class="card right-card">
+      <h3>Recent Activity</h3>
+      <div id="recent-activity-list"></div>
+    </div>
   </div>
 
-  <section class="analytics-view-panel active" data-analytics-view-panel="analysis">
-    <div class="analytics-kpis">
-      <div class="analytics-kpi">
-        <div class="analytics-kpi-label">Total Personnel</div>
-        <div class="analytics-kpi-value" id="kpi-total">0</div>
-      </div>
-      <div class="analytics-kpi">
-        <div class="analytics-kpi-label">With Education Records</div>
-        <div class="analytics-kpi-value" id="kpi-education-records">0</div>
-      </div>
-      <div class="analytics-kpi">
-        <div class="analytics-kpi-label">Trained This Month</div>
-        <div class="analytics-kpi-value" id="kpi-trained-month">0</div>
-      </div>
+  <div class="full-card">
+    <h3>Training &amp; Seminars Breakdown</h3>
+    <div id="chart-training-breakdown"></div>
+  </div>
+
+  <div class="full-card">
+    <h3>Graduation Year Brackets</h3>
+    <div id="chart-grad-brackets"></div>
+  </div>
+
+</div>
+
+<!-- Education list modal for Analysis view -->
+<div id="analysis-edu-modal" class="analysis-edu-modal" aria-hidden="true">
+  <div id="analysis-edu-backdrop" class="analysis-edu-backdrop" tabindex="-1"></div>
+  <div class="analysis-edu-dialog" role="dialog" aria-modal="true" aria-labelledby="analysis-edu-title">
+    <div class="analysis-edu-header">
+      <h3 id="analysis-edu-title">Education</h3>
+      <button type="button" id="analysis-edu-close" class="analysis-edu-close" aria-label="Close">✕</button>
     </div>
+    <div id="analysis-edu-list" class="analysis-edu-list" style="max-height:420px;overflow:auto;padding:8px;"></div>
+  </div>
+</div>
 
-    <div class="analytics-tabs" role="tablist" aria-label="Analytics sections">
-      <button type="button" class="analytics-tab-btn active" role="tab" aria-selected="true" data-analytics-tab="education">Education</button>
-      <button type="button" class="analytics-tab-btn" role="tab" aria-selected="false" data-analytics-tab="training">Training</button>
-      <button type="button" class="analytics-tab-btn" role="tab" aria-selected="false" data-analytics-tab="eligibility">Eligibility</button>
+<!-- Organization list modal for Analysis view -->
+<div id="analysis-org-modal" class="analysis-edu-modal" aria-hidden="true">
+  <div id="analysis-org-backdrop" class="analysis-edu-backdrop" tabindex="-1"></div>
+  <div class="analysis-edu-dialog" role="dialog" aria-modal="true" aria-labelledby="analysis-org-title">
+    <div class="analysis-edu-header">
+      <h3 id="analysis-org-title">Organization</h3>
+      <button type="button" id="analysis-org-close" class="analysis-edu-close" aria-label="Close">✕</button>
     </div>
-
-    <section class="analytics-panel active" data-analytics-panel="education">
-      <div class="analytics-grid">
-        <div class="analytics-card">
-          <h3>Educational Attainment Distribution</h3>
-          <div id="chart-education-level"></div>
-          <div class="analytics-breakdown-slot" id="breakdown-education-level" hidden></div>
-        </div>
-        <div class="analytics-card">
-          <h3>Graduation Year Brackets</h3>
-          <div id="chart-grad-year"></div>
-          <div class="analytics-breakdown-slot" id="breakdown-grad-year" hidden></div>
-        </div>
-        <div class="analytics-card analytics-card--span">
-          <h3>Field / Strand / Course Distribution</h3>
-          <div id="chart-field-course"></div>
-          <div class="analytics-breakdown-slot" id="breakdown-field-course" hidden></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="analytics-panel" data-analytics-panel="training" hidden>
-      <div class="analytics-grid">
-        <div class="analytics-card">
-          <h3>Seminars &amp; Trainings Completed (Last 6 Months)</h3>
-          <div id="chart-training-monthly"></div>
-          <div class="analytics-breakdown-slot" id="breakdown-training-monthly" hidden></div>
-        </div>
-        <div class="analytics-card">
-          <h3>Other Schools/Training Attended and Date of Attendance</h3>
-          <div id="chart-other-schools-training"></div>
-          <div class="analytics-breakdown-slot" id="breakdown-other-schools-training" hidden></div>
-        </div>
-        <div class="analytics-card analytics-card--span">
-          <h3>Top Training Programs / Seminars Attended</h3>
-          <div id="chart-top-programs"></div>
-          <div class="analytics-breakdown-slot" id="breakdown-top-programs" hidden></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="analytics-panel" data-analytics-panel="eligibility" hidden>
-      <div class="analytics-grid">
-        <div class="analytics-card analytics-card--span">
-          <h3>Civil Service Eligibility/Date Acquired</h3>
-          <div id="chart-civil-service-eligibility"></div>
-          <div class="analytics-breakdown-slot" id="breakdown-civil-service-eligibility" hidden></div>
-        </div>
-      </div>
-    </section>
-  </section>
-
-  <section class="analytics-view-panel" data-analytics-view-panel="findings" hidden>
-    <div class="analytics-grid">
-      <div class="analytics-card analytics-card--span analytics-key-findings-card">
-        <h3>Key Findings Overview</h3>
-        <div id="chart-key-findings-overview"></div>
-        <p class="analytics-key-findings-note" id="analytics-key-findings-note"></p>
-      </div>
-    </div>
-  </section>
+    <div id="analysis-org-list" class="analysis-edu-list" style="max-height:420px;overflow:auto;padding:8px;"></div>
+  </div>
 </div>

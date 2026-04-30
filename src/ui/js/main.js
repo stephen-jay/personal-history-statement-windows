@@ -326,7 +326,7 @@ async function loadAnalyticsPage() {
           // Small delay to allow the browser to paint the skeleton.
           window.setTimeout(function () {
             renderList(rosterCache.records, listDeps);
-            renderAnalytics(rosterCache.records);
+            renderAnalytics(rosterCache.records, { openSummary: openSummary });
             try { hideLoader(); } catch (_) {}
             resolve(rosterCache.records);
           }, 80);
@@ -349,7 +349,7 @@ async function loadAnalyticsPage() {
         rosterCache.records = records;
         rosterCache.ts = Date.now();
         renderList(records, listDeps);
-        renderAnalytics(records);
+        renderAnalytics(records, { openSummary: openSummary });
         hideLoader();
         return records;
       }).catch(function (err) {
@@ -365,7 +365,7 @@ async function loadAnalyticsPage() {
         console.error(err);
         window.toast.error('Could not load data: ' + (err && err.message ? err.message : 'Unknown error'));
         renderList([], listDeps);
-        renderAnalytics([]);
+        renderAnalytics([], { openSummary: openSummary });
       });
     }
 
@@ -444,9 +444,9 @@ async function loadAnalyticsPage() {
       if (auditView) auditView.classList.remove('active');
       setActiveNav('analytics');
       setAppView('analytics');
-      setTopbarSection(topbarSection, 'Reports');
+      setTopbarSection(topbarSection, 'Personnel Graphing Analysis');
       loadAllDataAndRender().catch(function () {
-        renderAnalytics([]);
+        renderAnalytics([], { openSummary: openSummary });
       });
     }
 
