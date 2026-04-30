@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const { pathToFileURL } = require('url');
 const dotenv = require('dotenv');
+const { autoUpdater } = require('electron-updater');
 
 // --- Internal Modules ---
 const { initDatabase } = require('./src/main/database');
@@ -97,6 +98,29 @@ app.commandLine.appendSwitch('disable-features', 'GPU');
 
 let mainWindow;
 
+function setupAutoUpdates() {
+  if (!app.isPackaged) return;
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on('error', error => {
+    console.warn('Auto-update error:', error && error.message ? error.message : error);
+  });
+  autoUpdater.on('update-available', info => {
+    console.log('Update available:', info.version);
+  });
+  autoUpdater.on('update-not-available', info => {
+    console.log('No update available:', info && info.version ? info.version : 'latest');
+  });
+  autoUpdater.on('update-downloaded', info => {
+    console.log('Update downloaded:', info.version);
+  });
+
+  autoUpdater.checkForUpdatesAndNotify().catch(error => {
+    console.warn('Failed to check for updates:', error && error.message ? error.message : error);
+  });
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1000,
@@ -108,8 +132,8 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
-    icon: fs.existsSync(path.join(__dirname, 'assets', 'icon.png'))
-      ? path.join(__dirname, 'assets', 'icon.png')
+    icon: fs.existsSync(path.join(__dirname, 'assets', 'icon.ico'))
+      ? path.join(__dirname, 'assets', 'icon.ico')
       : undefined,
   });
 
@@ -122,7 +146,10 @@ function createWindow() {
   registerExportHandlers(ipcMain, () => mainWindow);
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  setupAutoUpdates();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

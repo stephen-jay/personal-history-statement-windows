@@ -158,7 +158,7 @@ async function loadAnalyticsPage() {
       if (auditView) auditView.classList.remove('active');
       setActiveNav('list');
       setAppView('list');
-      setTopbarSection(topbarSection, 'Personnel roster');
+      setTopbarSection(topbarSection, 'Personnels');
       loadList(!!forceRefresh);
     }
 
@@ -444,7 +444,7 @@ async function loadAnalyticsPage() {
       if (auditView) auditView.classList.remove('active');
       setActiveNav('analytics');
       setAppView('analytics');
-      setTopbarSection(topbarSection, 'Personnel Graphing Analysis');
+      setTopbarSection(topbarSection, 'Dashboard');
       loadAllDataAndRender().catch(function () {
         renderAnalytics([], { openSummary: openSummary });
       });
@@ -725,10 +725,11 @@ async function loadAnalyticsPage() {
     ROW_SECTIONS.forEach(function (section) {
       formData.setStructuredRows(section, []);
     });
-    setActiveNav('list');
-    setAppView('list');
-    setTopbarSection(topbarSection, 'Personnel roster');
-    await loadList();
+    if (canViewAnalytics) {
+      showAnalytics();
+    } else {
+      showList();
+    }
     // Ensure loader hidden after initial load (defensive)
     try { hideLoader(); } catch (_) {}
   } catch (e) {

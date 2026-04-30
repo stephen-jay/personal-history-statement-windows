@@ -213,10 +213,17 @@ function registerIpcHandlers(ipcMain, app, config) {
     if (!records) {
       records = getData();
     }
-    return (records || []).map(function (r) {
-      return imageStorage.hydrateRecordImages(config.IMAGE_UPLOAD_DIR, r);
-    });
+    // Images are stored as base64 data URLs in database; no hydration needed
+    return records || [];
   });
+
+  function archivePersonnelImages(record) {
+    try {
+      imageStorage.archiveRecordImages(config.IMAGE_UPLOAD_DIR, record);
+    } catch (e) {
+      console.error('personnel image archive failed:', e && e.message ? e.message : e);
+    }
+  }
 
   ipcMain.handle('personnel:save', async (_, record) => {
     const recordToSave = record || {};
@@ -230,23 +237,24 @@ function registerIpcHandlers(ipcMain, app, config) {
         }, config, auth.getAuthSession());
         if (saved && config.ENABLE_DUAL_WRITE) {
           try {
-            const processedLocally = imageStorage.processRecordImages(config.IMAGE_UPLOAD_DIR, saved);
-            saveJsonRecord(processedLocally);
+            // Images are stored as base64 in database; no processing needed
+            saveJsonRecord(saved);
           } catch (e) {
             console.error('personnel:save dual-write local JSON failed:', e);
           }
         }
+        archivePersonnelImages(saved);
       } catch (e) {
         console.error('personnel:save remote API failed, falling back to local:', e && e.message ? e.message : e);
       }
     }
 
     if (!saved) {
-      const processed = imageStorage.processRecordImages(config.IMAGE_UPLOAD_DIR, recordToSave);
+      // Images are stored as base64 data URLs directly; no file processing needed
       if (config.USE_POSTGRES_WRITE) {
         try {
           const session = auth.getAuthSession();
-          saved = await savePostgresRecord(processed, session && session.user ? session.user.id : null);
+          saved = await savePostgresRecord(recordToSave, session && session.user ? session.user.id : null);
           if (config.ENABLE_DUAL_WRITE) {
             try {
               saveJsonRecord(saved);
@@ -254,17 +262,20 @@ function registerIpcHandlers(ipcMain, app, config) {
               console.error('personnel:save dual-write JSON failed:', e);
             }
           }
+          archivePersonnelImages(saved);
         } catch (e) {
           console.error('personnel:save local postgres failed, trying JSON fallback:', e && e.message ? e.message : e);
         }
       }
       
       if (!saved) {
-        saved = saveJsonRecord(processed);
+        saved = saveJsonRecord(recordToSave);
+        archivePersonnelImages(saved);
       }
     }
 
-    return imageStorage.hydrateRecordImages(config.IMAGE_UPLOAD_DIR, saved);
+    // Images are already as base64 data URLs; no hydration needed
+    return saved;
   });
 
   ipcMain.handle('personnel:delete', async (_, id, version) => {

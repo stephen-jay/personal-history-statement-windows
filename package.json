@@ -19,6 +19,13 @@
   "build": {
     "appId": "com.apollo.personnel",
     "productName": "APOLLO Personnel Database",
+    "forceCodeSigning": false,
+    "publish": [
+      {
+        "provider": "github",
+        "releaseType": "release"
+      }
+    ],
     "directories": {
       "buildResources": "assets"
     },
@@ -26,7 +33,8 @@
       "target": [
         "nsis",
         "portable"
-      ]
+      ],
+      "icon": "assets/icon.ico"
     },
     "nsis": {
       "oneClick": false,
@@ -37,6 +45,7 @@
     },
     "files": [
       "main.js",
+      "image-storage.js",
       "app-config.example.json",
       "src/**/*",
       "config/**/*",
@@ -48,6 +57,7 @@
   "dependencies": {
     "docx": "^8.5.0",
     "dotenv": "^16.6.1",
+    "electron-updater": "^6.8.3",
     "express": "^5.2.1",
     "pg": "^8.20.0",
     "pizzip": "^3.2.0"
