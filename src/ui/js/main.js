@@ -3,7 +3,7 @@ import * as formData from './form-data.js';
 import { renderAnalytics } from './analytics.js';
 import { buildSummaryHtml } from './summary.js';
 import { buildStandalonePhsHtml, suggestedExportBasename } from './phs-export-html.js';
-import { renderList } from './list.js';
+import { renderList, renderRosterSkeleton } from './list.js';
 import { setActiveNav, setAppView, setTopbarSection } from './views.js';
 import { createFormNav } from './form-nav.js';
 import { createPhsModalController } from './phs-modal.js';
@@ -12,6 +12,7 @@ import { initAdminUsersView } from './admin-users.js';
 import { initToastSystem } from './toast.js';
 import { buildAutoFillRecord } from './autofill.js';
 import { initAuditLogs } from './audit-log.js';
+import { show as showLoader, hide as hideLoader } from './loader.js';
 
 function showError(msg) {
   document.body.innerHTML = '<div style="padding:24px;font-family:sans-serif;max-width:500px"><h2>Error</h2><p>' + String(msg).replace(/</g, '&lt;') + '</p><p>Check the console (Ctrl+Shift+I) for details.</p></div>';
@@ -20,6 +21,7 @@ function showError(msg) {
 async function loadFormPages() {
   const pagesContainer = document.getElementById('form-pages');
   if (!pagesContainer) throw new Error('Form pages container not found.');
+  showLoader('Loading interface…');
   const files = [
     'pages/form-page-1-personal-details.html',
     'pages/form-page-2-characteristics-marital.html',
@@ -33,14 +35,17 @@ async function loadFormPages() {
     return response.text();
   }));
   pagesContainer.innerHTML = htmlPages.join('\n');
+  hideLoader();
 }
 
 async function loadAnalyticsPage() {
   const analyticsContainer = document.getElementById('analytics-content');
   if (!analyticsContainer) throw new Error('Analytics container not found.');
+  showLoader('Loading reports…');
   const response = await fetch('pages/analytics-view.html');
   if (!response.ok) throw new Error('Failed to load analytics-view.html');
   analyticsContainer.innerHTML = await response.text();
+  hideLoader();
 }
 
 (async function bootstrap() {
@@ -146,7 +151,7 @@ async function loadAnalyticsPage() {
 
     const { showPage, goNext, goPrev } = createFormNav(phsForm);
 
-    function applyListChrome() {
+    function applyListChrome(forceRefresh) {
       listView.classList.add('active');
       if (analyticsView) analyticsView.classList.remove('active');
       if (adminView) adminView.classList.remove('active');
@@ -154,7 +159,7 @@ async function loadAnalyticsPage() {
       setActiveNav('list');
       setAppView('list');
       setTopbarSection(topbarSection, 'Personnel roster');
-      loadList();
+      loadList(!!forceRefresh);
     }
 
     async function openSummary(record) {
@@ -167,9 +172,12 @@ async function loadAnalyticsPage() {
       // Fetch and render real history
       if (record && record.id) {
         try {
-          const history = await window.personnelApi.getHistory(record.id);
+            showLoader('Fetching history…');
+            const history = await window.personnelApi.getHistory(record.id);
           renderHistoryTimeline(history);
+            hideLoader();
         } catch (e) {
+            hideLoader();
           console.error('History load failed:', e);
         }
       }
@@ -260,16 +268,100 @@ async function loadAnalyticsPage() {
       permissions: { canEdit: canEdit, canDelete: canDelete }
     };
 
-    function loadAllDataAndRender() {
+    // Roster cache: persist records after first successful fetch.
+    // Only re-fetch when explicitly requested (forceRefresh) or when stale.
+    const ROSTER_STALE_MS = 5 * 60 * 1000; // 5 minutes
+    // Minimum visible time for the roster skeleton. Keep long enough to paint.
+    const ROSTER_SKELETON_MIN_MS = 600;
+    let rosterCache = { records: null, ts: 0 };
+
+    // Ensure the skeleton CSS/animation is present at runtime. Some environments
+    // (file:// loads, CSP, or stylesheet ordering) may prevent the .skeleton-cell
+    // rule from applying — inject a safe fallback style once if needed.
+    function ensureSkeletonStyles() {
+      try {
+        if (document.getElementById('phs-skeleton-fallback')) return;
+        // Create a temporary element to test computed styles
+        const tmp = document.createElement('div');
+        tmp.className = 'skeleton-cell';
+        tmp.style.position = 'absolute';
+        tmp.style.left = '-9999px';
+        tmp.style.top = '-9999px';
+        document.body.appendChild(tmp);
+        const cs = window.getComputedStyle(tmp);
+        const hasAnim = (cs && cs.getPropertyValue('animation-name') && cs.getPropertyValue('animation-name') !== 'none') || (cs && cs.getPropertyValue('animation') && cs.getPropertyValue('animation') !== 'none');
+        const hasBgSize = cs && cs.getPropertyValue('background-size') && cs.getPropertyValue('background-size') !== 'auto';
+        document.body.removeChild(tmp);
+        if (hasAnim && hasBgSize) return; // existing stylesheet covers it
+
+        const css = `
+/* phs fallback skeleton shimmer */
+@keyframes shimmer { 0% { background-position: -800px 0; } 100% { background-position: 800px 0; } }
+.skeleton-cell { background: linear-gradient(90deg,#e8e8e8 25%,#f5f5f5 50%,#e8e8e8 75%); background-size:800px 100%; animation: shimmer 1.5s infinite linear; border-radius:4px; display:block }
+`;
+        const s = document.createElement('style');
+        s.id = 'phs-skeleton-fallback';
+        s.textContent = css;
+        document.head.appendChild(s);
+      } catch (e) {
+        // swallow errors — fallback isn't critical
+        console.warn('ensureSkeletonStyles failed:', e && e.message);
+      }
+    }
+
+    function loadAllDataAndRender(options) {
+      const opts = options || {};
+      const force = !!opts.forceRefresh;
+      
+      // Use cache when available and not stale
+      if (!force && rosterCache.records && (Date.now() - rosterCache.ts) < ROSTER_STALE_MS) {
+        // Briefly show skeleton to avoid a blank gap while the DOM repaints,
+        // then render the cached data almost immediately.
+        try {
+          ensureSkeletonStyles();
+          renderRosterSkeleton(listDeps, Math.min(6, (rosterCache.records && rosterCache.records.length) || 6));
+        } catch (_) {}
+
+        return new Promise(function (resolve) {
+          // Small delay to allow the browser to paint the skeleton.
+          window.setTimeout(function () {
+            renderList(rosterCache.records, listDeps);
+            renderAnalytics(rosterCache.records);
+            try { hideLoader(); } catch (_) {}
+            resolve(rosterCache.records);
+          }, 80);
+        });
+      }
+
+      const startedAt = Date.now();
+      try { ensureSkeletonStyles(); } catch (_) {}
+      renderRosterSkeleton(listDeps, 6);
+      
       return window.personnelApi.getAll().then(function (records) {
+        const elapsed = Date.now() - startedAt;
+        const waitMs = Math.max(0, ROSTER_SKELETON_MIN_MS - elapsed);
+        
+        return new Promise(function (resolve) {
+          if (!waitMs) return resolve(records);
+          window.setTimeout(function () { resolve(records); }, waitMs);
+        });
+      }).then(function (records) {
+        rosterCache.records = records;
+        rosterCache.ts = Date.now();
         renderList(records, listDeps);
         renderAnalytics(records);
+        hideLoader();
         return records;
+      }).catch(function (err) {
+        hideLoader();
+        throw err;
       });
     }
 
-    function loadList() {
-      loadAllDataAndRender().catch(function (err) {
+    function loadList(forceRefresh) {
+      // Clear any stale loader before rendering cached results
+      try { hideLoader(); } catch (_) {}
+      return loadAllDataAndRender({ forceRefresh: !!forceRefresh }).catch(function (err) {
         console.error(err);
         window.toast.error('Could not load data: ' + (err && err.message ? err.message : 'Unknown error'));
         renderList([], listDeps);
@@ -283,11 +375,12 @@ async function loadAnalyticsPage() {
      * @param {{ forceCloseModal?: boolean }} [opts]
      */
     function showList(opts) {
-      var force = opts && opts.forceCloseModal;
+      var forceClose = opts && opts.forceCloseModal;
+      var forceRefresh = opts && opts.forceRefresh;
       if (phsModalCtl && phsModalCtl.isOpen()) {
-        if (!phsModalCtl.close(force === true)) return;
+        if (!phsModalCtl.close(forceClose === true)) return;
       }
-      applyListChrome();
+      applyListChrome(forceRefresh === true);
     }
 
     phsModalCtl = createPhsModalController({
@@ -348,6 +441,7 @@ async function loadAnalyticsPage() {
       listView.classList.remove('active');
       if (analyticsView) analyticsView.classList.add('active');
       if (adminView) adminView.classList.remove('active');
+      if (auditView) auditView.classList.remove('active');
       setActiveNav('analytics');
       setAppView('analytics');
       setTopbarSection(topbarSection, 'Reports');
@@ -367,6 +461,7 @@ async function loadAnalyticsPage() {
       listView.classList.remove('active');
       if (analyticsView) analyticsView.classList.remove('active');
       if (adminView) adminView.classList.add('active');
+      if (auditView) auditView.classList.remove('active');
       setActiveNav('admin');
       setAppView('admin');
       setTopbarSection(topbarSection, 'User management');
@@ -580,11 +675,32 @@ async function loadAnalyticsPage() {
 
     if (searchInput) {
       searchInput.addEventListener('input', function () {
+        const q = (searchInput && searchInput.value || '').trim().toLowerCase();
+        if (rosterCache.records) {
+          // Use cached records for instant search
+          const records = rosterCache.records;
+          renderList(records, listDeps);
+          return;
+        }
+        // Fallback to fetching if cache is not yet populated
         window.personnelApi.getAll().then(function (records) {
+          // update cache
+          rosterCache.records = records;
+          rosterCache.ts = Date.now();
           renderList(records, listDeps);
         });
       });
     }
+
+    // Listen for organization filter changes
+    window.addEventListener('phs-org-filter-changed', function () {
+      console.log('[MAIN] Org filter changed event received');
+      if (rosterCache.records) {
+        renderList(rosterCache.records, listDeps);
+      } else {
+        loadList(false);
+      }
+    });
 
     phsForm.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -597,7 +713,8 @@ async function loadAnalyticsPage() {
       );
       if (!confirmed) return;
       window.personnelApi.save(data).then(function () {
-        showList({ forceCloseModal: true });
+        // After saving, force refresh the roster so cache is updated
+        showList({ forceCloseModal: true, forceRefresh: true });
       }).catch(function (err) {
         console.error(err);
         window.toast.error('Could not save: ' + (err && err.message ? err.message : 'Unknown error'));
@@ -611,7 +728,9 @@ async function loadAnalyticsPage() {
     setActiveNav('list');
     setAppView('list');
     setTopbarSection(topbarSection, 'Personnel roster');
-    loadList();
+    await loadList();
+    // Ensure loader hidden after initial load (defensive)
+    try { hideLoader(); } catch (_) {}
   } catch (e) {
     showError(e.message || String(e));
     console.error(e);

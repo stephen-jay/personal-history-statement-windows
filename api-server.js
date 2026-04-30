@@ -358,7 +358,7 @@ app.delete('/personnel/:id', requireAuth, requirePersonnelDelete, async function
 });
 
 app.get('/personnel/:id/history', requireAuth, requirePersonnelRead, async function (req, res) {
-  try {
+try {
     const id = req.params.id;
     const rows = await getPgPool().query(
       `SELECT a.*, u.full_name as admin_name 

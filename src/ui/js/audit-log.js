@@ -18,6 +18,43 @@ export function initAuditLogs({
 }) {
   let allAuditLogs = [];
 
+  function renderAuditSkeleton(count) {
+    if (!auditLogsContainer) return;
+    const skeletonCount = Math.max(3, Number(count) || 6);
+    let html = '<div class="timeline-container">';
+    for (let i = 0; i < skeletonCount; i++) {
+      html += `
+        <div class="timeline-group" style="animation-delay: ${i * 50}ms;">
+          <div class="timeline-date-header" style="visibility:hidden; height:0; margin:0; padding:0;"></div>
+          <div class="timeline-items">
+            <div class="timeline-item audit-card" style="pointer-events:none; opacity:0.8;">
+              <div class="timeline-marker" style="background:#e8e8e8; opacity:0.5;"></div>
+              <div class="timeline-content">
+                <div class="timeline-header">
+                  <div style="flex:1;">
+                    <div class="skeleton-cell skeleton--wide" style="height:16px; margin-bottom:8px;"></div>
+                    <div class="skeleton-cell skeleton--medium" style="height:14px; width:120px;"></div>
+                  </div>
+                  <div class="skeleton-cell skeleton--short" style="height:14px; width:60px;"></div>
+                </div>
+                <div class="timeline-body">
+                  <div class="timeline-summary">
+                    <div class="timeline-summary-info">
+                      <div class="skeleton-cell skeleton--short" style="height:20px; width:70px; display:inline-block;"></div>
+                      <div class="skeleton-cell skeleton--medium" style="height:14px; width:200px; display:inline-block; margin-left:12px;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    html += '</div>';
+    auditLogsContainer.innerHTML = html;
+  }
+
   function showAuditLogs() {
       if (!isAdmin) {
         toast.error('Admin access required.');
@@ -38,7 +75,7 @@ export function initAuditLogs({
 
     function loadAuditLogs() {
       if (!auditLogsContainer) return;
-      auditLogsContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #64748b;">Loading audit records...</div>';
+      renderAuditSkeleton(6);
       
       adminApi.getAuditLogs().then(function (logs) {
         allAuditLogs = logs || [];
