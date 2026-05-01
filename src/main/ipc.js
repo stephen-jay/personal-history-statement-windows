@@ -213,8 +213,9 @@ function registerIpcHandlers(ipcMain, app, config) {
     if (!records) {
       records = getData();
     }
-    // Images are stored as base64 data URLs in database; no hydration needed
-    return records || [];
+    return (records || []).map(function (record) {
+      return imageStorage.hydrateRecordImages(config.IMAGE_UPLOAD_DIR, record);
+    });
   });
 
   function archivePersonnelImages(record) {
@@ -226,7 +227,7 @@ function registerIpcHandlers(ipcMain, app, config) {
   }
 
   ipcMain.handle('personnel:save', async (_, record) => {
-    const recordToSave = record || {};
+    const recordToSave = imageStorage.processRecordImages(config.IMAGE_UPLOAD_DIR, record || {});
     let saved = null;
 
     if (config.USE_REMOTE_API) {

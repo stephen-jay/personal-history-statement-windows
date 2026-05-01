@@ -26,7 +26,7 @@ const app = express();
 initDatabase(DATABASE_URL, path.join(__dirname, 'personnel-data.json'));
 auth.initAuth(__dirname);
 
-app.use(express.json({ limit: '6mb' }));
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '50mb' }));
 
 // ---------------------------------------------------------------------------
 // Minimal auth (no extra npm deps): HMAC-signed tokens + pgcrypto password check.

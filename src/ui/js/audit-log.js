@@ -17,6 +17,8 @@ export function initAuditLogs({
   toast
 }) {
   let allAuditLogs = [];
+  let currentPage = 1;
+  const pageSize = 10;
 
   function renderAuditSkeleton(count) {
     if (!auditLogsContainer) return;
@@ -87,16 +89,24 @@ export function initAuditLogs({
     }
 
     function applyAuditFilters() {
+      currentPage = 1;
+      renderFilteredAuditLogs();
+    }
+
+    function getFilteredAuditLogs() {
       const searchTerm = (auditSearch && auditSearch.value ? auditSearch.value : '').toLowerCase().trim();
       const actionFilter = auditFilterAction && auditFilterAction.value ? auditFilterAction.value : '';
 
-      const filteredLogs = allAuditLogs.filter(log => {
+      return allAuditLogs.filter(log => {
         const matchesAction = !actionFilter || log.action === actionFilter;
         const searchTarget = `${log.admin_name || ''} ${log.target_personnel_name || ''} ${log.action} ${log.table_name}`.toLowerCase();
         const matchesSearch = !searchTerm || searchTarget.includes(searchTerm);
         return matchesAction && matchesSearch;
       });
+    }
 
+    function renderFilteredAuditLogs() {
+      const filteredLogs = getFilteredAuditLogs();
       renderAuditLogs(filteredLogs);
     }
 
@@ -105,6 +115,16 @@ export function initAuditLogs({
     
     if (auditLogsContainer) {
       auditLogsContainer.addEventListener('click', function(e) {
+        const pageBtn = e.target.closest('[data-audit-page]');
+        if (pageBtn) {
+          const targetPage = Number(pageBtn.getAttribute('data-audit-page'));
+          if (Number.isFinite(targetPage)) {
+            currentPage = targetPage;
+            renderFilteredAuditLogs();
+          }
+          return;
+        }
+
         const header = e.target.closest('.timeline-summary.expandable');
         if (header) {
           const item = header.closest('.timeline-item');
@@ -120,6 +140,12 @@ export function initAuditLogs({
         return;
       }
 
+      const totalLogs = logs.length;
+      const totalPages = Math.max(1, Math.ceil(totalLogs / pageSize));
+      currentPage = Math.min(Math.max(1, currentPage), totalPages);
+      const startIndex = (currentPage - 1) * pageSize;
+      const pageLogs = logs.slice(startIndex, startIndex + pageSize);
+
       const imageFields = [
         'photoDataUrl', 'signatureDataUrl', 'leftThumbMarkDataUrl', 
         'rightThumbMarkDataUrl', 'handwrittenEntryDataUrl',
@@ -129,7 +155,7 @@ export function initAuditLogs({
       
       // Group logs by date
       const groupedLogs = {};
-      logs.forEach(log => {
+      pageLogs.forEach(log => {
         const d = new Date(log.changed_at);
         const today = new Date();
         const yesterday = new Date(today);
@@ -273,7 +299,20 @@ export function initAuditLogs({
         `;
       }
       
-      html += '</div>';
+      const paginationHtml = `
+        <div class="audit-pagination" aria-label="Audit log pagination">
+          <div class="audit-pagination__summary">
+            Showing ${startIndex + 1}-${Math.min(startIndex + pageSize, totalLogs)} of ${totalLogs}
+          </div>
+          <div class="audit-pagination__controls">
+            <button type="button" class="btn secondary audit-pagination__btn" data-audit-page="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''}>Previous</button>
+            <span class="audit-pagination__page">Page ${currentPage} of ${totalPages}</span>
+            <button type="button" class="btn secondary audit-pagination__btn" data-audit-page="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''}>Next</button>
+          </div>
+        </div>
+      `;
+
+      html += '</div>' + paginationHtml;
       auditLogsContainer.innerHTML = html;
     }
 

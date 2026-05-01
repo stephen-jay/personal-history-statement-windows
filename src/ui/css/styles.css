@@ -4334,6 +4334,51 @@ fieldset.section > .sworn-block {
 .timeline-marker.update { background: #3b82f6; }
 .timeline-marker.delete { background: #ef4444; }
 
+.audit-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 28px 56px;
+  padding: 14px 0 0;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.audit-pagination__controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.audit-pagination__btn {
+  min-width: 92px;
+}
+
+.audit-pagination__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.audit-pagination__page {
+  min-width: 96px;
+  text-align: center;
+  color: #1f3b63;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .audit-pagination {
+    align-items: stretch;
+    flex-direction: column;
+    margin-left: 0;
+  }
+
+  .audit-pagination__controls {
+    justify-content: space-between;
+  }
+}
+
 .timeline-content {
   flex: 1;
   background: #ffffff;

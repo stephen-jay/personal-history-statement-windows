@@ -168,19 +168,6 @@ async function loadAnalyticsPage() {
       summaryContent.innerHTML = buildSummaryHtml(record);
       summaryModal.classList.add('open');
       summaryModal.setAttribute('aria-hidden', 'false');
-
-      // Fetch and render real history
-      if (record && record.id) {
-        try {
-            showLoader('Fetching history…');
-            const history = await window.personnelApi.getHistory(record.id);
-          renderHistoryTimeline(history);
-            hideLoader();
-        } catch (e) {
-            hideLoader();
-          console.error('History load failed:', e);
-        }
-      }
     }
 
     function renderHistoryTimeline(logs) {

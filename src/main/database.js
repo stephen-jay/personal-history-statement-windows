@@ -18,6 +18,13 @@ function getPgPool() {
   return pgPool;
 }
 
+async function closeDatabase() {
+  if (!pgPool) return;
+  const pool = pgPool;
+  pgPool = null;
+  await pool.end();
+}
+
 function ensureDataFile() {
   try {
     if (!fs.existsSync(dataFile)) {
@@ -293,5 +300,6 @@ module.exports = {
   deleteJsonRecord,
   getPostgresData,
   savePostgresRecord,
-  deletePostgresRecord
+  deletePostgresRecord,
+  closeDatabase
 };
