@@ -56,6 +56,100 @@ async function loadAnalyticsPage() {
     // Initialize toast system
     window.toast = initToastSystem();
 
+    // --- Update popup (anchored above logout) ---
+    function createUpdatePopup() {
+      if (document.getElementById('update-popup')) return;
+      const sidebarFooter = document.querySelector('.sidebar-footer');
+      const container = document.createElement('div');
+      container.id = 'update-popup';
+      container.className = 'update-popup';
+      container.innerHTML = `
+      <div class="update-popup-inner" aria-live="polite">
+        <div class="update-line">
+          <span class="update-title">Update available</span>
+          <button class="update-close" aria-label="Close update" title="Close">✕</button>
+        </div>
+        <div class="update-body">
+          <div class="update-version">Version <span class="update-version-num"></span></div>
+          <div class="update-progress-row" hidden>
+            <div class="update-progress-bar"><div class="update-progress-fill" style="width:0%"></div></div>
+            <div class="update-progress-percent">0%</div>
+          </div>
+          <div class="update-actions">
+            <button class="btn primary btn-smallish update-now">Update Now</button>
+            <button class="btn secondary btn-smallish update-restart" hidden>Restart to apply</button>
+          </div>
+        </div>
+      </div>
+    `;
+      if (sidebarFooter) sidebarFooter.parentNode.insertBefore(container, sidebarFooter);
+      else document.body.appendChild(container);
+
+      container.querySelector('.update-close').addEventListener('click', () => container.remove());
+      container.querySelector('.update-now').addEventListener('click', async function () {
+        try {
+          const res = await window.updateApi.downloadUpdate();
+          if (!res || !res.ok) {
+            window.toast.error('Failed to start download: ' + (res && res.error ? res.error : 'unknown'));
+          } else {
+            window.toast.info('Downloading update…');
+            container.querySelector('.update-progress-row').hidden = false;
+          }
+        } catch (e) { window.toast.error('Download failed'); }
+      });
+      container.querySelector('.update-restart').addEventListener('click', async function () {
+        try {
+          await window.updateApi.installUpdate();
+        } catch (e) {
+          window.toast.error('Could not install update: ' + (e && e.message ? e.message : e));
+        }
+      });
+    }
+
+    function showUpdatePopupFor(info) {
+      createUpdatePopup();
+      const el = document.getElementById('update-popup');
+      if (!el) return;
+      el.querySelector('.update-version-num').textContent = (info && info.version) ? info.version : 'new';
+      el.querySelector('.update-progress-row').hidden = true;
+      el.querySelector('.update-restart').hidden = true;
+      el.classList.add('visible');
+    }
+    function setUpdateProgress(progress) {
+      const el = document.getElementById('update-popup');
+      if (!el) return;
+      const pct = Math.min(100, Math.floor((progress && progress.percent) ? progress.percent : 0));
+      el.querySelector('.update-progress-fill').style.width = pct + '%';
+      el.querySelector('.update-progress-percent').textContent = pct + '%';
+      el.querySelector('.update-progress-row').hidden = false;
+    }
+    function showRestartAction() {
+      const el = document.getElementById('update-popup');
+      if (!el) return;
+      el.querySelector('.update-restart').hidden = false;
+      el.querySelector('.update-now').hidden = true;
+      el.querySelector('.update-progress-row').hidden = true;
+    }
+
+    // Wire updateApi events (safe if updateApi not present)
+    try {
+      if (window.updateApi) {
+        window.updateApi.onUpdateAvailable((info) => {
+          showUpdatePopupFor(info);
+        });
+        window.updateApi.onDownloadProgress((p) => {
+          setUpdateProgress(p);
+        });
+        window.updateApi.onUpdateDownloaded((info) => {
+          showRestartAction();
+          window.toast.success('Update downloaded. Restart to apply.');
+        });
+        window.updateApi.onUpdateNotAvailable(() => {
+          // no-op
+        });
+      }
+    } catch (e) { /* ignore if not present */ }
+
     if (!window.personnelApi) {
       showError('personnelApi not loaded. Preload may have failed.');
       return;

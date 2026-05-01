@@ -26,3 +26,21 @@ contextBridge.exposeInMainWorld('exportApi', {
   savePhsPdf: (payload) => ipcRenderer.invoke('export:phsPdf', payload),
   savePhsWord: (payload) => ipcRenderer.invoke('export:phsWord', payload),
 });
+
+contextBridge.exposeInMainWorld('updateApi', {
+  onUpdateAvailable: (cb) => {
+    ipcRenderer.on('update:available', (evt, info) => { try { cb(info); } catch (_) {} });
+  },
+  onUpdateNotAvailable: (cb) => {
+    ipcRenderer.on('update:not-available', (evt, info) => { try { cb(info); } catch (_) {} });
+  },
+  onDownloadProgress: (cb) => {
+    ipcRenderer.on('update:progress', (evt, progress) => { try { cb(progress); } catch (_) {} });
+  },
+  onUpdateDownloaded: (cb) => {
+    ipcRenderer.on('update:downloaded', (evt, info) => { try { cb(info); } catch (_) {} });
+  },
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+  checkForUpdates: () => ipcRenderer.invoke('update:check')
+});

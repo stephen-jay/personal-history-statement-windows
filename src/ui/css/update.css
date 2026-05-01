@@ -1,0 +1,20 @@
+/* update.css - small popup anchored near logout */
+#update-popup {
+  display: none;
+  box-sizing: border-box;
+  width: 220px;
+  margin: 8px;
+  font-family: inherit;
+  z-index: 1200;
+}
+#update-popup.visible { display: block; }
+.update-popup { border-radius: 6px; background: #fff; box-shadow: 0 6px 18px rgba(2,6,23,0.12); color: #0f172a; padding: 8px; font-size: 0.9rem; }
+.update-popup .update-line { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
+.update-popup .update-title { font-weight:600; color:#0f172a; }
+.update-popup .update-close { background:transparent;border:none;cursor:pointer;color:#64748b;font-size:0.85rem; }
+.update-popup .update-version { color:#475569; font-size:0.85rem; margin-bottom:6px; }
+.update-popup .update-progress-bar { width: 100%; height: 8px; background:#e6eef6; border-radius:6px; overflow:hidden; display:inline-block; margin-right:8px; }
+.update-popup .update-progress-fill { height:100%; background:#0ea5a3; width:0%; transition:width 200ms ease; }
+.update-popup .update-progress-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.update-popup .update-actions { display:flex; gap:8px; justify-content:flex-end; }
+.update-popup .btn-smallish { padding:6px 8px; font-size:0.82rem; }

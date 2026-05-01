@@ -101,23 +101,44 @@ let mainWindow;
 function setupAutoUpdates() {
   if (!app.isPackaged) return;
 
-  autoUpdater.autoDownload = true;
+  // Do not auto-download updates — user clicks "Update Now" to start.
+  autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
+
   autoUpdater.on('error', error => {
     console.warn('Auto-update error:', error && error.message ? error.message : error);
+    try { if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('update:error', { message: String(error && error.message ? error.message : error) }); } catch (_) {}
   });
   autoUpdater.on('update-available', info => {
     console.log('Update available:', info.version);
+    try { if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('update:available', info); } catch (_) {}
   });
   autoUpdater.on('update-not-available', info => {
     console.log('No update available:', info && info.version ? info.version : 'latest');
+    try { if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('update:not-available', info); } catch (_) {}
+  });
+  autoUpdater.on('download-progress', progress => {
+    try { if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('update:progress', progress); } catch (_) {}
   });
   autoUpdater.on('update-downloaded', info => {
     console.log('Update downloaded:', info.version);
+    try { if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('update:downloaded', info); } catch (_) {}
   });
 
-  autoUpdater.checkForUpdatesAndNotify().catch(error => {
+  // Initial silent check for updates
+  autoUpdater.checkForUpdates().catch(error => {
     console.warn('Failed to check for updates:', error && error.message ? error.message : error);
+  });
+
+  // IPC handlers for renderer-initiated actions
+  ipcMain.handle('update:download', async () => {
+    try { await autoUpdater.downloadUpdate(); return { ok: true }; } catch (e) { return { ok: false, error: String(e && e.message ? e.message : e) }; }
+  });
+  ipcMain.handle('update:install', async () => {
+    try { autoUpdater.quitAndInstall(); return { ok: true }; } catch (e) { return { ok: false, error: String(e && e.message ? e.message : e) }; }
+  });
+  ipcMain.handle('update:check', async () => {
+    try { await autoUpdater.checkForUpdates(); return { ok: true }; } catch (e) { return { ok: false, error: String(e && e.message ? e.message : e) }; }
   });
 }
 
