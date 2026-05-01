@@ -8,3 +8,8 @@ app-config.json
 _docx_extract/
 _test-out.docx
 _phs_temp.zip
+.env
+dist/
+dist-ci-check/
+_t_*
+*.docx

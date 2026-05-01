@@ -3,12 +3,12 @@
 
 /**
  * Database Schema Initialization Script
- * 
+ *
  * Reads and applies the PostgreSQL schema to initialize the database
- * 
+ *
  * Usage:
  *   $env:DATABASE_URL = "postgresql://username:password@10.10.218.144:5432/apollo_db"
- *   node init-database-schema.js
+ *   node scripts/db/init-database-schema.js
  */
 
 const fs = require('fs');
@@ -31,8 +31,8 @@ console.log('📍 Initializing database schema...\n');
 const pool = new Pool({ connectionString: DATABASE_URL });
 
 async function initializeSchema() {
-  const schemaFile = path.join(__dirname, 'config', 'apollo-postgres-schema.sql');
-  
+  const schemaFile = path.join(__dirname, '..', '..', 'config', 'apollo-postgres-schema.sql');
+
   if (!fs.existsSync(schemaFile)) {
     console.error('❌ ERROR: Schema file not found at', schemaFile);
     process.exit(1);
@@ -45,13 +45,13 @@ async function initializeSchema() {
   try {
     console.log('Executing schema...\n');
     const result = await client.query(schema);
-    
+
     console.log('✅ Schema initialization successful!\n');
 
     // Verify tables were created
     console.log('📋 Verifying tables:\n');
     const tableNames = ['personnel', 'personnel_children', 'personnel_places_of_residence', 'personnel_employment_history', 'personnel_seminars_training', 'personnel_foreign_countries', 'personnel_banks_credit', 'personnel_credit_references', 'personnel_character_refs', 'personnel_neighbors', 'personnel_organizations', 'personnel_languages'];
-    
+
     for (const tableName of tableNames) {
       const check = await client.query(
         `SELECT EXISTS (
@@ -74,13 +74,13 @@ async function initializeSchema() {
 
   } catch (e) {
     console.error('❌ Schema initialization failed:', e.message);
-    
+
     // Check if table already exists
     if (e.message.includes('already exists')) {
       console.log('\n📌 Note: Tables already initialized. No changes required.');
       process.exit(0);
     }
-    
+
     console.error('\nFull error:', e);
     process.exit(1);
   } finally {

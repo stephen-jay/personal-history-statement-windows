@@ -3,12 +3,12 @@
 
 /**
  * Database Connection Test Script
- * 
+ *
  * Verifies that the PostgreSQL database is properly configured and accessible
- * 
+ *
  * Usage:
  *   $env:DATABASE_URL = "postgresql://username:password@10.10.218.144:5432/apollo_db"
- *   node test-database-connection.js
+ *   node scripts/db/test-database-connection.js
  */
 
 const { Pool } = require('pg');
@@ -83,7 +83,7 @@ async function testConnection() {
 
       if (!allTablesExist) {
         console.warn('\n⚠️  WARNING: Some child tables are missing. Schema may not be fully initialized.');
-        console.warn('   Run: node init-database-schema.js');
+        console.warn('   Run: node scripts/db/init-database-schema.js');
       }
     } else {
       console.error('✗ Test 3: Personnel table does NOT exist');
