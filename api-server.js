@@ -8,7 +8,7 @@ const { REMOVED_FIELDS, PERSONNEL_FIELD_MAP, CHILD_TABLES } = require('./src/sha
 const { initDatabase, getPgPool, getPostgresData, savePostgresRecord, deletePostgresRecord } = require('./src/main/database');
 const auth = require('./src/main/auth');
 
-const imageStorage = require('./image-storage');
+const imageStorage = require('./src/shared/image-storage');
 const IMAGE_UPLOAD_DIR = path.join(__dirname, 'personnel-images');
 if (!fs.existsSync(IMAGE_UPLOAD_DIR)) {
   fs.mkdirSync(IMAGE_UPLOAD_DIR, { recursive: true });

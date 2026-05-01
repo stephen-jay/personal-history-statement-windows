@@ -1,6 +1,6 @@
 const { getPgPool, getData, saveJsonRecord, deleteJsonRecord, getPostgresData, savePostgresRecord, deletePostgresRecord } = require('./database');
 const auth = require('./auth');
-const imageStorage = require('../../image-storage');
+const imageStorage = require('../shared/image-storage');
 
 async function remoteApi(pathname, options, config, authSession) {
   const base = config.REMOTE_API_BASE.replace(/\/+$/, '');

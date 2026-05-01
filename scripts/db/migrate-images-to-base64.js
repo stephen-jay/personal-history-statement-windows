@@ -12,8 +12,8 @@
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ override: true });
-const imageStorage = require('../image-storage');
-const { initDatabase, getPostgresData, savePostgresRecord, closeDatabase } = require('../src/main/database');
+const imageStorage = require('../../src/shared/image-storage');
+const { initDatabase, getPostgresData, savePostgresRecord, closeDatabase } = require('../../src/main/database');
 
 const IMAGE_FIELDS = [
   'photoDataUrl',

@@ -116,8 +116,8 @@ Located in `dist/` folder:
 ### Configuration & Documentation
 - `DEPLOYMENT.md` - Comprehensive deployment guide
 - `launch-production.bat` - Windows batch script for launching with env vars
-- `test-database-connection.js` - Database connectivity test
-- `init-database-schema.js` - Schema initialization script
+- `scripts/db/test-database-connection.js` - Database connectivity test
+- `scripts/db/init-database-schema.js` - Schema initialization script
 
 ### Testing Scripts
 ```powershell
@@ -226,12 +226,12 @@ dist/
 └── *.blockmap                                   ← Integrity files
 
 Supporting Files:
-├── DEPLOYMENT.md                 ← Full deployment guide
-├── launch-production.bat         ← Batch launcher with env vars
-├── test-database-connection.js   ← Connectivity test
-├── init-database-schema.js       ← Schema initializer
-├── package.json                  ← Build configuration
-└── main.js                       ← Application entry point
+├── DEPLOYMENT.md                      ← Full deployment guide
+├── launch-production.bat              ← Batch launcher with env vars
+├── scripts/db/test-database-connection.js   ← Connectivity test
+├── scripts/db/init-database-schema.js       ← Schema initializer
+├── package.json                       ← Build configuration
+└── main.js                            ← Application entry point
 ```
 
 ---
