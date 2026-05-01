@@ -693,21 +693,31 @@ export function buildOfficialPrintHtml(data) {
       return [row && row.languageDialect, row && row.speak, row && row.read, row && row.write];
     })) +
     modernCard('Lie Detector Test', modernField('Willing to undergo periodic test?', v(data, 'lieDetector'))) +
-    modernCard('Personnel Handwritten Entry', handwrittenEntryHtml(data)) +
-    '<section class="phs-modern-card phs-modern-card--thumb-sign">' +
-    '<h4 class="phs-modern-card-title">Thumb Mark / Signature</h4>' +
-    '<div class="phs-modern-card-body">' +
-    '<div class="phs-modern-thumb-pair">' +
-    thumbMarkHtml(data, 'leftThumbMarkDataUrl', 'Left') +
-    thumbMarkHtml(data, 'rightThumbMarkDataUrl', 'Right') +
-    '</div>' +
-    '<div class="phs-modern-thumb-signature">' +
-    (data && data.signatureDataUrl
-      ? '<img class="phs-modern-sign-img" src="' + escapeHtml(data.signatureDataUrl) + '" alt="Signature of applicant"/>'
-      : '<div class="phs-modern-thumb-sign-line"></div><p class="phs-modern-thumb-sign-cap">(Signature of Applicant)</p>') +
-    '</div>' +
-    '</div>' +
-    '</section>' +
+    modernCard('Certification / Sworn Statement',
+      '<div class="phs-print-certify"><p>I certify that the following answers are true and correct to the best of my knowledge and belief and I agree that my misstatement or omission as to material facts will constitute ground for denial of my application for clearance.</p></div>' +
+      '<div class="phs-modern-card-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;">' +
+      modernField('Signed at', v(data, 'signedAtCert')) +
+      modernField('Date', v(data, 'signedDateCert')) +
+      modernField('Sworn day', v(data, 'swornDay')) +
+      modernField('Sworn month', v(data, 'swornMonth')) +
+      modernField('Sworn place', v(data, 'swornPlace')) +
+      modernField('Residence Cert. Nr.', v(data, 'residenceCertNr2')) +
+      modernField('Issued on', v(data, 'residenceCertIssuedOn2')) +
+      modernField('Issued at', v(data, 'residenceCertIssuedAt2')) +
+      modernField('Administering officer', v(data, 'administeringOfficer2')) +
+      '</div>'
+    ) +
+    modernCard('Thumb Mark / Photo / Signature',
+      '<div class="phs-modern-thumb-pair">' +
+      thumbMarkHtml(data, 'leftThumbMarkDataUrl', 'Left') +
+      thumbMarkHtml(data, 'rightThumbMarkDataUrl', 'Right') +
+      '</div>' +
+      '<div class="phs-modern-thumb-signature">' +
+      (data && data.signatureDataUrl
+        ? '<img class="phs-modern-sign-img" src="' + escapeHtml(data.signatureDataUrl) + '" alt="Signature of applicant"/>'
+        : '<div class="phs-modern-thumb-sign-line"></div><p class="phs-modern-thumb-sign-cap">(Signature of Applicant)</p>') +
+      '</div>'
+    ) +
     '</div>' +
     '<div class="phs-print-kv-block"><span class="phs-print-kv-label">Hobbies, sports, pastimes</span><div class="phs-print-kv-text">' + v(data, 'hobbies') + '</div></div>' +
     listRows('Languages', data.languages, function (row) {
@@ -736,6 +746,18 @@ export function buildOfficialPrintHtml(data) {
     '</td></tr></table>' +
     '</div>' +
 
+    '<div class="phs-print-sworn">' +
+    '<div class="phs-print-kv-block"><span class="phs-print-kv-label">Subscribed and sworn before me</span><div class="phs-print-kv-text">This ' + v(data, 'swornDay') + ' day of ' + v(data, 'swornMonth') + ', Philippines. Place: ' + v(data, 'swornPlace') + '</div></div>' +
+    '<table class="phs-print-table">' +
+    '<tr><td>Residence Certificate Nr.: ' + v(data, 'residenceCertNr2') + '</td>' +
+    '<td>Issued on: ' + v(data, 'residenceCertIssuedOn2') + '</td>' +
+    '<td>Issued at: ' + v(data, 'residenceCertIssuedAt2') + '</td></tr>' +
+    '</table>' +
+    '<div class="phs-print-kv-block"><span class="phs-print-kv-label">Administering officer</span><div class="phs-print-kv-text">' + v(data, 'administeringOfficer2') + '</div></div>' +
+    '<div class="phs-print-sig-line phs-print-sig-line-wide"></div>' +
+    '<p class="phs-print-sig-cap">Signature / stamp</p>' +
+    '</div>' +
+
     '<div class="phs-print-thumb-photo">' +
     '<table class="phs-print-table"><tr>' +
     '<td class="phs-print-thumb-cell"><strong>THUMB MARK</strong><br/>' +
@@ -749,18 +771,6 @@ export function buildOfficialPrintHtml(data) {
       : '<span class="phs-print-thumb-box"></span>') +
     ' (Right)</div></td>' +
     '</tr></table>' +
-    '</div>' +
-
-    '<div class="phs-print-sworn">' +
-    '<div class="phs-print-kv-block"><span class="phs-print-kv-label">Subscribed and sworn before me</span><div class="phs-print-kv-text">This ' + v(data, 'swornDay') + ' day of ' + v(data, 'swornMonth') + ', Philippines. Place: ' + v(data, 'swornPlace') + '</div></div>' +
-    '<table class="phs-print-table">' +
-    '<tr><td>Residence Certificate Nr.: ' + v(data, 'residenceCertNr2') + '</td>' +
-    '<td>Issued on: ' + v(data, 'residenceCertIssuedOn2') + '</td>' +
-    '<td>Issued at: ' + v(data, 'residenceCertIssuedAt2') + '</td></tr>' +
-    '</table>' +
-    '<div class="phs-print-kv-block"><span class="phs-print-kv-label">Administering officer</span><div class="phs-print-kv-text">' + v(data, 'administeringOfficer2') + '</div></div>' +
-    '<div class="phs-print-sig-line phs-print-sig-line-wide"></div>' +
-    '<p class="phs-print-sig-cap">Signature / stamp</p>' +
     '</div>' +
 
     '</section>' +

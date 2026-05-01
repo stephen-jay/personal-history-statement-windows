@@ -259,7 +259,7 @@ async function loadAnalyticsPage() {
     // Only re-fetch when explicitly requested (forceRefresh) or when stale.
     const ROSTER_STALE_MS = 5 * 60 * 1000; // 5 minutes
     // Minimum visible time for the roster skeleton. Keep long enough to paint.
-    const ROSTER_SKELETON_MIN_MS = 600;
+    const ROSTER_SKELETON_MIN_MS = 1500;
     let rosterCache = { records: null, ts: 0 };
 
     // Ensure the skeleton CSS/animation is present at runtime. Some environments

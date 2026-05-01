@@ -8,6 +8,10 @@ function pickRandom(values) {
   return values[randomInt(0, values.length - 1)];
 }
 
+function maybeNA(value, chance) {
+  return Math.random() < (chance == null ? 0.25 : chance) ? 'N/A' : value;
+}
+
 function randomDateISO(startYear, endYear) {
   const year = randomInt(startYear, endYear);
   const month = String(randomInt(1, 12)).padStart(2, '0');
@@ -118,8 +122,8 @@ function randomFieldValue(fieldId, el, seed) {
     homeAddress: seed.homeAddress,
     dateOfBirth: seed.dob,
     placeOfBirth: seed.placeOfBirth,
-    changeInName: 'N/A',
-    nicknames: pickRandom(['J', 'Ace', 'MJ', 'Pat']),
+    changeInName: maybeNA('N/A', 0.6),
+    nicknames: pickRandom(['J', 'Ace', 'MJ', 'Pat', 'N/A']),
     nationality: 'Filipino',
     taxId: String(randomInt(100, 999)) + '-' + String(randomInt(100, 999)) + '-' + String(randomInt(100, 999)) + '-' + String(randomInt(1000, 9999)),
     telNo: '02-' + String(randomInt(1000000, 9999999)),
@@ -207,16 +211,68 @@ function randomFieldValue(fieldId, el, seed) {
     administeringOfficer2: pickRandom(['Atty. Ramon Villanueva', 'Atty. Liza Mendoza', 'Atty. Carlos Dela Cruz'])
   };
 
+  const uploadFieldIds = new Set([
+    'handwrittenEntryDataUrl',
+    'leftThumbMarkDataUrl',
+    'rightThumbMarkDataUrl',
+    'signatureDataUrl',
+    'photoDataUrl'
+  ]);
+
+  const nullableFieldIds = new Set([
+    'changeInName',
+    'nicknames',
+    'spousePlaceBirth',
+    'spouseOccupation',
+    'spouseContact',
+    'stepParentFullName',
+    'stepParentDob',
+    'stepParentAddress',
+    'stepParentOccupation',
+    'stepParentCitizenship',
+    'fatherInLawFullName',
+    'fatherInLawDob',
+    'fatherInLawAddress',
+    'fatherInLawOccupation',
+    'fatherInLawCitizenship',
+    'motherInLawFullName',
+    'motherInLawDob',
+    'motherInLawAddress',
+    'motherInLawOccupation',
+    'motherInLawCitizenship',
+    'recentIllness',
+    'dismissedResign',
+    'salaryDependent',
+    'salFiled',
+    'incomeTaxFiled',
+    'arrestRecord',
+    'familyArrest',
+    'adminCase',
+    'pd1081',
+    'liquorDrugs',
+    'signedAtCert',
+    'signedDateCert',
+    'swornDay',
+    'swornMonth',
+    'swornPlace',
+    'residenceCertNr2',
+    'residenceCertIssuedOn2',
+    'residenceCertIssuedAt2',
+    'administeringOfficer2'
+  ]);
+
   if (fieldId === 'photoDataUrl') {
-    return buildRandomPhotoDataUrl(seed.initials);
+    return '';
   }
 
   if (fieldId === 'handwrittenEntryDataUrl') {
-    return buildRandomHandwritingDataUrl(seed.initials);
+    return '';
   }
 
+  if (uploadFieldIds.has(fieldId)) return '';
+
   if (Object.prototype.hasOwnProperty.call(fixed, fieldId)) {
-    return fixed[fieldId];
+    return nullableFieldIds.has(fieldId) ? maybeNA(fixed[fieldId], 0.18) : fixed[fieldId];
   }
 
   if (!el) return 'Sample ' + titleFromId(fieldId);
@@ -355,6 +411,12 @@ function buildAutoFillRecord() {
     const el = document.getElementById(fieldId);
     record[fieldId] = randomFieldValue(fieldId, el, seed);
   });
+
+  record.signatureDataUrl = '';
+  record.leftThumbMarkDataUrl = '';
+  record.rightThumbMarkDataUrl = '';
+  record.handwrittenEntryDataUrl = '';
+  record.photoDataUrl = '';
 
   var sexEl = document.getElementById('sex');
   if (sexEl) record.sex = pickRandom(['Male', 'Female']);

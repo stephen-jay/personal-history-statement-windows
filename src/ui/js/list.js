@@ -528,13 +528,24 @@ export function getRecordCompletenessPercent(record) {
   if (!record) return 0;
   var filled = 0;
   var n = FIELD_IDS.length;
+  var emptyFields = [];
   FIELD_IDS.forEach(function (id) {
     var v = record[id];
-    if (v == null) return;
-    if (typeof v === 'string' && v.trim() === '') return;
+    if (v == null) {
+      emptyFields.push(id);
+      return;
+    }
+    if (typeof v === 'string' && v.trim() === '') {
+      emptyFields.push(id);
+      return;
+    }
     filled++;
   });
-  return Math.min(100, Math.round((filled / n) * 100));
+  var percent = Math.min(100, Math.round((filled / n) * 100));
+  if (emptyFields.length > 0) {
+    console.log('[PROGRESS DEBUG] Record:', record.id || 'unknown', 'Filled:', filled, '/', n, 'Percent:', percent, 'Empty fields:', emptyFields);
+  }
+  return percent;
 }
 
 export function getAvatarHtml(record) {

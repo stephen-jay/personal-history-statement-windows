@@ -1928,6 +1928,250 @@ fieldset.section .row .row:last-child {
   min-height: 2rem;
 }
 
+.docx-certification-block {
+  margin: 24px 20px 10px;
+  padding: 12px 10px 8px;
+  color: #1f2937;
+}
+
+.docx-certification-copy {
+  margin: 0 auto 18px;
+  max-width: 860px;
+  text-align: center;
+  font-size: 0.98rem;
+  line-height: 1.32;
+}
+
+.docx-signature-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.75fr);
+  gap: 24px 42px;
+  align-items: start;
+}
+
+.docx-signature-left {
+  max-width: 470px;
+}
+
+.docx-inline-field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.docx-inline-field-row label {
+  width: 58px;
+  font-size: 1rem;
+  color: #111827;
+}
+
+.line-input.docx-line-input {
+  width: 100%;
+  min-width: 0;
+  padding: 2px 2px 4px !important;
+  font-size: 0.98rem;
+}
+
+.docx-signature-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.docx-signature-line {
+  width: min(100%, 260px);
+  min-height: 40px;
+  border-bottom: 1px solid #374151;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.docx-signature-preview {
+  object-fit: contain;
+  height: 36px;
+  width: 100%;
+}
+
+.docx-signature-placeholder {
+  display: block;
+  width: 100%;
+  height: 1px;
+}
+
+.docx-signature-caption {
+  margin-top: 3px;
+  font-size: 0.95rem;
+  font-style: italic;
+  text-align: center;
+}
+
+.docx-witness-stack {
+  width: min(100%, 300px);
+  margin: 16px 0 4px 0;
+}
+
+.docx-witness-line {
+  border-bottom: 1px solid #374151;
+  height: 20px;
+}
+
+.docx-witness-label {
+  text-align: center;
+  margin: 2px 0 16px;
+  font-size: 0.98rem;
+}
+
+.docx-marks-photo-row {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 0.55fr);
+  gap: 24px 56px;
+  align-items: start;
+}
+
+.docx-thumb-column {
+  justify-self: start;
+}
+
+.docx-thumb-title {
+  text-align: center;
+  margin: 0 0 8px;
+  font-style: italic;
+  font-size: 1.03rem;
+}
+
+.docx-thumb-boxes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(110px, 1fr));
+  gap: 20px;
+}
+
+.thumb-box.docx-thumb-box {
+  width: 110px;
+  height: 164px;
+  border: 1px solid #374151;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.docx-thumb-caption {
+  text-align: center;
+  margin-top: 3px;
+  font-size: 0.98rem;
+}
+
+.docx-photo-column {
+  justify-self: end;
+  text-align: center;
+}
+
+.photo-box.docx-photo-box {
+  width: 190px;
+  height: 226px;
+  border: 1px solid #374151;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #374151;
+  font-size: 1.02rem;
+}
+
+.docx-photo-caption {
+  margin-top: 5px;
+  font-size: 0.98rem;
+  font-style: italic;
+}
+
+.docx-oath-lines {
+  margin-top: 18px;
+}
+
+.docx-oath-line {
+  font-size: 1rem;
+  line-height: 1.45;
+  margin-bottom: 2px;
+}
+
+.docx-oath-line:last-child {
+  margin-bottom: 0;
+}
+
+.line-input.docx-inline-line {
+  display: inline-block;
+  width: 96px;
+  vertical-align: baseline;
+  margin: 0 6px;
+  padding: 0 2px 3px !important;
+}
+
+.line-input.docx-inline-line--wide {
+  width: 220px;
+}
+
+.docx-admin-officer-block {
+  margin-top: 30px;
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: 86px;
+}
+
+.line-input.docx-admin-line {
+  width: 100%;
+  padding: 0 2px 4px !important;
+}
+
+.docx-admin-caption {
+  text-align: center;
+  margin-top: 4px;
+  font-size: 1.03rem;
+}
+
+@media (max-width: 920px) {
+  .docx-certification-block {
+    margin-left: 8px;
+    margin-right: 8px;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .docx-signature-grid,
+  .docx-marks-photo-row {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .docx-signature-right,
+  .docx-photo-column {
+    justify-self: start;
+    text-align: left;
+  }
+
+  .docx-witness-stack {
+    margin-top: 10px;
+  }
+
+  .docx-thumb-boxes {
+    gap: 12px;
+  }
+
+  .line-input.docx-inline-line,
+  .line-input.docx-inline-line--wide {
+    width: 140px;
+    margin-left: 4px;
+    margin-right: 4px;
+  }
+
+  .docx-admin-officer-block {
+    margin-right: 0;
+    max-width: 320px;
+  }
+}
+
 /* XIII footer blocks: align with section row gutters */
 fieldset.section > .certify-box,
 fieldset.section > .signature-grid,
