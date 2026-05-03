@@ -68,40 +68,6 @@ async function loadAnalyticsPage() {
       }
     })();
 
-    function createToastDemoPanel() {
-      if (document.getElementById('toast-demo-panel')) return;
-      const sidebarFooter = document.querySelector('.sidebar-footer');
-      if (!sidebarFooter) return;
-
-      const panel = document.createElement('div');
-      panel.id = 'toast-demo-panel';
-      panel.className = 'toast-demo-panel';
-      panel.innerHTML = `
-        <div class="toast-demo-title">Toast Demo</div>
-        <div class="toast-demo-buttons">
-          <button type="button" class="toast-demo-btn toast-demo-btn--success">Success</button>
-          <button type="button" class="toast-demo-btn toast-demo-btn--error">Error</button>
-          <button type="button" class="toast-demo-btn toast-demo-btn--warning">Warning</button>
-          <button type="button" class="toast-demo-btn toast-demo-btn--info">Info</button>
-        </div>
-      `;
-
-      const buttons = panel.querySelectorAll('.toast-demo-btn');
-      buttons.forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          if (!window.toast) return;
-          if (btn.classList.contains('toast-demo-btn--success')) window.toast.success('Record saved successfully.');
-          if (btn.classList.contains('toast-demo-btn--error')) window.toast.error('Failed to delete record.');
-          if (btn.classList.contains('toast-demo-btn--warning')) window.toast.warning('2 required fields missing.');
-          if (btn.classList.contains('toast-demo-btn--info')) window.toast.info('Version 1.0.4 is available.');
-        });
-      });
-
-      sidebarFooter.parentNode.insertBefore(panel, sidebarFooter);
-    }
-
-    createToastDemoPanel();
-
     // --- Update popup (anchored above logout) ---
     function createUpdatePopup() {
       if (document.getElementById('update-popup')) return;
@@ -147,12 +113,12 @@ async function loadAnalyticsPage() {
       }
 
       function setDownloadingState(pct) {
+        const safePct = Math.min(100, Math.max(0, Math.floor(Number(pct) || 0)));
         nowBtn.hidden = false;
         nowBtn.disabled = true;
-        nowBtn.textContent = 'Downloading...';
+        nowBtn.textContent = safePct >= 100 ? 'Downloaded' : 'Downloading...';
         restartBtn.hidden = true;
         progressRow.hidden = false;
-        const safePct = Math.min(100, Math.max(0, Math.floor(Number(pct) || 0)));
         progressFill.style.width = safePct + '%';
         progressPercent.textContent = safePct + '%';
       }
@@ -229,11 +195,15 @@ async function loadAnalyticsPage() {
         window.updateApi.onDownloadProgress((p) => {
           console.log('[UPDATE][renderer] progress:', p && p.percent ? p.percent : p);
           setUpdateProgress(p);
+          const pct = Math.min(100, Math.floor((p && p.percent) ? p.percent : 0));
+          if (pct >= 100) {
+            setTimeout(() => showRestartAction(), 300);
+          }
         });
         window.updateApi.onUpdateDownloaded((info) => {
           console.log('[UPDATE][renderer] downloaded:', info && info.version ? info.version : info);
           showRestartAction();
-          window.toast.success('Update downloaded. Restart to apply.');
+          window.toast.success('Update ready. Restart the app to apply.');
         });
         window.updateApi.onUpdateNotAvailable((info) => {
           console.log('[UPDATE][renderer] not available:', info && info.version ? info.version : info);
@@ -521,7 +491,18 @@ async function loadAnalyticsPage() {
       const startedAt = Date.now();
       try { ensureSkeletonStyles(); } catch (_) {}
       renderRosterSkeleton(listDeps, 6);
-      
+
+      // Show dashboard-specific overlay loader while fetching (do not hide content)
+      try {
+        var _dbLoader = document.getElementById('dashboard-loader');
+        if (_dbLoader) {
+          _dbLoader.removeAttribute('hidden');
+          _dbLoader.style.display = 'flex';
+          document.body.classList.add('dashboard-loading');
+          document.documentElement.classList.add('dashboard-loading');
+        }
+      } catch (_) {}
+
       return window.personnelApi.getAll().then(function (records) {
         const elapsed = Date.now() - startedAt;
         const waitMs = Math.max(0, ROSTER_SKELETON_MIN_MS - elapsed);
@@ -535,8 +516,23 @@ async function loadAnalyticsPage() {
         rosterCache.ts = Date.now();
         renderList(records, listDeps);
         renderAnalytics(records, { openSummary: openSummary });
-        hideLoader();
-        return records;
+        // Small delay to ensure DOM updates are painted before hiding loader
+        return new Promise(function (resolve) {
+          window.setTimeout(function () {
+            // Hide dashboard-specific overlay loader
+            try {
+              var __dbLoader = document.getElementById('dashboard-loader');
+              if (__dbLoader) {
+                __dbLoader.setAttribute('hidden', '');
+                __dbLoader.style.display = 'none';
+                document.body.classList.remove('dashboard-loading');
+                document.documentElement.classList.remove('dashboard-loading');
+              }
+            } catch (_) {}
+            hideLoader();
+            resolve(records);
+          }, 150);
+        });
       }).catch(function (err) {
         hideLoader();
         throw err;

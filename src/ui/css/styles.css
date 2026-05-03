@@ -1,3 +1,5 @@
+@import url("./phs-print-export.css");
+
 * {
   box-sizing: border-box;
 }
@@ -861,7 +863,7 @@ body[data-app-view="form"] .topbar--institutional .topbar-seal {
   max-width: 320px;
   padding: 10px 16px;
   border: 1px solid #d3dbe6;
-  border-radius: var(--radius-lg);
+  border-radius: 6px;
   background: #fff;
   color: var(--charcoal);
   font-size: 0.84rem;
@@ -880,7 +882,7 @@ select.search {
 }
 
 .roster-toolbar .search {
-  border-radius: var(--radius-pill);
+  border-radius: 6px;
 }
 
 .search:focus {
@@ -3890,7 +3892,7 @@ fieldset.section > .sworn-block {
   padding: 8px 10px;
   font-size: 0.9rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 6px;
   background: #fff;
   color: var(--charcoal);
 }
@@ -4438,11 +4440,6 @@ fieldset.section > .sworn-block {
     height: 34px;
   }
 }
-
-/* -------------------------------------------------------------------------
-   Official PHS (matches PERSONNEL HISTORY STATEMENT.docx — also used for export).
-   ------------------------------------------------------------------------- */
-@import url("./phs-print-export.css");
 
 @media print {
   @page {

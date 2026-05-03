@@ -33,6 +33,31 @@ function rosterLabel(r) {
   return id ? 'Record ' + id.slice(0, 12) : 'Unnamed record';
 }
 
+function recentPhotoUrl(record) {
+  var direct = normalizeValue(record && (record.photo_url || record.photoUrl));
+  if (direct) return direct;
+  var nested = normalizeValue(record && record.user && record.user.photo_url);
+  if (nested) return nested;
+  return '';
+}
+
+function recentAvatarHtml(record) {
+  var photoUrl = recentPhotoUrl(record);
+  var merged = record;
+  if (photoUrl) {
+    // Feed DB photo_url into the existing avatar pipeline used by the roster and modals.
+    merged = Object.assign({}, record || {}, {
+      photoDataUrl: photoUrl,
+      photo: photoUrl,
+      avatar: photoUrl
+    });
+  }
+  return String(getAvatarHtml(merged || {}))
+    .replace(/avatar-thumb-img/g, 'recent-avatar-img')
+    .replace(/avatar-thumb/g, 'recent-avatar')
+    .replace(/avatar-initials/g, 'recent-avatar-initials');
+}
+
 function pushUnique(arr, name) {
   if (arr.indexOf(name) === -1) arr.push(name);
 }
@@ -589,10 +614,45 @@ export function renderAnalytics(records, opts) {
 
   var kpiTotal = document.getElementById('kpi-total');
   var kpiEdu = document.getElementById('kpi-education-records');
-  var kpiTrain = document.getElementById('kpi-trained-month');
+  var kpiNoEdu = document.getElementById('kpi-no-education-records');
+  var kpiCollege = document.getElementById('kpi-college-graduate');
   if (kpiTotal) kpiTotal.textContent = String(total);
   if (kpiEdu) kpiEdu.textContent = String(withEdu);
-  if (kpiTrain) kpiTrain.textContent = String(trainedThisMonth);
+  if (kpiNoEdu) kpiNoEdu.textContent = String(Math.max(0, total - withEdu));
+
+  function bindKpiCardOnce(card, filterKey) {
+    if (!card || card.dataset.kpiBound === '1') return;
+    card.dataset.kpiBound = '1';
+    card.style.cursor = 'pointer';
+    var openFiltered = function () {
+      var rows;
+      if (filterKey === 'education') {
+        rows = subset.filter(hasEducationRecord);
+        openEduModal('Personnel with Educational Records', rows, '#1f3b63');
+      } else if (filterKey === 'no-education') {
+        rows = subset.filter(function (r) { return !hasEducationRecord(r); });
+        openEduModal('Personnel with No Educational Records', rows, '#94a3b8');
+      } else if (filterKey === 'college') {
+        rows = subset.filter(function (r) { return educationAttainmentLevel(r) === 'College Graduate'; });
+        openEduModal('College Graduates', rows, '#3b82f6');
+      } else {
+        rows = subset.slice();
+        openEduModal('All Personnel', rows, '#1f3b63');
+      }
+    };
+    card.addEventListener('click', openFiltered);
+    card.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openFiltered();
+      }
+    });
+  }
+
+  bindKpiCardOnce(document.querySelector('[data-kpi-filter="education"]'), 'education');
+  bindKpiCardOnce(document.querySelector('[data-kpi-filter="no-education"]'), 'no-education');
+  bindKpiCardOnce(document.querySelector('[data-kpi-filter="college"]'), 'college');
+  bindKpiCardOnce(document.querySelector('[data-kpi-filter="all"]'), 'all');
 
   var eduOrder = [
     'Elementary',
@@ -617,6 +677,10 @@ export function renderAnalytics(records, opts) {
       pushUnique(eduToNames[level], rosterLabel(r));
     }
   });
+  var collegeGraduateCount = (eduMap && Object.prototype.hasOwnProperty.call(eduMap, 'College Graduate'))
+    ? eduMap['College Graduate']
+    : 0;
+  if (kpiCollege) kpiCollege.textContent = String(collegeGraduateCount);
   renderBarChart('chart-education-level', eduMap, {
     fixedOrder: eduOrder,
     omitZeroRows: true,
@@ -632,164 +696,88 @@ export function renderAnalytics(records, opts) {
     showAggregateBreakdowns
   );
 
-  // --- Education hero cards and post-grad KPI ---
-  (function () {
-    var postCount = eduMap['Post-Graduate'] || 0;
-    var collegeCount = eduMap['College Graduate'] || 0;
-    var noneCount = eduMap['No Education Background'] || 0;
-    var pct = total > 0 ? Math.round((postCount / total) * 100) : 0;
-    var kpiPost = document.getElementById('kpi-post-grad-rate');
-    if (kpiPost) kpiPost.textContent = String(pct) + '%';
+  function openEduModal(title, rows, accent) {
+    var modal = document.getElementById('analysis-edu-modal');
+    var backdrop = document.getElementById('analysis-edu-backdrop');
+    var dialog = modal && modal.querySelector('.analysis-edu-dialog');
+    var titleEl = document.getElementById('analysis-edu-title');
+    var listEl = document.getElementById('analysis-edu-list');
+    var closeBtn = document.getElementById('analysis-edu-close');
 
-    var setHero = function(countElId, pctElId, fillElId, countVal) {
-      var c = document.getElementById(countElId);
-      var p = document.getElementById(pctElId);
-      var f = document.getElementById(fillElId);
-      var pval = total > 0 ? Math.round((countVal / total) * 100) : 0;
-      if (c) c.textContent = String(countVal);
-      if (p) p.textContent = String(pval) + '%';
-      if (f) f.style.width = String(pval) + '%';
-    };
+    var buildRows = (rows || []).map(function (r) {
+      var name = rosterLabel(r);
+      var pos = normalizeValue(r.position || r.jobTitle) || '';
+      var org = normalizeValue(r.organization) || '';
+      var recordId = r.id ? escapeAttr(String(r.id)) : '';
+      var avatarHtml = getAvatarHtml(r);
+      return '<div class="edu-row" data-record-id="' + recordId + '" role="button" tabindex="0" aria-label="Open profile summary for ' + escapeAttr(name) + '" title="Open profile summary" style="cursor:pointer;">' +
+        avatarHtml +
+        '<div class="edu-meta"><div class="edu-name">' + escapeHtml(name) + '</div><div class="edu-sub">' + escapeHtml(pos) + (pos && org ? ' · ' : '') + escapeHtml(org) + '</div></div>' +
+      '</div>';
+    }).join('');
 
-    setHero('edu-post-count', 'edu-post-pct', 'edu-post-fill', postCount);
-    setHero('edu-college-count', 'edu-college-pct', 'edu-college-fill', collegeCount);
-    setHero('edu-none-count', 'edu-none-pct', 'edu-none-fill', noneCount);
+    if (titleEl) titleEl.textContent = String(title || 'Personnel');
+    if (listEl) listEl.innerHTML = buildRows || '<p style="color:#64748b;padding:8px">No personnel found.</p>';
 
-    // ensure progress fill colors match the card accent (border-top)
-    try {
-      var postCard = document.getElementById('edu-card-postgrad');
-      var collegeCard = document.getElementById('edu-card-college');
-      var noneCard = document.getElementById('edu-card-none');
-      function setFillColor(cardEl, fillId) {
-        if (!cardEl) return;
-        var fill = document.getElementById(fillId);
-        if (!fill) return;
-        var accent = window.getComputedStyle(cardEl).borderTopColor || '#1f3b63';
-        fill.style.background = accent;
-      }
-      setFillColor(postCard, 'edu-post-fill');
-      setFillColor(collegeCard, 'edu-college-fill');
-      setFillColor(noneCard, 'edu-none-fill');
-    } catch (e) { /* ignore */ }
-
-    function getAccent(el) {
-      try {
-        var c = window.getComputedStyle(el).borderTopColor;
-        return c || '#1f3b63';
-      } catch (e) { return '#1f3b63'; }
+    if (!modal || !backdrop || !dialog) {
+      var summaryModal = document.getElementById('summary-modal');
+      var summaryContent = document.getElementById('summary-content');
+      if (!summaryModal || !summaryContent) return;
+      summaryContent.innerHTML = '<div style="padding:8px 4px"><h3 style="margin:0 0 8px;color:' + (accent || '#1f3b63') + '">' + escapeHtml(title) + ' (' + (rows ? rows.length : 0) + ')</h3><div style="max-height:420px;overflow:auto;border-radius:6px;background:#fff">' + (buildRows) + '</div></div>';
+      summaryModal.classList.add('open');
+      summaryModal.setAttribute('aria-hidden', 'false');
+      return;
     }
 
-    function openEduModal(title, rows, accent) {
-      var modal = document.getElementById('analysis-edu-modal');
-      var backdrop = document.getElementById('analysis-edu-backdrop');
-      var dialog = modal && modal.querySelector('.analysis-edu-dialog');
-      var titleEl = document.getElementById('analysis-edu-title');
-      var listEl = document.getElementById('analysis-edu-list');
-      var closeBtn = document.getElementById('analysis-edu-close');
-
-      var buildRows = (rows || []).map(function (r) {
-        var name = rosterLabel(r);
-        var pos = normalizeValue(r.position || r.jobTitle) || '';
-        var org = normalizeValue(r.organization) || '';
-        var avatarColor = accent || '#1f3b63';
-        var recordId = r.id ? escapeAttr(String(r.id)) : '';
-        // Use getAvatarHtml to display photos when available, fallback to initials
-        var avatarHtml = getAvatarHtml(r);
-        return '<div class="edu-row" data-record-id="' + recordId + '" style="cursor:pointer;">' +
-          avatarHtml +
-          '<div class="edu-meta"><div class="edu-name">' + escapeHtml(name) + '</div><div class="edu-sub">' + escapeHtml(pos) + (pos && org ? ' · ' : '') + escapeHtml(org) + '</div></div>' +
-        '</div>';
-      }).join('');
-
-      if (titleEl) titleEl.textContent = String(title || 'Personnel');
-      if (listEl) listEl.innerHTML = buildRows || '<p style="color:#64748b;padding:8px">No personnel found.</p>';
-
-      if (!modal || !backdrop || !dialog) {
-        // fallback to summary modal if analysis modal not present
-        var summaryModal = document.getElementById('summary-modal');
-        var summaryContent = document.getElementById('summary-content');
-        if (!summaryModal || !summaryContent) return;
-        summaryContent.innerHTML = '<div style="padding:8px 4px"><h3 style="margin:0 0 8px;color:' + (accent || '#1f3b63') + '">' + escapeHtml(title) + ' (' + (rows ? rows.length : 0) + ')</h3><div style="max-height:420px;overflow:auto;border-radius:6px;background:#fff">' + (buildRows) + '</div></div>';
-        summaryModal.classList.add('open');
-        summaryModal.setAttribute('aria-hidden', 'false');
-        return;
-      }
-
-      function close() {
-        modal.classList.remove('open');
-        modal.setAttribute('aria-hidden', 'true');
-      }
-
-      function onKey(e) { if (e.key === 'Escape') close(); }
-
-      // Attach close handlers once to avoid duplicate listeners
-      if (!modal.dataset.bound) {
-        modal.dataset.bound = '1';
-        closeBtn && closeBtn.addEventListener('click', close);
-        backdrop && backdrop.addEventListener('click', close);
-        document.addEventListener('keydown', onKey);
-      }
-
-      // Wire up row clicks to open person profile
-      (function () {
-        var rowEls = listEl && listEl.querySelectorAll('.edu-row[data-record-id]');
-        if (!rowEls || rowEls.length === 0) {
-          console.warn('No row elements found for education modal');
-          return;
-        }
-        rowEls.forEach(function (row) {
-          row.addEventListener('click', function (e) {
-            e.stopPropagation();
-            var recordId = row.getAttribute('data-record-id');
-            console.log('[Edu Modal] Row clicked, recordId:', recordId, 'cachedRecords count:', cachedRecords.length);
-            if (!recordId) {
-              console.warn('[Edu Modal] No recordId found on row');
-              return;
-            }
-            var record = cachedRecords.find(function (r) { return String(r.id) === recordId; });
-            console.log('[Edu Modal] Found record:', record);
-            if (record) {
-              console.log('[Edu Modal] Opening summary, callback:', typeof openSummaryCallback);
-              close();
-              // Defer opening the summary to avoid race with modal close/animations
-              setTimeout(function () {
-                console.log('[Org Modal] deferred call to openSummaryCallback executing for id:', recordId);
-                try { openSummaryCallback(record); } catch (e) { console.error('openSummaryCallback failed', e); }
-                // Fallback: call global openSummary if available and different
-                try {
-                  if (typeof window !== 'undefined' && typeof window.openSummary === 'function' && window.openSummary !== openSummaryCallback) {
-                    console.log('[Org Modal] calling window.openSummary fallback for id:', recordId);
-                    try { window.openSummary(record); } catch (e) { console.error('window.openSummary failed', e); }
-                  }
-                } catch (e) { /* ignore */ }
-              }, 120);
-            } else {
-              console.warn('[Edu Modal] Record not found in cachedRecords for id:', recordId);
-            }
-          });
-        });
-      })();
-
-      modal.classList.add('open');
-      modal.setAttribute('aria-hidden', 'false');
+    function close() {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
     }
 
-    ['edu-card-postgrad','edu-card-college','edu-card-none'].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (!el) return;
-      if (el.dataset.analyticsBound === '1') return;
-      el.dataset.analyticsBound = '1';
-      el.addEventListener('click', function () {
-        var category = el.getAttribute('data-category');
-        var filtered = subset.filter(function (r) {
-          var lvl = educationAttainmentLevel(r);
-          if (!lvl) lvl = 'No Education Background';
-          return lvl === category;
+    function onKey(e) { if (e.key === 'Escape') close(); }
+
+    function openRowSummary(recordId, closeModal) {
+      if (!recordId) return;
+      var record = cachedRecords.find(function (rec) { return String(rec.id) === String(recordId); });
+      if (!record) return;
+      closeModal();
+      setTimeout(function () {
+        try { openSummaryCallback(record); } catch (err) { console.error('openSummaryCallback failed', err); }
+        try {
+          if (typeof window !== 'undefined' && typeof window.openSummary === 'function' && window.openSummary !== openSummaryCallback) {
+            try { window.openSummary(record); } catch (err) { console.error('window.openSummary failed', err); }
+          }
+        } catch (err) { /* ignore */ }
+      }, 120);
+    }
+
+    if (!modal.dataset.bound) {
+      modal.dataset.bound = '1';
+      closeBtn && closeBtn.addEventListener('click', close);
+      backdrop && backdrop.addEventListener('click', close);
+      document.addEventListener('keydown', onKey);
+    }
+
+    (function () {
+      var rowEls = listEl && listEl.querySelectorAll('.edu-row[data-record-id]');
+      if (!rowEls || rowEls.length === 0) return;
+      rowEls.forEach(function (row) {
+        row.addEventListener('click', function (e) {
+          e.stopPropagation();
+          openRowSummary(row.getAttribute('data-record-id'), close);
         });
-        openEduModal(category + ' Personnel', filtered, getAccent(el));
+        row.addEventListener('keydown', function (e) {
+          if (e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          e.stopPropagation();
+          openRowSummary(row.getAttribute('data-record-id'), close);
+        });
       });
-    });
-  })();
+    })();
+
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+  }
 
   var fieldMap = {};
   var fieldToNames = {};
@@ -843,20 +831,19 @@ export function renderAnalytics(records, opts) {
   (function () {
     var host = document.getElementById('chart-grad-brackets');
     if (!host) return;
-    if (host.dataset.clickBound === '1') return;
-    host.dataset.clickBound = '1';
-    host.style.cursor = 'pointer';
-    host.addEventListener('click', function (e) {
-      var row = e.target.closest('.bar-row');
-      if (!row || !host.contains(row)) return;
-      var bracket = row.getAttribute('data-label') || '';
-      if (!bracket) return;
-      var filtered = subset.filter(function (r) {
-        var y = latestGraduationYear(r);
-        var b = graduationBracket(y);
-        return b === bracket;
+    var rows = host.querySelectorAll('.bar-row');
+    rows.forEach(function (row) {
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', function () {
+        var bracket = row.getAttribute('data-label') || '';
+        if (!bracket) return;
+        var filtered = subset.filter(function (r) {
+          var y = latestGraduationYear(r);
+          var b = graduationBracket(y);
+          return b === bracket;
+        });
+        openEduModal('Graduation: ' + bracket, filtered, '#1f3b63');
       });
-      openEduModal('Graduation: ' + bracket, filtered, '#1f3b63');
     });
   })();
 
@@ -961,22 +948,21 @@ export function renderAnalytics(records, opts) {
   (function () {
     var host = document.getElementById('chart-training-breakdown');
     if (!host) return;
-    if (host.dataset.clickBound === '1') return;
-    host.dataset.clickBound = '1';
-    host.style.cursor = 'pointer';
-    host.addEventListener('click', function (e) {
-      var row = e.target.closest('.bar-row');
-      if (!row || !host.contains(row)) return;
-      var programName = row.getAttribute('data-label') || '';
-      if (!programName || programName === 'Others') return; // Skip 'Others' aggregate
-      var filtered = subset.filter(function (r) {
-        var items = r.seminarsTraining;
-        if (!Array.isArray(items)) return false;
-        return items.some(function (item) {
-          return normalizeValue(item && item.name) === programName;
+    var rows = host.querySelectorAll('.bar-row');
+    rows.forEach(function (row) {
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', function () {
+        var programName = normalizeValue(row.getAttribute('data-label')) || '';
+        if (!programName || programName === 'Others') return;
+        var filtered = subset.filter(function (r) {
+          var items = r.seminarsTraining;
+          if (!Array.isArray(items)) return false;
+          return items.some(function (item) {
+            return normalizeValue(item && item.name) === programName;
+          });
         });
+        openEduModal('Training: ' + programName, filtered, '#5aa469');
       });
-      openEduModal('Training: ' + programName, filtered, '#5aa469');
     });
   })();
   setBreakdownSlot(
@@ -1185,12 +1171,25 @@ export function renderAnalytics(records, opts) {
         var org = normalizeValue(r.organization) || '';
         var date = recUpdated(r);
         var dateStr = isNaN(date.getTime()) ? '' : date.toLocaleDateString();
-        // Use getAvatarHtml to display photos when available, fallback to initials
-        var avatarHtml = getAvatarHtml(r);
-        return '<div class="recent-item">' + avatarHtml +
-          '<div class="recent-meta"><div class="recent-name">' + escapeHtml(name) + '</div><div class="recent-org">' + escapeHtml(org) + '</div></div>' +
-          '<div class="recent-date">' + escapeHtml(dateStr) + '</div></div>';
+          var recordId = r && r.id != null ? escapeAttr(String(r.id)) : '';
+          var avatarHtml = recentAvatarHtml(r);
+          return '<div class="recent-item" data-record-id="' + recordId + '">' + avatarHtml +
+            '<div class="recent-meta"><div class="recent-name">' + escapeHtml(name) + '</div><div class="recent-org">' + escapeHtml(org) + '</div></div>' +
+            '<div class="recent-right"><div class="recent-date">' + escapeHtml(dateStr) + '</div><button type="button" class="recent-view-btn" data-record-id="' + recordId + '">View</button></div></div>';
       }).join('');
+
+        if (!recentContainer.dataset.bound) {
+          recentContainer.dataset.bound = '1';
+          recentContainer.addEventListener('click', function (e) {
+            var btn = e.target && e.target.closest ? e.target.closest('.recent-view-btn[data-record-id]') : null;
+            if (!btn || !recentContainer.contains(btn)) return;
+            var recordId = btn.getAttribute('data-record-id');
+            if (!recordId) return;
+            var record = cachedRecords.find(function (rec) { return String(rec.id) === String(recordId); });
+            if (!record) return;
+            try { openSummaryCallback(record); } catch (err) { console.error('openSummaryCallback failed', err); }
+          });
+        }
     }
   } catch (e) {
     console.error('Org/recent render failed', e);

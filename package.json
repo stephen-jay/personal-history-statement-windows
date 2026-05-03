@@ -1,6 +1,6 @@
 {
   "name": "apollo-personnel-db",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Personnel database - initial input: Personnel History Statement",
   "main": "main.js",
   "scripts": {
