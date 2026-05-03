@@ -400,7 +400,7 @@ function renderBarChart(containerId, dataMap, options) {
         : String(entry[1]) + ' (' + pct.toFixed(pct >= 10 ? 0 : 1) + '%)';
     }
     return '' +
-      '<div class="bar-row">' +
+      '<div class="bar-row" data-label="' + escapeAttr(labelText) + '">' +
         '<div class="bar-row__label' + labelClass + '"><span class="bar-row__label-text" title="' + escapeAttr(labelText) + '">' + escapeHtml(shortLabel) + '</span></div>' +
         '<div class="bar-track"><div class="bar-fill" style="width:' + width + '%"></div></div>' +
         '<div class="bar-value">' + escapeHtml(valueText) + '</div>' +
@@ -843,20 +843,20 @@ export function renderAnalytics(records, opts) {
   (function () {
     var host = document.getElementById('chart-grad-brackets');
     if (!host) return;
-    var rows = host.querySelectorAll('.bar-row');
-    rows.forEach(function (row) {
-      var labelEl = row.querySelector('.bar-row__label-text');
-      var bracket = labelEl ? labelEl.textContent.trim() : '';
+    if (host.dataset.clickBound === '1') return;
+    host.dataset.clickBound = '1';
+    host.style.cursor = 'pointer';
+    host.addEventListener('click', function (e) {
+      var row = e.target.closest('.bar-row');
+      if (!row || !host.contains(row)) return;
+      var bracket = row.getAttribute('data-label') || '';
       if (!bracket) return;
-      row.style.cursor = 'pointer';
-      row.addEventListener('click', function () {
-        var filtered = subset.filter(function (r) {
-          var y = latestGraduationYear(r);
-          var b = graduationBracket(y);
-          return b === bracket;
-        });
-        openEduModal('Graduation: ' + bracket, filtered, '#1f3b63');
+      var filtered = subset.filter(function (r) {
+        var y = latestGraduationYear(r);
+        var b = graduationBracket(y);
+        return b === bracket;
       });
+      openEduModal('Graduation: ' + bracket, filtered, '#1f3b63');
     });
   })();
 
@@ -961,22 +961,22 @@ export function renderAnalytics(records, opts) {
   (function () {
     var host = document.getElementById('chart-training-breakdown');
     if (!host) return;
-    var rows = host.querySelectorAll('.bar-row');
-    rows.forEach(function (row) {
-      var labelEl = row.querySelector('.bar-row__label-text');
-      var programName = labelEl ? labelEl.textContent.trim() : '';
+    if (host.dataset.clickBound === '1') return;
+    host.dataset.clickBound = '1';
+    host.style.cursor = 'pointer';
+    host.addEventListener('click', function (e) {
+      var row = e.target.closest('.bar-row');
+      if (!row || !host.contains(row)) return;
+      var programName = row.getAttribute('data-label') || '';
       if (!programName || programName === 'Others') return; // Skip 'Others' aggregate
-      row.style.cursor = 'pointer';
-      row.addEventListener('click', function () {
-        var filtered = subset.filter(function (r) {
-          var items = r.seminarsTraining;
-          if (!Array.isArray(items)) return false;
-          return items.some(function (row) {
-            return normalizeValue(row && row.name) === programName;
-          });
+      var filtered = subset.filter(function (r) {
+        var items = r.seminarsTraining;
+        if (!Array.isArray(items)) return false;
+        return items.some(function (item) {
+          return normalizeValue(item && item.name) === programName;
         });
-        openEduModal('Training: ' + programName, filtered, '#5aa469');
       });
+      openEduModal('Training: ' + programName, filtered, '#5aa469');
     });
   })();
   setBreakdownSlot(
@@ -1068,19 +1068,19 @@ export function renderAnalytics(records, opts) {
     (function () {
       var host = document.getElementById('chart-org-breakdown');
       if (!host) return;
-      var rows = host.querySelectorAll('.bar-row');
-      rows.forEach(function (row) {
-        var labelEl = row.querySelector('.bar-row__label-text');
-        var orgName = labelEl ? labelEl.textContent.trim() : '';
+      if (host.dataset.clickBound === '1') return;
+      host.dataset.clickBound = '1';
+      host.style.cursor = 'pointer';
+      host.addEventListener('click', function (e) {
+        var row = e.target.closest('.bar-row');
+        if (!row || !host.contains(row)) return;
+        var orgName = row.getAttribute('data-label') || '';
         if (!orgName) return;
-        row.style.cursor = 'pointer';
-        row.addEventListener('click', function () {
-          var filtered = subset.filter(function (r) {
-            var org = normalizeValue(r.organization) || 'Unknown';
-            return org === orgName;
-          });
-          openOrgModal(orgName, filtered);
+        var filtered = subset.filter(function (r) {
+          var org = normalizeValue(r.organization) || 'Unknown';
+          return org === orgName;
         });
+        openOrgModal(orgName, filtered);
       });
     })();
 

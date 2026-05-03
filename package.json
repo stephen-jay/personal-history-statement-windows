@@ -1,11 +1,12 @@
 {
   "name": "apollo-personnel-db",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Personnel database - initial input: Personnel History Statement",
   "main": "main.js",
   "scripts": {
     "start": "npx --yes electron .",
     "pack": "electron-builder --dir",
+    "predist": "node -e \"const fs=require('fs');fs.rmSync('dist',{recursive:true,force:true});\"",
     "dist": "electron-builder --win",
     "migrate:images": "node scripts/db/migrate-images-to-base64.js",
     "test:db": "node scripts/db/test-database-connection.js",

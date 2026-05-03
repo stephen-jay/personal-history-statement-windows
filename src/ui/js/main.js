@@ -64,46 +64,87 @@ async function loadAnalyticsPage() {
       container.id = 'update-popup';
       container.className = 'update-popup';
       container.innerHTML = `
-      <div class="update-popup-inner" aria-live="polite">
-        <div class="update-line">
-          <span class="update-title">Update available</span>
-          <button class="update-close" aria-label="Close update" title="Close">✕</button>
-        </div>
-        <div class="update-body">
-          <div class="update-version">Version <span class="update-version-num"></span></div>
+        <div class="update-popup-inner" aria-live="polite">
+          <div class="update-header">
+            <span class="update-title">Update Available</span>
+            <button class="update-close" aria-label="Close update" title="Close">×</button>
+          </div>
+          <div class="update-version">Version <span class="update-version-num"></span> is ready to install</div>
           <div class="update-progress-row" hidden>
-            <div class="update-progress-bar"><div class="update-progress-fill" style="width:0%"></div></div>
+            <div class="update-progress-track"><div class="update-progress-fill" style="width:0%"></div></div>
             <div class="update-progress-percent">0%</div>
           </div>
           <div class="update-actions">
-            <button class="btn primary btn-smallish update-now">Update Now</button>
-            <button class="btn secondary btn-smallish update-restart" hidden>Restart to apply</button>
+            <button class="update-now">Update Now</button>
+            <button class="update-restart" hidden>Restart to Apply</button>
           </div>
+          <button class="update-later" type="button">Later</button>
         </div>
-      </div>
-    `;
+      `;
       if (sidebarFooter) sidebarFooter.parentNode.insertBefore(container, sidebarFooter);
       else document.body.appendChild(container);
 
-      container.querySelector('.update-close').addEventListener('click', () => container.remove());
-      container.querySelector('.update-now').addEventListener('click', async function () {
+      const closeBtn = container.querySelector('.update-close');
+      const laterBtn = container.querySelector('.update-later');
+      const nowBtn = container.querySelector('.update-now');
+      const restartBtn = container.querySelector('.update-restart');
+      const progressRow = container.querySelector('.update-progress-row');
+      const progressFill = container.querySelector('.update-progress-fill');
+      const progressPercent = container.querySelector('.update-progress-percent');
+
+      function setIdleState() {
+        nowBtn.hidden = false;
+        nowBtn.disabled = false;
+        nowBtn.textContent = 'Update Now';
+        restartBtn.hidden = true;
+        progressRow.hidden = true;
+      }
+
+      function setDownloadingState(pct) {
+        nowBtn.hidden = false;
+        nowBtn.disabled = true;
+        nowBtn.textContent = 'Downloading...';
+        restartBtn.hidden = true;
+        progressRow.hidden = false;
+        const safePct = Math.min(100, Math.max(0, Math.floor(Number(pct) || 0)));
+        progressFill.style.width = safePct + '%';
+        progressPercent.textContent = safePct + '%';
+      }
+
+      function setCompleteState() {
+        nowBtn.hidden = true;
+        restartBtn.hidden = false;
+        progressRow.hidden = true;
+      }
+
+      closeBtn.addEventListener('click', () => container.remove());
+      laterBtn.addEventListener('click', () => container.remove());
+      nowBtn.addEventListener('click', async function () {
         try {
           const res = await window.updateApi.downloadUpdate();
           if (!res || !res.ok) {
             window.toast.error('Failed to start download: ' + (res && res.error ? res.error : 'unknown'));
           } else {
             window.toast.info('Downloading update…');
-            container.querySelector('.update-progress-row').hidden = false;
+            setDownloadingState(0);
           }
         } catch (e) { window.toast.error('Download failed'); }
       });
-      container.querySelector('.update-restart').addEventListener('click', async function () {
+      restartBtn.addEventListener('click', async function () {
         try {
           await window.updateApi.installUpdate();
         } catch (e) {
           window.toast.error('Could not install update: ' + (e && e.message ? e.message : e));
         }
       });
+
+      setIdleState();
+
+      container._updateUi = {
+        setIdleState,
+        setDownloadingState,
+        setCompleteState
+      };
     }
 
     function showUpdatePopupFor(info) {
@@ -111,24 +152,25 @@ async function loadAnalyticsPage() {
       const el = document.getElementById('update-popup');
       if (!el) return;
       el.querySelector('.update-version-num').textContent = (info && info.version) ? info.version : 'new';
-      el.querySelector('.update-progress-row').hidden = true;
-      el.querySelector('.update-restart').hidden = true;
+      if (el._updateUi && typeof el._updateUi.setIdleState === 'function') {
+        el._updateUi.setIdleState();
+      }
       el.classList.add('visible');
     }
     function setUpdateProgress(progress) {
       const el = document.getElementById('update-popup');
       if (!el) return;
       const pct = Math.min(100, Math.floor((progress && progress.percent) ? progress.percent : 0));
-      el.querySelector('.update-progress-fill').style.width = pct + '%';
-      el.querySelector('.update-progress-percent').textContent = pct + '%';
-      el.querySelector('.update-progress-row').hidden = false;
+      if (el._updateUi && typeof el._updateUi.setDownloadingState === 'function') {
+        el._updateUi.setDownloadingState(pct);
+      }
     }
     function showRestartAction() {
       const el = document.getElementById('update-popup');
       if (!el) return;
-      el.querySelector('.update-restart').hidden = false;
-      el.querySelector('.update-now').hidden = true;
-      el.querySelector('.update-progress-row').hidden = true;
+      if (el._updateUi && typeof el._updateUi.setCompleteState === 'function') {
+        el._updateUi.setCompleteState();
+      }
     }
 
     // Wire updateApi events (safe if updateApi not present)
