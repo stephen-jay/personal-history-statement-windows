@@ -101,33 +101,41 @@ let mainWindow;
 function setupAutoUpdates() {
   if (!app.isPackaged) return;
 
+  console.log('[UPDATE] Auto-updater setup starting (packaged mode)');
+
   // Do not auto-download updates — user clicks "Update Now" to start.
   autoUpdater.autoDownload = false;
+  autoUpdater.allowPrerelease = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on('error', error => {
-    console.warn('Auto-update error:', error && error.message ? error.message : error);
-    try { if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('update:error', { message: String(error && error.message ? error.message : error) }); } catch (_) {}
+    const msg = error && error.message ? error.message : String(error);
+    console.error('[UPDATE] Error:', msg);
+    try { if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('update:error', { message: msg }); } catch (_) {}
   });
   autoUpdater.on('update-available', info => {
-    console.log('Update available:', info.version);
+    console.log('[UPDATE] Update available:', info && info.version ? info.version : '(unknown)');
     try { if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('update:available', info); } catch (_) {}
   });
   autoUpdater.on('update-not-available', info => {
-    console.log('No update available:', info && info.version ? info.version : 'latest');
+    console.log('[UPDATE] No update available. Current:', info && info.version ? info.version : '(unknown)');
     try { if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('update:not-available', info); } catch (_) {}
   });
   autoUpdater.on('download-progress', progress => {
+    console.log('[UPDATE] Download progress:', progress && progress.percent ? progress.percent + '%' : '(unknown)');
     try { if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('update:progress', progress); } catch (_) {}
   });
   autoUpdater.on('update-downloaded', info => {
-    console.log('Update downloaded:', info.version);
+    console.log('[UPDATE] Update downloaded:', info && info.version ? info.version : '(unknown)');
     try { if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('update:downloaded', info); } catch (_) {}
   });
 
   // Initial silent check for updates
+  console.log('[UPDATE] Checking for updates...');
   autoUpdater.checkForUpdates().catch(error => {
-    console.warn('Failed to check for updates:', error && error.message ? error.message : error);
+    const msg = error && error.message ? error.message : String(error);
+    console.error('[UPDATE] Check failed:', msg);
+    try { if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('update:error', { message: msg }); } catch (_) {}
   });
 
   // IPC handlers for renderer-initiated actions

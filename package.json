@@ -1,6 +1,6 @@
 {
   "name": "apollo-personnel-db",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "description": "Personnel database - initial input: Personnel History Statement",
   "main": "main.js",
   "scripts": {
@@ -20,11 +20,14 @@
   "build": {
     "appId": "com.apollo.personnel",
     "productName": "APOLLO Personnel Database",
+    "artifactName": "APOLLO-Personnel-Database-${version}.${ext}",
     "forceCodeSigning": false,
     "publish": [
       {
         "provider": "github",
-        "releaseType": "release"
+        "releaseType": "release",
+        "owner": "stephen-jay",
+        "repo": "personal-history-statement-windows"
       }
     ],
     "directories": {
@@ -32,10 +35,13 @@
     },
     "win": {
       "target": [
-        "nsis",
-        "portable"
+        "nsis"
       ],
       "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "assets/icon.png"
     },
     "nsis": {
       "oneClick": false,

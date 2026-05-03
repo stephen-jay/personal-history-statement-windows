@@ -1,5 +1,6 @@
 import { escapeHtml, normalizeValue } from './escape.js';
 import { buildDisplayFullName } from './form-data.js';
+import { getAvatarHtml } from './list.js';
 
 var EMPTY_CHART = '<div class="chart-empty">No data available yet.</div>';
 
@@ -687,14 +688,15 @@ export function renderAnalytics(records, opts) {
       var closeBtn = document.getElementById('analysis-edu-close');
 
       var buildRows = (rows || []).map(function (r) {
-        var initials = ((normalizeValue(r.nameFirst) || '').charAt(0) + (normalizeValue(r.nameLast) || '').charAt(0)).toUpperCase();
         var name = rosterLabel(r);
         var pos = normalizeValue(r.position || r.jobTitle) || '';
         var org = normalizeValue(r.organization) || '';
         var avatarColor = accent || '#1f3b63';
         var recordId = r.id ? escapeAttr(String(r.id)) : '';
+        // Use getAvatarHtml to display photos when available, fallback to initials
+        var avatarHtml = getAvatarHtml(r);
         return '<div class="edu-row" data-record-id="' + recordId + '" style="cursor:pointer;">' +
-          '<div class="edu-avatar" style="background:' + avatarColor + '">' + escapeHtml(initials) + '</div>' +
+          avatarHtml +
           '<div class="edu-meta"><div class="edu-name">' + escapeHtml(name) + '</div><div class="edu-sub">' + escapeHtml(pos) + (pos && org ? ' · ' : '') + escapeHtml(org) + '</div></div>' +
         '</div>';
       }).join('');
@@ -836,6 +838,28 @@ export function renderAnalytics(records, opts) {
     wideLabels: true,
     valueMode: valueMode
   });
+
+  // Wire up grad bracket rows to show personnel in each bracket
+  (function () {
+    var host = document.getElementById('chart-grad-brackets');
+    if (!host) return;
+    var rows = host.querySelectorAll('.bar-row');
+    rows.forEach(function (row) {
+      var labelEl = row.querySelector('.bar-row__label-text');
+      var bracket = labelEl ? labelEl.textContent.trim() : '';
+      if (!bracket) return;
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', function () {
+        var filtered = subset.filter(function (r) {
+          var y = latestGraduationYear(r);
+          var b = graduationBracket(y);
+          return b === bracket;
+        });
+        openEduModal('Graduation: ' + bracket, filtered, '#1f3b63');
+      });
+    });
+  })();
+
   // Post-process grad bracket rows to color 'Unknown' differently
   (function () {
     var host = document.getElementById('chart-grad-brackets');
@@ -932,6 +956,29 @@ export function renderAnalytics(records, opts) {
     maxItems: 10,
     groupOthers: true
   });
+
+  // Wire up training program rows to show personnel who attended each program
+  (function () {
+    var host = document.getElementById('chart-training-breakdown');
+    if (!host) return;
+    var rows = host.querySelectorAll('.bar-row');
+    rows.forEach(function (row) {
+      var labelEl = row.querySelector('.bar-row__label-text');
+      var programName = labelEl ? labelEl.textContent.trim() : '';
+      if (!programName || programName === 'Others') return; // Skip 'Others' aggregate
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', function () {
+        var filtered = subset.filter(function (r) {
+          var items = r.seminarsTraining;
+          if (!Array.isArray(items)) return false;
+          return items.some(function (row) {
+            return normalizeValue(row && row.name) === programName;
+          });
+        });
+        openEduModal('Training: ' + programName, filtered, '#5aa469');
+      });
+    });
+  })();
   setBreakdownSlot(
     'breakdown-top-programs',
     programToNames,
@@ -1046,12 +1093,13 @@ export function renderAnalytics(records, opts) {
       var closeBtn = document.getElementById('analysis-org-close');
 
       var buildRows = (rows || []).map(function (r) {
-        var initials = ((normalizeValue(r.nameFirst) || '').charAt(0) + (normalizeValue(r.nameLast) || '').charAt(0)).toUpperCase();
         var name = rosterLabel(r);
         var pos = normalizeValue(r.position || r.jobTitle) || '';
         var recordId = r.id ? escapeAttr(String(r.id)) : '';
+        // Use getAvatarHtml to display photos when available, fallback to initials
+        var avatarHtml = getAvatarHtml(r);
         return '<div class="edu-row" data-record-id="' + recordId + '" role="button" tabindex="0" aria-label="Open profile summary for ' + escapeAttr(name) + '" title="Open profile summary" style="cursor:pointer;">' +
-          '<div class="edu-avatar" style="background:#1f3b63">' + escapeHtml(initials) + '</div>' +
+          avatarHtml +
           '<div class="edu-meta"><div class="edu-name">' + escapeHtml(name) + '</div><div class="edu-sub">' + escapeHtml(pos) + '</div></div>' +
         '</div>';
       }).join('');
@@ -1133,12 +1181,13 @@ export function renderAnalytics(records, opts) {
       var recent = subset.slice().filter(function (r) { return recUpdated(r) && !isNaN(recUpdated(r).getTime()); })
         .sort(function (a, b) { return recUpdated(b) - recUpdated(a); }).slice(0, 5);
       recentContainer.innerHTML = recent.map(function (r) {
-        var initials = ((normalizeValue(r.nameFirst) || '').charAt(0) + (normalizeValue(r.nameLast) || '').charAt(0)).toUpperCase();
         var name = rosterLabel(r);
         var org = normalizeValue(r.organization) || '';
         var date = recUpdated(r);
         var dateStr = isNaN(date.getTime()) ? '' : date.toLocaleDateString();
-        return '<div class="recent-item"><div class="recent-avatar">' + escapeHtml(initials) + '</div>' +
+        // Use getAvatarHtml to display photos when available, fallback to initials
+        var avatarHtml = getAvatarHtml(r);
+        return '<div class="recent-item">' + avatarHtml +
           '<div class="recent-meta"><div class="recent-name">' + escapeHtml(name) + '</div><div class="recent-org">' + escapeHtml(org) + '</div></div>' +
           '<div class="recent-date">' + escapeHtml(dateStr) + '</div></div>';
       }).join('');

@@ -135,17 +135,31 @@ async function loadAnalyticsPage() {
     try {
       if (window.updateApi) {
         window.updateApi.onUpdateAvailable((info) => {
+          console.log('[UPDATE][renderer] available:', info && info.version ? info.version : info);
           showUpdatePopupFor(info);
         });
         window.updateApi.onDownloadProgress((p) => {
+          console.log('[UPDATE][renderer] progress:', p && p.percent ? p.percent : p);
           setUpdateProgress(p);
         });
         window.updateApi.onUpdateDownloaded((info) => {
+          console.log('[UPDATE][renderer] downloaded:', info && info.version ? info.version : info);
           showRestartAction();
           window.toast.success('Update downloaded. Restart to apply.');
         });
-        window.updateApi.onUpdateNotAvailable(() => {
-          // no-op
+        window.updateApi.onUpdateNotAvailable((info) => {
+          console.log('[UPDATE][renderer] not available:', info && info.version ? info.version : info);
+        });
+        window.updateApi.onUpdateError((payload) => {
+          const msg = payload && payload.message ? payload.message : String(payload || 'Unknown update error');
+          console.error('[UPDATE][renderer] error:', msg);
+          window.toast.error('Update check failed: ' + msg);
+        });
+        // Re-check once renderer listeners are attached so early startup events are not missed.
+        window.updateApi.checkForUpdates().then(function (res) {
+          console.log('[UPDATE][renderer] check requested:', res);
+        }).catch(function (e) {
+          console.error('[UPDATE][renderer] check request failed:', e && e.message ? e.message : e);
         });
       }
     } catch (e) { /* ignore if not present */ }

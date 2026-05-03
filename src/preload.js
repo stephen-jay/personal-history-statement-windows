@@ -34,6 +34,9 @@ contextBridge.exposeInMainWorld('updateApi', {
   onUpdateNotAvailable: (cb) => {
     ipcRenderer.on('update:not-available', (evt, info) => { try { cb(info); } catch (_) {} });
   },
+  onUpdateError: (cb) => {
+    ipcRenderer.on('update:error', (evt, payload) => { try { cb(payload); } catch (_) {} });
+  },
   onDownloadProgress: (cb) => {
     ipcRenderer.on('update:progress', (evt, progress) => { try { cb(progress); } catch (_) {} });
   },
