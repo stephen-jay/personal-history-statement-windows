@@ -2,13 +2,6 @@ export function initToastSystem(containerSelector = '#toast-container') {
   const container = document.querySelector(containerSelector);
   if (!container) return null;
 
-  const icons = {
-    success: '✓',
-    error: '✕',
-    warning: '⚠',
-    info: 'ℹ'
-  };
-
   function showToast(message, options = {}) {
     const {
       type = 'info',
@@ -20,16 +13,15 @@ export function initToastSystem(containerSelector = '#toast-container') {
     toast.className = `toast toast--${type}`;
     toast.setAttribute('role', 'status');
 
-    const iconSpan = document.createElement('span');
-    iconSpan.className = 'toast-icon';
-    iconSpan.textContent = icons[type] || icons.info;
-    iconSpan.setAttribute('aria-hidden', 'true');
+    const dotSpan = document.createElement('span');
+    dotSpan.className = 'toast-dot';
+    dotSpan.setAttribute('aria-hidden', 'true');
 
     const messageSpan = document.createElement('span');
     messageSpan.className = 'toast-message';
     messageSpan.textContent = String(message || '');
 
-    toast.appendChild(iconSpan);
+    toast.appendChild(dotSpan);
     toast.appendChild(messageSpan);
 
     if (dismissible) {
@@ -57,6 +49,7 @@ export function initToastSystem(containerSelector = '#toast-container') {
 
   function removeToast(toast) {
     if (!toast || !toast.parentNode) return;
+    toast.classList.add('closing');
     toast.classList.add('toast--closing');
     setTimeout(function () {
       if (toast.parentNode) {

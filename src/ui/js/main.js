@@ -56,6 +56,52 @@ async function loadAnalyticsPage() {
     // Initialize toast system
     window.toast = initToastSystem();
 
+    const isPackagedApp = (() => {
+      try {
+        if (typeof process === 'undefined' || !process || !process.execPath) return false;
+        const execPath = String(process.execPath).toLowerCase();
+        if (/electron(\.exe)?$/.test(execPath)) return false;
+        if (typeof process.defaultApp === 'boolean') return !process.defaultApp;
+        return true;
+      } catch (e) {
+        return false;
+      }
+    })();
+
+    function createToastDemoPanel() {
+      if (document.getElementById('toast-demo-panel')) return;
+      const sidebarFooter = document.querySelector('.sidebar-footer');
+      if (!sidebarFooter) return;
+
+      const panel = document.createElement('div');
+      panel.id = 'toast-demo-panel';
+      panel.className = 'toast-demo-panel';
+      panel.innerHTML = `
+        <div class="toast-demo-title">Toast Demo</div>
+        <div class="toast-demo-buttons">
+          <button type="button" class="toast-demo-btn toast-demo-btn--success">Success</button>
+          <button type="button" class="toast-demo-btn toast-demo-btn--error">Error</button>
+          <button type="button" class="toast-demo-btn toast-demo-btn--warning">Warning</button>
+          <button type="button" class="toast-demo-btn toast-demo-btn--info">Info</button>
+        </div>
+      `;
+
+      const buttons = panel.querySelectorAll('.toast-demo-btn');
+      buttons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          if (!window.toast) return;
+          if (btn.classList.contains('toast-demo-btn--success')) window.toast.success('Record saved successfully.');
+          if (btn.classList.contains('toast-demo-btn--error')) window.toast.error('Failed to delete record.');
+          if (btn.classList.contains('toast-demo-btn--warning')) window.toast.warning('2 required fields missing.');
+          if (btn.classList.contains('toast-demo-btn--info')) window.toast.info('Version 1.0.4 is available.');
+        });
+      });
+
+      sidebarFooter.parentNode.insertBefore(panel, sidebarFooter);
+    }
+
+    createToastDemoPanel();
+
     // --- Update popup (anchored above logout) ---
     function createUpdatePopup() {
       if (document.getElementById('update-popup')) return;
@@ -197,12 +243,14 @@ async function loadAnalyticsPage() {
           console.error('[UPDATE][renderer] error:', msg);
           window.toast.error('Update check failed: ' + msg);
         });
-        // Re-check once renderer listeners are attached so early startup events are not missed.
-        window.updateApi.checkForUpdates().then(function (res) {
-          console.log('[UPDATE][renderer] check requested:', res);
-        }).catch(function (e) {
-          console.error('[UPDATE][renderer] check request failed:', e && e.message ? e.message : e);
-        });
+        // Re-check only in packaged builds so dev startup does not hit missing main-process handlers.
+        if (isPackagedApp) {
+          window.updateApi.checkForUpdates().then(function (res) {
+            console.log('[UPDATE][renderer] check requested:', res);
+          }).catch(function (e) {
+            console.error('[UPDATE][renderer] check request failed:', e && e.message ? e.message : e);
+          });
+        }
       }
     } catch (e) { /* ignore if not present */ }
 
