@@ -292,23 +292,50 @@ input::placeholder {
 }
 
 .about-logos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 16px;
+  margin: 0 0 18px;
+  margin-bottom: 10px;
+}
+
+.about-logo-wrap {
+  width: 210px;
+  height: 120px;
   display: flex;
-  gap: 14px;
   align-items: center;
-  margin: 0 0 14px;
+  justify-content: center;
+  background: transparent;
+  margin: 0 auto;
+  margin-left: 10px;
+  margin-bottom: 10px;
 }
 
 .about-logo {
   display: block;
-  height: 34px;
-  width: auto;
-  opacity: 0.95;
-  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.12));
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.98;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.18));
 }
 
 .about-logo--hendexis {
-  /* Makes white background blend into the blue panel */
+  object-position: center center;
   mix-blend-mode: multiply;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* Hendexis wrapper spans both columns below the first two logos */
+.about-logo-wrap--hendexis {
+  grid-column: 1 / -1;
+  width: 200px;
+  height: 110px;
+  margin: 0 auto;
+  align-items: center;
+  padding-top: 0;
 }
 
 .right-inner h3 {

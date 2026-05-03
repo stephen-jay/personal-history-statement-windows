@@ -13,6 +13,8 @@ var FOCUSABLE_SEL =
  * @param {HTMLFormElement} opts.formEl
  * @param {() => void} [opts.onEscape] Called when Escape is pressed (e.g. showList)
  */
+import { showConfirm } from './confirm.js';
+
 export function createPhsModalController(opts) {
   var modalEl = opts.modalEl;
   var dialogEl = opts.dialogEl;
@@ -90,10 +92,11 @@ export function createPhsModalController(opts) {
    * @param {boolean} [force] Skip dirty confirm (after successful save)
    * @returns {boolean} True if modal is now closed
    */
-  function close(force) {
+  async function close(force) {
     if (!modalEl.classList.contains('open')) return true;
     if (!force && formDirty) {
-      if (!window.confirm('You have unsaved changes. Discard and close?')) return false;
+      const ok = await showConfirm('You have unsaved changes. Discard and close?', { confirmText: 'Discard', cancelText: 'Cancel' });
+      if (!ok) return false;
     }
     modalEl.classList.remove('open');
     modalEl.setAttribute('aria-hidden', 'true');

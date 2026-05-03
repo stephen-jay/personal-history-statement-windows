@@ -1,6 +1,7 @@
 import { FIELD_IDS } from './constants.js';
 import { buildDisplayFullName } from './form-data.js';
 import { escapeHtml, normalizeValue } from './escape.js';
+import { showConfirm } from './confirm.js';
 
 // Organization filter state
 let organizationFilter = null;
@@ -453,7 +454,9 @@ function rerenderRoster(records, deps) {
   deps.personnelTbody.querySelectorAll('.delete-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       const id = btn.getAttribute('data-id');
-      if (id && confirm('Delete this personnel record?')) {
+      if (!id) return;
+      showConfirm('Delete this personnel record?', { confirmText: 'Delete', cancelText: 'Cancel' }).then(function (confirmed) {
+        if (!confirmed) return;
         const record = records.find(function (r) { return String(r.id) === String(id); });
         const version = record && record.version != null ? Number(record.version) : null;
         window.personnelApi.delete(id, version).then(function () {
@@ -461,7 +464,7 @@ function rerenderRoster(records, deps) {
         }).catch(function (err) {
           window.toast.error('Delete failed: ' + (err && err.message ? err.message : String(err)));
         });
-      }
+      });
     });
   });
 }
@@ -604,20 +607,28 @@ function createSkeletonRow() {
 }
 
 export function renderRosterSkeleton(deps, count) {
-  const skeletonCount = Math.max(5, Number(count) || 6);
-  console.log('[LOADER] Rendering skeleton rows:', { count: skeletonCount });
+  console.log('[LOADER] Rendering dashboard-style loader for Personnels');
   
   if (deps.emptyState) {
     deps.emptyState.style.display = 'none';
   }
 
-  deps.personnelTbody.innerHTML = '';
+  // Show dashboard-style animated loader instead of skeleton rows
+  const loaderHtml = `
+    <tr style="pointer-events: none;">
+      <td colspan="10" style="padding: 60px 0; text-align: center; border: none;">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
+          <div class="db-loader-dots" aria-hidden="true">
+            <div class="db-loader-dot"></div>
+            <div class="db-loader-dot"></div>
+            <div class="db-loader-dot"></div>
+          </div>
+          <div class="db-loader-text">Loading personnel records...</div>
+        </div>
+      </td>
+    </tr>
+  `;
   
-  for (let i = 0; i < skeletonCount; i++) {
-    const row = createSkeletonRow();
-    row.style.animationDelay = (i * 50) + 'ms';
-    deps.personnelTbody.appendChild(row);
-  }
-  
-  console.log('[LOADER] Skeleton rows inserted');
+  deps.personnelTbody.innerHTML = loaderHtml;
+  console.log('[LOADER] Dashboard loader inserted');
 }

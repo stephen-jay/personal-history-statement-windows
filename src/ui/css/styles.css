@@ -199,6 +199,17 @@ body[data-app-view="form"] .sidebar .nav-item.active:not(:hover) {
   min-height: 64px;
 }
 
+/* App dialog (confirm/alert) */
+.app-dialog { position: fixed; inset: 0; display: none; z-index: 14000; }
+.app-dialog.open { display: block; }
+.app-dialog-backdrop { position: absolute; inset: 0; background: rgba(2,6,23,0.55); }
+.app-dialog-panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); min-width: 320px; max-width: 92%; background: #fff; border-radius: 8px; padding: 18px; box-shadow: 0 10px 30px rgba(2,6,23,0.2); }
+.app-dialog-title { font-weight: 600; font-size: 1rem; margin-bottom: 8px; color: #0f172a; }
+.app-dialog-body { color: #334155; margin-bottom: 14px; line-height: 1.4; }
+.app-dialog-actions { display:flex; gap:10px; justify-content:flex-end; }
+.app-dialog .btn { min-width: 84px; }
+
+
 .topbar-left {
   display: flex;
   align-items: center;
@@ -290,13 +301,17 @@ body[data-app-view="profile"] .topbar--institutional {
 
 body[data-app-view="list"] .topbar--institutional .topbar-seal,
 body[data-app-view="analytics"] .topbar--institutional .topbar-seal,
-body[data-app-view="profile"] .topbar--institutional .topbar-seal {
+body[data-app-view="profile"] .topbar--institutional .topbar-seal,
+body[data-app-view="admin"] .topbar--institutional .topbar-seal,
+body[data-app-view="audit"] .topbar--institutional .topbar-seal {
   color: #c4a035;
 }
 
 body[data-app-view="list"] .topbar--institutional .topbar-title,
 body[data-app-view="analytics"] .topbar--institutional .topbar-title,
-body[data-app-view="profile"] .topbar--institutional .topbar-title {
+body[data-app-view="profile"] .topbar--institutional .topbar-title,
+body[data-app-view="admin"] .topbar--institutional .topbar-title,
+body[data-app-view="audit"] .topbar--institutional .topbar-title {
   font-family: var(--font-serif);
   font-weight: 700;
   font-size: 1.05rem;
@@ -308,7 +323,9 @@ body[data-app-view="profile"] .topbar--institutional .topbar-title {
 
 body[data-app-view="list"] .topbar--institutional .topbar-subtitle,
 body[data-app-view="analytics"] .topbar--institutional .topbar-subtitle,
-body[data-app-view="profile"] .topbar--institutional .topbar-subtitle {
+body[data-app-view="profile"] .topbar--institutional .topbar-subtitle,
+body[data-app-view="admin"] .topbar--institutional .topbar-subtitle,
+body[data-app-view="audit"] .topbar--institutional .topbar-subtitle {
   color: #6b7280;
   text-transform: uppercase;
   font-weight: 600;
@@ -318,7 +335,9 @@ body[data-app-view="profile"] .topbar--institutional .topbar-subtitle {
 
 body[data-app-view="list"] .topbar--institutional .topbar-logout-btn,
 body[data-app-view="analytics"] .topbar--institutional .topbar-logout-btn,
-body[data-app-view="profile"] .topbar--institutional .topbar-logout-btn {
+body[data-app-view="profile"] .topbar--institutional .topbar-logout-btn,
+body[data-app-view="admin"] .topbar--institutional .topbar-logout-btn,
+body[data-app-view="audit"] .topbar--institutional .topbar-logout-btn {
   background: #f6f8fb;
   border-color: #cfd9e6;
   color: #2f3f56;
@@ -326,7 +345,9 @@ body[data-app-view="profile"] .topbar--institutional .topbar-logout-btn {
 
 body[data-app-view="list"] .topbar--institutional .topbar-logout-btn:hover,
 body[data-app-view="analytics"] .topbar--institutional .topbar-logout-btn:hover,
-body[data-app-view="profile"] .topbar--institutional .topbar-logout-btn:hover {
+body[data-app-view="profile"] .topbar--institutional .topbar-logout-btn:hover,
+body[data-app-view="admin"] .topbar--institutional .topbar-logout-btn:hover,
+body[data-app-view="audit"] .topbar--institutional .topbar-logout-btn:hover {
   background: #eaf0f8;
   border-color: #b4c4d8;
 }
@@ -1249,7 +1270,8 @@ select.search {
   background: transparent;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   border-radius: 8px;
   box-shadow: 0 18px 48px rgba(15, 31, 53, 0.22), 0 4px 12px rgba(0, 0, 0, 0.12);
 }
@@ -1405,17 +1427,17 @@ select.search {
 .phs-form-header {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 10;
   margin: 0 0 18px;
   padding: 14px 16px;
   border: 1px solid rgba(221, 230, 240, 0.95);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   gap: 12px;
-  box-shadow: 0 10px 26px rgba(15, 31, 53, 0.06);
+  box-shadow: 0 10px 26px rgba(15, 31, 53, 0.08);
 }
 
 .phs-form-header #btn-autofill-phs {
