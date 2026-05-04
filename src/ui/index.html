@@ -13,6 +13,8 @@
   <title>Personnel History Statement System</title>
 
   <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/settings.css" />
+  <link rel="stylesheet" href="css/admin-users.css" />
   <link rel="stylesheet" href="css/toast.css" />
   <link rel="stylesheet" href="css/update.css" />
 
@@ -54,6 +56,11 @@
           <span class="nav-text">Audit Logs</span>
         </button>
 
+        <button type="button" class="nav-item" data-tab="settings" id="nav-settings" hidden>
+          <span class="nav-icon" aria-hidden="true">⚙</span>
+          <span class="nav-text">Settings</span>
+        </button>
+
       </nav>
 
       <div class="sidebar-footer">
@@ -61,6 +68,7 @@
           <span class="sidebar-logout-icon" aria-hidden="true">⎋</span>
           <span class="sidebar-logout-text">Logout</span>
         </button>
+        <div class="sidebar-version" id="sidebar-version" aria-hidden="true">Current version: —</div>
       </div>
 
     </aside>
@@ -254,6 +262,91 @@
             <!-- Audit Cards will be rendered here -->
             <div style="text-align: center; padding: 40px; color: #64748b;">
               Loading audit records...
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="settings-view" class="view" aria-hidden="true">
+        <div class="settings-shell">
+          <div class="settings-header-row">
+            <h2 class="settings-title">Settings</h2>
+            <span class="settings-version-chip" id="settings-version-chip">v-</span>
+          </div>
+
+          <div class="settings-tabs" role="tablist" aria-label="Settings sections">
+            <button type="button" class="settings-tab active" data-settings-tab="system" role="tab" aria-selected="true">System</button>
+            <button type="button" class="settings-tab" data-settings-tab="security" role="tab" aria-selected="false">Security</button>
+            <button type="button" class="settings-tab" data-settings-tab="notifications" role="tab" aria-selected="false">Notifications</button>
+            <button type="button" class="settings-tab" data-settings-tab="system-info" role="tab" aria-selected="false">System Info</button>
+          </div>
+
+          <div class="settings-panel active" data-settings-panel="system">
+            <div class="settings-card">
+              <div class="settings-card-row">
+                <div>
+                  <div class="settings-row-title">Current Version</div>
+                  <div class="settings-row-subtitle">Installed on this machine</div>
+                </div>
+                <div class="settings-version-state">
+                  <span class="settings-version-chip" id="settings-current-version">v-</span>
+                  <span class="settings-version-ok" id="settings-version-status">Ready</span>
+                </div>
+              </div>
+
+              <div class="settings-divider"></div>
+
+              <div class="settings-card-row">
+                <div>
+                  <div class="settings-row-title">Check for Updates</div>
+                  <div class="settings-row-subtitle">Download the latest version</div>
+                </div>
+                <button type="button" class="btn secondary" id="settings-check-updates-btn">Check Now</button>
+              </div>
+
+              <div class="settings-divider"></div>
+
+              <div class="settings-card-row">
+                <div>
+                  <div class="settings-row-title">Release Notes</div>
+                  <div class="settings-row-subtitle" id="settings-release-notes-label">See what changed</div>
+                </div>
+                <a class="btn secondary" id="settings-release-notes-link" href="https://github.com/stephen-jay/personal-history-statement-windows/releases" target="_blank" rel="noreferrer">View changelog</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-panel" data-settings-panel="security" hidden>
+            <div class="settings-card">
+              <form id="settings-security-form" novalidate>
+                <div class="settings-security-grid">
+                  <label class="settings-field">Current Password<input id="settings-current-password" type="password" placeholder="Current password" autocomplete="current-password" required /></label>
+                  <label class="settings-field">New Password<input id="settings-new-password" type="password" placeholder="Min 8 chars" autocomplete="new-password" minlength="8" required /></label>
+                  <label class="settings-field">Confirm Password<input id="settings-confirm-password" type="password" placeholder="Re-enter" autocomplete="new-password" minlength="8" required /></label>
+                </div>
+                <div class="settings-actions-right">
+                  <button type="button" class="btn secondary" id="settings-security-cancel">Cancel</button>
+                  <button type="submit" class="btn primary" id="settings-security-save">Save</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="settings-panel" data-settings-panel="notifications" hidden>
+            <div class="settings-card">
+              <label class="settings-toggle-row"><span>Activity Notifications</span><input type="checkbox" checked /></label>
+              <div class="settings-divider"></div>
+              <label class="settings-toggle-row"><span>New Personnel Added</span><input type="checkbox" checked /></label>
+              <div class="settings-divider"></div>
+              <label class="settings-toggle-row"><span>Audit Alerts</span><input type="checkbox" /></label>
+            </div>
+          </div>
+
+          <div class="settings-panel" data-settings-panel="system-info" hidden>
+            <div class="settings-info-grid">
+              <div class="settings-info-card"><div class="settings-info-label">Version</div><div class="settings-info-value" id="settings-info-version">v-</div></div>
+              <div class="settings-info-card"><div class="settings-info-label">Mode</div><div class="settings-info-value" id="settings-info-mode">Desktop</div></div>
+              <div class="settings-info-card"><div class="settings-info-label">Channel</div><div class="settings-info-value">Stable</div></div>
             </div>
           </div>
         </div>

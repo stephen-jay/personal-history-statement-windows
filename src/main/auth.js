@@ -172,6 +172,36 @@ async function deleteAdminUserLocal(userId) {
   }
 }
 
+async function changePasswordLocal(userId, currentPassword, newPassword) {
+  const pool = getPgPool();
+  if (!pool) throw new Error('DATABASE_URL is required for local auth operations.');
+
+  const id = String(userId || '').trim();
+  const oldPass = String(currentPassword || '');
+  const nextPass = String(newPassword || '');
+  if (!id || !oldPass || !nextPass) {
+    throw new Error('userId, currentPassword, and newPassword are required.');
+  }
+
+  const res = await pool.query(
+    `
+      UPDATE app_users
+      SET password_hash = crypt($3, gen_salt('bf'))
+      WHERE id = $1
+        AND is_active = TRUE
+        AND password_hash = crypt($2, password_hash)
+      RETURNING id
+    `,
+    [id, oldPass, nextPass]
+  );
+
+  if (!res.rows || !res.rows.length) {
+    throw new Error('Current password is incorrect.');
+  }
+
+  return { ok: true };
+}
+
 module.exports = {
   initAuth,
   loadAuthSessionFromDisk,
@@ -181,5 +211,6 @@ module.exports = {
   getAdminRolesLocal,
   createAdminUserLocal,
   updateAdminUserRoleLocal,
-  deleteAdminUserLocal
+  deleteAdminUserLocal,
+  changePasswordLocal
 };

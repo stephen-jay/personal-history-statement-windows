@@ -21,11 +21,68 @@ export function initAdminUsersView(opts) {
   const roleSelectEl = adminViewEl.querySelector('#admin-role');
   const statusEl = adminViewEl.querySelector('#admin-user-status');
   const usersTbody = adminViewEl.querySelector('#admin-users-tbody');
+  const createCard = adminViewEl.querySelector('.admin-card--create');
+  const toolbar = adminViewEl.querySelector('.toolbar.roster-toolbar');
 
   if (!form || !usernameEl || !passwordEl || !roleSelectEl || !usersTbody) return;
   if (!adminApi || typeof adminApi.getRoles !== 'function' || typeof adminApi.createUser !== 'function' || typeof adminApi.listUsers !== 'function') {
     setStatus(statusEl, 'Admin API unavailable.', 'error');
     return;
+  }
+
+  // Add "Add New User" button to toolbar if not present
+  if (toolbar && !toolbar.querySelector('#admin-card-add-btn')) {
+    const addBtn = document.createElement('button');
+    addBtn.id = 'admin-card-add-btn';
+    addBtn.type = 'button';
+    addBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add New User';
+    toolbar.appendChild(addBtn);
+    
+    addBtn.addEventListener('click', () => {
+      if (createCard) {
+        createCard.classList.toggle('open');
+        if (createCard.classList.contains('open')) {
+          usernameEl.focus();
+        }
+      }
+    });
+  }
+
+  // Add close button functionality
+  if (createCard) {
+    let closeBtn = createCard.querySelector('.admin-close-btn');
+    if (!closeBtn) {
+      // Create close button if it doesn't exist
+      closeBtn = document.createElement('button');
+      closeBtn.className = 'admin-close-btn';
+      closeBtn.type = 'button';
+      closeBtn.textContent = '✕';
+      const header = createCard.querySelector('.admin-card-header');
+      if (header) {
+        header.appendChild(closeBtn);
+      }
+    }
+    
+    closeBtn.addEventListener('click', () => {
+      createCard.classList.remove('open');
+      clearForm();
+    });
+  }
+
+  // Close form on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && createCard && createCard.classList.contains('open')) {
+      createCard.classList.remove('open');
+      clearForm();
+    }
+  });
+
+  function clearForm() {
+    usernameEl.value = '';
+    fullNameEl.value = '';
+    passwordEl.value = '';
+    roleSelectEl.value = '';
+    setStatus(statusEl, '');
   }
 
   async function loadRoles() {
@@ -162,6 +219,9 @@ export function initAdminUsersView(opts) {
       const createdUsername = resp && resp.user && resp.user.username ? resp.user.username : username;
       setStatus(statusEl, 'User created: ' + createdUsername, 'success');
       form.reset();
+      if (createCard) {
+        createCard.classList.remove('open');
+      }
       await loadRoles();
       await loadUsers();
     } catch (err) {

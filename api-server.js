@@ -158,6 +158,29 @@ app.get('/auth/me', requireAuth, async function (req, res) {
   res.json({ userId: req.auth.userId, roles: req.auth.roles, username: req.auth.username });
 });
 
+app.post('/auth/change-password', requireAuth, async function (req, res) {
+  const body = req.body || {};
+  const currentPassword = String(body.currentPassword || '');
+  const newPassword = String(body.newPassword || '');
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'currentPassword and newPassword are required.' });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+  }
+
+  try {
+    const result = await auth.changePasswordLocal(req.auth.userId, currentPassword, newPassword);
+    res.json(result || { ok: true });
+  } catch (e) {
+    const msg = e && e.message ? e.message : String(e);
+    if (/incorrect/i.test(msg)) {
+      return res.status(400).json({ error: msg });
+    }
+    return res.status(500).json({ error: msg });
+  }
+});
+
 app.get('/admin/roles', requireAuth, requireAdmin, async function (_req, res) {
   try {
     const result = await auth.getAdminRolesLocal();

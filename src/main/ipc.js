@@ -73,6 +73,37 @@ function registerIpcHandlers(ipcMain, app, config) {
     return { ok: true };
   });
 
+  ipcMain.handle('auth:changePassword', async function (_evt, payload) {
+    const body = payload || {};
+    const currentPassword = String(body.currentPassword || '');
+    const newPassword = String(body.newPassword || '');
+    if (!currentPassword || !newPassword) {
+      throw new Error('currentPassword and newPassword are required.');
+    }
+    if (newPassword.length < 8) {
+      throw new Error('New password must be at least 8 characters.');
+    }
+
+    const session = auth.getAuthSession();
+    const userId = session && session.user ? session.user.id : null;
+    if (!userId) {
+      throw new Error('No authenticated user session. Please log in again.');
+    }
+
+    if (config.USE_REMOTE_API) {
+      try {
+        return await remoteApi('/auth/change-password', {
+          method: 'POST',
+          body: JSON.stringify({ currentPassword, newPassword }),
+        }, config, auth.getAuthSession());
+      } catch (e) {
+        console.error('auth:changePassword remote API failed, trying local DB auth:', e && e.message ? e.message : e);
+      }
+    }
+
+    return await auth.changePasswordLocal(userId, currentPassword, newPassword);
+  });
+
   ipcMain.handle('admin:roles', async function () {
     if (config.USE_REMOTE_API) {
       try {

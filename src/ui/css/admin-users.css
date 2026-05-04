@@ -1,0 +1,452 @@
+/* ── ADMIN USERS PAGE CSS ── */
+/* Separated styling for Admin Users embedded view */
+
+:root {
+  --navy:         #1f3b63;
+  --navy-dark:    #152c4a;
+  --accent:       #2f5f97;
+  --accent-hover: #264f80;
+  --charcoal:     #1f2937;
+  --muted:        #64748b;
+  --border:       #dce3ec;
+  --cream:        #f7f8fb;
+  --cream-dark:   #eef1f6;
+  --white:        #ffffff;
+  --danger:       #b91c1c;
+  --danger-light: #fef2f2;
+  --danger-border:#fecaca;
+  --success:      #0d9488;
+  --focus:        #315f98;
+}
+
+/* Admin view section */
+#admin-view {
+  background: var(--white);
+}
+
+/* Page title */
+#admin-view .admin-users-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--charcoal);
+  margin-bottom: 20px;
+}
+
+/* Container and card layout */
+.admin-users-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 12px 12px;
+}
+
+.admin-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  /* subtler, flatter shadow to match reference */
+  box-shadow: 0 6px 18px rgba(16,24,40,0.04);
+}
+
+.admin-card:hover {
+  box-shadow: 0 8px 24px rgba(16,24,40,0.06);
+}
+
+/* Create card - collapsible */
+.admin-card--create {
+  padding: 14px;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: max-height 0.35s ease, opacity 0.25s ease, transform 0.25s ease, margin-bottom 0.25s ease;
+  pointer-events: none;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+
+.admin-card--create.open {
+  max-height: 360px;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: all;
+  margin-bottom: 16px;
+}
+
+/* Card header with gradient for create form */
+.admin-card--create .admin-card-header {
+  padding: 14px 18px 8px 18px;
+  margin: -14px -14px 0 -14px;
+  background: linear-gradient(135deg, var(--navy) 0%, var(--accent) 100%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.admin-card--create .admin-card-title {
+  color: #fff;
+}
+
+.admin-card--create .admin-card-subtitle {
+  color: rgba(255,255,255,0.85);
+}
+
+/* Close button for create form */
+.admin-card--create .admin-card-header .admin-close-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.admin-card--create .admin-card-header .admin-close-btn:hover {
+  background: rgba(255,255,255,0.1);
+  border-radius: 50%;
+}
+
+/* Users card header - no gradient */
+.admin-card--users .admin-card-header {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+  background: var(--white);
+}
+
+.admin-card--users .admin-card-title {
+  color: var(--charcoal);
+}
+
+.admin-card--users .admin-card-subtitle {
+  color: var(--muted);
+}
+
+.admin-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+}
+
+.admin-card-subtitle {
+  font-size: 13px;
+  margin: 0;
+}
+
+/* Form styles */
+.admin-user-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 14px;
+}
+
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-field label {
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.admin-field input,
+.admin-field select {
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: var(--cream);
+  color: var(--charcoal);
+  font: inherit;
+  font-size: 13px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.admin-field input::placeholder {
+  color: #cbd5e1;
+}
+
+.admin-field input:focus,
+.admin-field select:focus {
+  outline: none;
+  border-color: var(--focus);
+  background: var(--white);
+  box-shadow: 0 0 0 3px rgba(49,95,152,0.1);
+}
+
+.admin-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+
+.admin-actions .btn {
+  padding: 8px 16px;
+  border-radius: 7px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.admin-actions .btn-primary {
+  background: var(--accent);
+  color: var(--white);
+  border: none;
+  padding: 8px 20px;
+  font-weight: 500;
+}
+
+.admin-actions .btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.admin-user-status {
+  margin: 12px 0 0;
+  min-height: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.admin-user-status[data-state='success'] {
+  color: var(--success);
+}
+
+.admin-user-status[data-state='error'] {
+  color: var(--danger);
+}
+
+/* Table styles */
+.admin-users-table-wrapper {
+  overflow-x: auto;
+}
+
+.admin-users-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+}
+
+.admin-users-table thead {
+  background: #f9fafb;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-users-table thead th {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 700;
+  border: none;
+}
+
+.admin-users-table tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+  border-left: 3px solid transparent;
+  transition: background-color 0.15s, border-left-color 0.15s;
+}
+
+.admin-users-table tbody tr:hover {
+  background-color: var(--cream);
+  border-left-color: var(--accent);
+}
+
+.admin-users-table td {
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--charcoal);
+}
+
+.admin-user-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.admin-user-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 12px;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.admin-user-avatar--admin {
+  background: var(--cream-dark);
+  color: var(--accent);
+}
+
+.admin-user-avatar--standard {
+  background: #f0fdfa;
+  color: var(--success);
+}
+
+.admin-username {
+  display: block;
+}
+
+.admin-roles-cell {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.admin-role-pill--admin {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.admin-role-pill--encoder {
+  background: var(--cream-dark);
+  color: var(--accent);
+}
+
+.admin-role-pill--viewer {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.admin-role-pill--default {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.admin-role-pill svg {
+  width: 10px;
+  height: 10px;
+}
+
+.admin-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.admin-status-pill--active {
+  color: var(--success);
+}
+
+.admin-status-pill--active::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.admin-status-pill--inactive {
+  color: #6b7280;
+}
+
+/* Delete button hidden by default, shown on row hover */
+.admin-user-delete {
+  /* visible by default per reference */
+  opacity: 1;
+  pointer-events: all;
+  transition: background 0.12s ease, transform 0.06s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--danger-border);
+  background: var(--white);
+  color: var(--danger);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.admin-user-delete:hover {
+  background: var(--danger-light);
+  transform: translateY(-1px);
+}
+
+.admin-user-delete svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Add button styles */
+#admin-card-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--accent);
+  color: var(--white);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  box-shadow: 0 2px 6px rgba(47,95,151,0.18);
+}
+
+#admin-card-add-btn:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+#admin-card-add-btn:active {
+  transform: translateY(0);
+}
+
+#admin-card-add-btn svg {
+  width: 15px;
+  height: 15px;
+}

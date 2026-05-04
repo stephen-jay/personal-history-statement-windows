@@ -10,7 +10,15 @@ let pgPool = null;
 function initDatabase(url, jsonPath) {
   dataFile = jsonPath;
   if (url && !pgPool) {
-    pgPool = new Pool({ connectionString: url });
+    try {
+      console.log('[DB] initDatabase: attempting to create pg Pool');
+      console.log('[DB] connection string (masked):', String(url).replace(/:(?:[^:]+)@/, ':****@'));
+      pgPool = new Pool({ connectionString: url });
+      console.log('[DB] initDatabase: pg Pool created');
+    } catch (e) {
+      console.error('[DB] initDatabase: failed to create pg Pool:', e && e.message ? e.message : e);
+      pgPool = null;
+    }
   }
 }
 

@@ -12,6 +12,7 @@ import { initAdminUsersView } from './admin-users.js';
 import { initToastSystem } from './toast.js';
 import { buildAutoFillRecord } from './autofill.js';
 import { initAuditLogs } from './audit-log.js';
+import { initSettingsView } from './settings.js';
 import { show as showLoader, hide as hideLoader } from './loader.js';
 
 function showError(msg) {
@@ -244,6 +245,7 @@ async function loadAnalyticsPage() {
     const analyticsView = document.getElementById('analytics-view');
     const adminView = document.getElementById('admin-view');
     const auditView = document.getElementById('audit-view');
+    const settingsView = document.getElementById('settings-view');
     const auditTbody = document.getElementById('audit-logs-tbody');
     const btnRefreshAudit = document.getElementById('btn-refresh-audit');
     const phsModalEl = document.getElementById('phs-modal');
@@ -272,8 +274,10 @@ async function loadAnalyticsPage() {
 
     const navAdmin = document.getElementById('nav-admin');
     const navAudit = document.getElementById('nav-audit');
+    const navSettings = document.getElementById('nav-settings');
     if (navAdmin) navAdmin.hidden = !isAdmin;
     if (navAudit) navAudit.hidden = !isAdmin;
+    if (navSettings) navSettings.hidden = !isAdmin;
     if (btnAutoFillPhs) btnAutoFillPhs.disabled = !canEdit;
 
     var btnNew = document.getElementById('btn-new');
@@ -288,6 +292,26 @@ async function loadAnalyticsPage() {
     if (isAdmin && adminView && window.adminApi) {
       initAdminUsersView({ adminViewEl: adminView, adminApi: window.adminApi });
     }
+
+    const settingsCtl = initSettingsView({
+      settingsViewEl: settingsView,
+      updateApi: window.updateApi,
+      appApi: window.appApi,
+      authApi: window.authApi,
+      toast: window.toast
+    });
+
+    // Populate sidebar version text (best-effort)
+    (async function setSidebarVersion() {
+      try {
+        const el = document.getElementById('sidebar-version');
+        if (!el) return;
+        if (window.appApi && typeof window.appApi.getVersion === 'function') {
+          const ver = await window.appApi.getVersion();
+          if (ver) el.textContent = 'Current version: ' + ver;
+        }
+      } catch (e) { /* ignore */ }
+    })();
 
     
     let showAuditLogs;
@@ -324,6 +348,7 @@ async function loadAnalyticsPage() {
       if (analyticsView) analyticsView.classList.remove('active');
       if (adminView) adminView.classList.remove('active');
       if (auditView) auditView.classList.remove('active');
+      if (settingsView) settingsView.classList.remove('active');
       setActiveNav('list');
       setAppView('list');
       setTopbarSection(topbarSection, 'Personnels');
@@ -426,8 +451,71 @@ async function loadAnalyticsPage() {
     // Roster cache: persist records after first successful fetch.
     // Only re-fetch when explicitly requested (forceRefresh) or when stale.
     const ROSTER_STALE_MS = 5 * 60 * 1000; // 5 minutes
-    // Minimum visible time for the roster skeleton. Keep long enough to paint.
-    const ROSTER_SKELETON_MIN_MS = 1500;
+    // Minimum visible time for the roster skeleton. Start with a sensible default
+    // and adapt based on measured network speed (bandwidth/connection hints).
+    let ROSTER_SKELETON_MIN_MS = 1500;
+
+    // Estimate a reasonable skeleton minimum based on connection hints or a
+    // lightweight bandwidth measurement. This runs once and updates the
+    // `ROSTER_SKELETON_MIN_MS` value when available.
+    (function initAdaptiveSkeletonMs() {
+      async function measureBandwidthMbps(urls) {
+        const candidates = urls || ['images/thinktech.png', 'images/ansys.png', 'images/hendexis.png'];
+        for (const u of candidates) {
+          try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 1500);
+            const start = performance.now();
+            const resp = await fetch(u, { cache: 'no-store', signal: controller.signal });
+            clearTimeout(timeout);
+            if (!resp.ok) continue;
+            const blob = await resp.blob();
+            const elapsed = (performance.now() - start) / 1000; // seconds
+            if (elapsed <= 0) continue;
+            const bytes = blob.size || 1024; // fallback
+            const mbps = (bytes * 8) / (elapsed * 1_000_000);
+            if (mbps > 0) return mbps;
+          } catch (_) {
+            // try next candidate
+          }
+        }
+        return null;
+      }
+
+      async function estimateSkeletonMinMs() {
+        // 1) Network Information API heuristic
+        try {
+          const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+          if (conn && conn.effectiveType) {
+            switch (conn.effectiveType) {
+              case 'slow-2g': return 3000;
+              case '2g': return 3000;
+              case '3g': return 1800;
+              case '4g': return 800;
+              default: break;
+            }
+          }
+        } catch (_) {}
+
+        // 2) Measure bandwidth by downloading a small local image (fast, low-cost)
+        try {
+          const mbps = await measureBandwidthMbps();
+          if (mbps && isFinite(mbps) && mbps > 0) {
+            // Derive a min ms from bandwidth. Tunable constant: 2000.
+            const ms = Math.round(2000 / mbps);
+            return Math.min(3000, Math.max(150, ms));
+          }
+        } catch (_) {}
+
+        // Fallback
+        return 1500;
+      }
+
+      // Run in background; don't block startup.
+      estimateSkeletonMinMs().then(function (ms) {
+        if (ms && typeof ms === 'number') ROSTER_SKELETON_MIN_MS = ms;
+      }).catch(function () {});
+    })();
     let rosterCache = { records: null, ts: 0 };
 
     // Ensure the skeleton CSS/animation is present at runtime. Some environments
@@ -484,7 +572,7 @@ async function loadAnalyticsPage() {
             renderAnalytics(rosterCache.records, { openSummary: openSummary });
             try { hideLoader(); } catch (_) {}
             resolve(rosterCache.records);
-          }, 80);
+          }, 60);
         });
       }
 
@@ -531,7 +619,7 @@ async function loadAnalyticsPage() {
             } catch (_) {}
             hideLoader();
             resolve(records);
-          }, 150);
+          }, 60);
         });
       }).catch(function (err) {
         hideLoader();
@@ -623,6 +711,7 @@ async function loadAnalyticsPage() {
       if (analyticsView) analyticsView.classList.add('active');
       if (adminView) adminView.classList.remove('active');
       if (auditView) auditView.classList.remove('active');
+      if (settingsView) settingsView.classList.remove('active');
       setActiveNav('analytics');
       setAppView('analytics');
       setTopbarSection(topbarSection, 'Dashboard');
@@ -643,9 +732,31 @@ async function loadAnalyticsPage() {
       if (analyticsView) analyticsView.classList.remove('active');
       if (adminView) adminView.classList.add('active');
       if (auditView) auditView.classList.remove('active');
+      if (settingsView) settingsView.classList.remove('active');
       setActiveNav('admin');
       setAppView('admin');
       setTopbarSection(topbarSection, 'User management');
+    }
+
+    function showSettings() {
+      if (!isAdmin) {
+        window.toast.error('Admin access required.');
+        return;
+      }
+      if (phsModalCtl && phsModalCtl.isOpen()) {
+        phsModalCtl.close(false);
+      }
+      listView.classList.remove('active');
+      if (analyticsView) analyticsView.classList.remove('active');
+      if (adminView) adminView.classList.remove('active');
+      if (auditView) auditView.classList.remove('active');
+      if (settingsView) settingsView.classList.add('active');
+      setActiveNav('settings');
+      setAppView('settings');
+      setTopbarSection(topbarSection, 'Settings');
+      if (settingsCtl && typeof settingsCtl.refreshVersion === 'function') {
+        settingsCtl.refreshVersion();
+      }
     }
 
     document.querySelectorAll('.nav-item').forEach(function (tab) {
@@ -654,6 +765,8 @@ async function loadAnalyticsPage() {
         if (which === 'list') showList();
         if (which === 'analytics') showAnalytics();
         if (which === 'admin') showAdminUsers();
+        if (which === 'settings') showSettings();
+        if (settingsView && which === 'audit') settingsView.classList.remove('active');
         if (which === 'audit') showAuditLogs();
       });
     });

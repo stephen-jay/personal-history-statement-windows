@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('authApi', {
   login: (username, password) => ipcRenderer.invoke('auth:login', { username: username, password: password }),
   getSession: () => ipcRenderer.invoke('auth:session'),
   logout: () => ipcRenderer.invoke('auth:logout'),
+  changePassword: (currentPassword, newPassword) =>
+    ipcRenderer.invoke('auth:changePassword', { currentPassword, newPassword }),
 });
 
 contextBridge.exposeInMainWorld('adminApi', {
@@ -46,4 +48,16 @@ contextBridge.exposeInMainWorld('updateApi', {
   downloadUpdate: () => ipcRenderer.invoke('update:download'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
   checkForUpdates: () => ipcRenderer.invoke('update:check')
+});
+
+// Expose app-level info (version)
+contextBridge.exposeInMainWorld('appApi', {
+  getVersion: async () => {
+    try {
+      const res = await ipcRenderer.invoke('app:version');
+      return res && res.version ? String(res.version) : null;
+    } catch (e) {
+      return null;
+    }
+  }
 });

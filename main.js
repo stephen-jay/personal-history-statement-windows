@@ -173,6 +173,20 @@ function createWindow() {
   mainWindow.setTitle('Personnel Database');
 
   registerExportHandlers(ipcMain, () => mainWindow);
+
+  // Expose app version to renderer on demand
+  ipcMain.handle('app:version', async () => {
+    try {
+      let ver = null;
+      try { ver = app.getVersion ? app.getVersion() : null; } catch (_) { ver = null; }
+      if (!ver) {
+        try { ver = require(path.join(__dirname, 'package.json')).version; } catch (_) { ver = ver || null; }
+      }
+      return { version: ver };
+    } catch (e) {
+      return { version: null };
+    }
+  });
 }
 
 app.whenReady().then(() => {
