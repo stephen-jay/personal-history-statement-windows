@@ -77,14 +77,34 @@ export function initAuditLogs({
 
     function loadAuditLogs() {
       if (!auditLogsContainer) return;
-      renderAuditSkeleton(6);
-      
+      // Show dashboard-style animated loader and ensure it stays visible for at least 1 second
+      const loaderHtml = `
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;width:100%;padding:40px;">
+          <div class="db-loader-dots" aria-hidden="true">
+            <div class="db-loader-dot"></div>
+            <div class="db-loader-dot"></div>
+            <div class="db-loader-dot"></div>
+          </div>
+          <div class="db-loader-text">Loading audit records...</div>
+        </div>
+      `;
+      auditLogsContainer.innerHTML = loaderHtml;
+      const start = Date.now();
+
       adminApi.getAuditLogs().then(function (logs) {
         allAuditLogs = logs || [];
-        applyAuditFilters();
+        const elapsed = Date.now() - start;
+        const remaining = Math.max(0, 1000 - elapsed);
+        setTimeout(function () {
+          applyAuditFilters();
+        }, remaining);
       }).catch(function (err) {
         console.error(err);
-        auditLogsContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #b91c1c;">Failed to load logs: ' + (err.message || String(err)) + '</div>';
+        const elapsed = Date.now() - start;
+        const remaining = Math.max(0, 1000 - elapsed);
+        setTimeout(function () {
+          auditLogsContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: #b91c1c;">Failed to load logs: ' + (err.message || String(err)) + '</div>';
+        }, remaining);
       });
     }
 

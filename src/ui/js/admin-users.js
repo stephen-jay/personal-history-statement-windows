@@ -176,7 +176,8 @@ export function initAdminUsersView(opts) {
     if (!userId) return;
 
     if (target.classList.contains('admin-user-delete')) {
-      const confirmed = window.confirm('Delete user "' + username + '"? This cannot be undone.');
+      const { showConfirm } = await import('./confirm.js');
+      const confirmed = await showConfirm('Delete user "' + username + '"? This cannot be undone.', { confirmText: 'Delete', cancelText: 'Cancel' });
       if (!confirmed) return;
       try {
         setStatus(statusEl, 'Deleting user…', 'success');

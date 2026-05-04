@@ -7,6 +7,7 @@ import { renderList, renderRosterSkeleton } from './list.js';
 import { setActiveNav, setAppView, setTopbarSection } from './views.js';
 import { createFormNav } from './form-nav.js';
 import { createPhsModalController } from './phs-modal.js';
+import { showConfirm } from './confirm.js';
 import { squareThumbnailDataUrl } from './photo-thumbnail.js';
 import { initAdminUsersView } from './admin-users.js';
 import { initToastSystem } from './toast.js';
@@ -699,13 +700,14 @@ async function loadAnalyticsPage() {
     listDeps.showForm = showForm;
     listDeps.loadList = loadList;
 
-    function showAnalytics() {
+    async function showAnalytics() {
       if (!canViewAnalytics) {
         window.toast.warning('You do not have permission to view analytics.');
         return;
       }
       if (phsModalCtl.isOpen()) {
-        if (!phsModalCtl.close(false)) return;
+        const ok = await phsModalCtl.close(false);
+        if (!ok) return;
       }
       listView.classList.remove('active');
       if (analyticsView) analyticsView.classList.add('active');
@@ -720,13 +722,13 @@ async function loadAnalyticsPage() {
       });
     }
 
-    function showAdminUsers() {
+    async function showAdminUsers() {
       if (!isAdmin) {
         window.toast.error('Admin access required.');
         return;
       }
       if (phsModalCtl && phsModalCtl.isOpen()) {
-        phsModalCtl.close(false);
+        await phsModalCtl.close(false);
       }
       listView.classList.remove('active');
       if (analyticsView) analyticsView.classList.remove('active');
@@ -783,15 +785,16 @@ async function loadAnalyticsPage() {
 
     if (btnLogout) {
       btnLogout.addEventListener('click', function () {
-        var confirmed = confirm('Are you sure you want to log out?');
-        if (!confirmed) return;
-        if (window.authApi && typeof window.authApi.logout === 'function') {
-          window.authApi.logout().finally(function () {
-            window.location.href = 'login.html';
-          });
-          return;
-        }
-        window.location.href = 'login.html';
+        showConfirm('Are you sure you want to log out?', { confirmText: 'Log out', cancelText: 'Cancel' }).then(function (confirmed) {
+          if (!confirmed) return;
+          if (window.authApi && typeof window.authApi.logout === 'function') {
+            window.authApi.logout().finally(function () {
+              window.location.href = 'login.html';
+            });
+            return;
+          }
+          window.location.href = 'login.html';
+        });
       });
     }
 
@@ -996,15 +999,12 @@ async function loadAnalyticsPage() {
       }
     });
 
-    phsForm.addEventListener('submit', function (e) {
+    phsForm.addEventListener('submit', async function (e) {
       e.preventDefault();
       const data = formData.getFormData();
       var isUpdate = !!(data && data.id);
-      var confirmed = confirm(
-        isUpdate
-          ? 'Save changes to this personnel record?'
-          : 'Save this new personnel record?'
-      );
+      const msg = isUpdate ? 'Save changes to this personnel record?' : 'Save this new personnel record?';
+      const confirmed = await showConfirm(msg, { confirmText: 'Save', cancelText: 'Cancel' });
       if (!confirmed) return;
       window.personnelApi.save(data).then(function () {
         // After saving, force refresh the roster so cache is updated
