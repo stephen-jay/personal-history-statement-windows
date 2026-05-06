@@ -6,6 +6,7 @@ if (!electron || typeof electron === 'string' || !electron.app) {
 const { app, BrowserWindow, ipcMain } = electron;
 const path = require('path');
 const fs = require('fs');
+const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
 const dotenv = require('dotenv');
 const { autoUpdater } = require('electron-updater');
@@ -97,6 +98,116 @@ app.commandLine.appendSwitch('disable-accelerated-video-encode');
 app.commandLine.appendSwitch('disable-features', 'GPU');
 
 let mainWindow;
+let rfidWatcherProcess = null;
+
+function forwardCardDetected(cardUID) {
+  if (!mainWindow || !mainWindow.webContents) return;
+  try {
+    mainWindow.webContents.send('card-detected', cardUID);
+  } catch (_) {}
+}
+
+app.on('card-detected', function (evtOrUid, maybeCardUID) {
+  const cardUID = maybeCardUID != null ? maybeCardUID : evtOrUid;
+  forwardCardDetected(cardUID);
+});
+
+function resolveRfidWatcherScriptPath() {
+  const candidates = [
+    process.env.RFID_WATCHER_PATH,
+    path.join(process.cwd(), 'RFID', 'card_watcher.py'),
+    path.join(__dirname, 'RFID', 'card_watcher.py'),
+    path.join(process.resourcesPath || '', 'RFID', 'card_watcher.py'),
+    path.join(process.cwd(), 'RFID', 'card_system.py'),
+    path.join(__dirname, 'RFID', 'card_system.py'),
+    path.join(process.resourcesPath || '', 'RFID', 'card_system.py')
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate)) return candidate;
+    } catch (_) {}
+  }
+  return null;
+}
+
+function startRfidWatcher() {
+  if (rfidWatcherProcess) return;
+  const scriptPath = resolveRfidWatcherScriptPath();
+  if (!scriptPath) {
+    console.warn('[RFID] watcher script not found; card detection will remain idle.');
+    return;
+  }
+
+  const pythonBin = String(process.env.PYTHON_BIN || process.env.PYTHON || 'python').trim() || 'python';
+  try {
+    rfidWatcherProcess = spawn(pythonBin, ['-u', scriptPath, 'watch'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true
+    });
+  } catch (e) {
+    console.error('[RFID] failed to start watcher:', e && e.message ? e.message : e);
+    rfidWatcherProcess = null;
+    return;
+  }
+
+  let stdoutBuffer = '';
+  rfidWatcherProcess.stdout.on('data', (chunk) => {
+    stdoutBuffer += chunk.toString('utf8');
+    const lines = stdoutBuffer.split(/\r?\n/);
+    stdoutBuffer = lines.pop() || '';
+    lines.forEach((line) => {
+      const text = String(line || '').trim();
+      if (!text) return;
+      if (text.startsWith('CARD_DETECTED ')) {
+        const payloadText = text.slice('CARD_DETECTED '.length).trim();
+        try {
+          const payload = JSON.parse(payloadText);
+          if (payload && (payload.card_id || payload.cardUID || payload.cardUid)) {
+            forwardCardDetected(payload);
+          }
+        } catch (e) {
+          console.warn('[RFID] could not parse card payload:', e && e.message ? e.message : e);
+        }
+        return;
+      }
+      if (text.startsWith('RFID_STATUS ')) {
+        const statusText = text.slice('RFID_STATUS '.length).trim();
+        console.log('[RFID]', text);
+        try {
+          if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('card-status', { kind: 'status', message: statusText });
+        } catch (_) {}
+        return;
+      }
+      if (text.startsWith('RFID_ERROR ')) {
+        const statusText = text.slice('RFID_ERROR '.length).trim();
+        console.log('[RFID]', text);
+        try {
+          if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('card-status', { kind: 'error', message: statusText });
+        } catch (_) {}
+        return;
+      }
+      console.log('[RFID]', text);
+    });
+  });
+
+  rfidWatcherProcess.stderr.on('data', (chunk) => {
+    const text = String(chunk || '').trim();
+    if (text) console.error('[RFID]', text);
+  });
+
+  rfidWatcherProcess.on('exit', (code, signal) => {
+    console.warn('[RFID] watcher exited:', code, signal || '');
+    rfidWatcherProcess = null;
+  });
+}
+
+function stopRfidWatcher() {
+  if (!rfidWatcherProcess) return;
+  try {
+    rfidWatcherProcess.kill();
+  } catch (_) {}
+  rfidWatcherProcess = null;
+}
 
 function setupAutoUpdates() {
   if (!app.isPackaged) return;
@@ -192,12 +303,18 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
   setupAutoUpdates();
+  startRfidWatcher();
 });
 
 app.on('window-all-closed', () => {
+  stopRfidWatcher();
   if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('activate', () => {
   if (mainWindow === null) createWindow();
+});
+
+app.on('before-quit', () => {
+  stopRfidWatcher();
 });

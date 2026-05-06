@@ -1,6 +1,6 @@
 {
   "name": "apollo-personnel-db",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Personnel database - initial input: Personnel History Statement",
   "main": "main.js",
   "scripts": {
@@ -34,6 +34,12 @@
     "directories": {
       "buildResources": "assets"
     },
+    "extraResources": [
+      {
+        "from": "RFID",
+        "to": "RFID"
+      }
+    ],
     "win": {
       "target": [
         "nsis"
@@ -41,7 +47,9 @@
       "icon": "assets/icon.ico"
     },
     "linux": {
-      "target": ["AppImage"],
+      "target": [
+        "AppImage"
+      ],
       "icon": "assets/icon.png"
     },
     "nsis": {
@@ -66,7 +74,9 @@
     "dotenv": "^16.6.1",
     "electron-updater": "^6.8.3",
     "express": "^5.2.1",
+    "otplib": "^13.4.0",
     "pg": "^8.20.0",
-    "pizzip": "^3.2.0"
+    "pizzip": "^3.2.0",
+    "qrcode": "^1.5.4"
   }
 }

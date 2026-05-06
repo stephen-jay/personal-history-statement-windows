@@ -19,9 +19,18 @@
   const userCount = document.getElementById('userCount');
   const emptyState = document.getElementById('emptyState');
   const toast = document.getElementById('toast');
+  
+  // Delete Dialog Elements
   const deleteOverlay = document.getElementById('deleteOverlay');
   const btnDialogCancel = document.getElementById('btnDialogCancel');
   const btnDialogConfirm = document.getElementById('btnDialogConfirm');
+
+  // Reset TOTP Dialog Elements
+  const resetTotpOverlay = document.getElementById('resetTotpOverlay');
+  const btnResetTotpCancel = document.getElementById('btnResetTotpCancel');
+  const btnResetTotpConfirm = document.getElementById('btnResetTotpConfirm');
+
+  let userToResetTotp = null;
 
   // Initialize
   function init() {
@@ -35,13 +44,21 @@
     btnCancelForm.addEventListener('click', () => closeFormPanel());
     btnCreateUser.addEventListener('click', () => createUser());
     searchInput.addEventListener('input', () => filterUsers());
+    
+    // Delete listeners
     btnDialogCancel.addEventListener('click', () => closeDeleteDialog());
     btnDialogConfirm.addEventListener('click', () => confirmDelete());
+    
+    // Reset TOTP listeners
+    if (btnResetTotpCancel) btnResetTotpCancel.addEventListener('click', () => closeResetTotpDialog());
+    if (btnResetTotpConfirm) btnResetTotpConfirm.addEventListener('click', () => confirmResetTotp());
 
     // Close form on Escape key
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && formPanel.classList.contains('open')) {
-        closeFormPanel();
+      if (e.key === 'Escape') {
+        if (formPanel.classList.contains('open')) closeFormPanel();
+        if (deleteOverlay.classList.contains('show')) closeDeleteDialog();
+        if (resetTotpOverlay && resetTotpOverlay.classList.contains('show')) closeResetTotpDialog();
       }
     });
   }
@@ -73,10 +90,16 @@
 
   async function loadUsers() {
     try {
-      // In a real app, this would be an API call
-      // For now, using mock data
-      const response = await window.adminApi?.getUsers?.() || getMockUsers();
-      users = Array.isArray(response) ? response : response.data || [];
+      const response = await window.adminApi?.listUsers?.() || getMockUsers();
+      users = Array.isArray(response) ? response : response.users || [];
+      // Mapped mock format if not matching DB
+      users = users.map(u => ({
+        id: u.id,
+        username: u.username,
+        fullname: u.fullname || u.full_name,
+        role: (u.roles && u.roles[0]) ? u.roles[0] : (u.role || 'ENCODER'),
+        status: u.is_active || u.status === 'Active' ? 'Active' : 'Inactive'
+      }));
       filteredUsers = users;
       renderTable();
       updateUserCount();
@@ -98,8 +121,8 @@
     const query = searchInput.value.toLowerCase();
     filteredUsers = users.filter(u => 
       u.username.toLowerCase().includes(query) ||
-      u.fullname.toLowerCase().includes(query) ||
-      u.role.toLowerCase().includes(query)
+      (u.fullname || '').toLowerCase().includes(query) ||
+      (u.role || '').toLowerCase().includes(query)
     );
     renderTable();
   }
@@ -130,27 +153,45 @@
           <div class="username">${escapeHtml(user.username)}</div>
         </div>
         <div class="fullname">${escapeHtml(user.fullname || '')}</div>
-        <div class="badge badge-${user.role.toLowerCase()}">${badge}</div>
+        <div class="badge badge-${(user.role || '').toLowerCase()}">${badge}</div>
         <div class="status-active">
           <div class="status-dot"></div>
           ${user.status}
         </div>
-        <button class="btn-delete" data-user-id="${user.id}">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
-            <polyline points="3 6 5 6 21 6"/>
-            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-            <path d="M10 11v6"/><path d="M14 11v6"/>
-          </svg>
-          Delete
-        </button>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-reset-totp" data-user-id="${user.id}" title="Reset Authenticator" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);display:flex;align-items:center;padding:4px;border-radius:4px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="M12 8v4"/>
+              <path d="M12 16h.01"/>
+            </svg>
+          </button>
+          <button class="btn-delete" data-user-id="${user.id}">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/>
+            </svg>
+            Delete
+          </button>
+        </div>
       `;
+
+      // Hover effect for TOTP button
+      const totpBtn = row.querySelector('.btn-reset-totp');
+      totpBtn.addEventListener('mouseover', () => totpBtn.style.color = '#f59e0b');
+      totpBtn.addEventListener('mouseout', () => totpBtn.style.color = 'var(--text-secondary)');
 
       tableBody.appendChild(row);
 
-      // Add delete handler
+      // Add handlers
       row.querySelector('.btn-delete').addEventListener('click', (e) => {
         e.stopPropagation();
         openDeleteDialog(user.id, user.username);
+      });
+      row.querySelector('.btn-reset-totp').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openResetTotpDialog(user.id, user.username);
       });
     });
   }
@@ -180,9 +221,8 @@
     }
 
     try {
-      // In a real app, this would be an API call
       if (window.adminApi?.createUser) {
-        await window.adminApi.createUser({ username, fullname, password, role });
+        await window.adminApi.createUser({ username, fullname, password, roleName: role.toLowerCase() });
       }
 
       closeFormPanel();
@@ -220,6 +260,36 @@
     } catch (error) {
       console.error('Error deleting user:', error);
       showToast('Error deleting user', 'danger');
+    }
+  }
+
+  function openResetTotpDialog(userId, username) {
+    userToResetTotp = { id: userId, username };
+    const msgEl = document.getElementById('resetTotpMsg');
+    if (msgEl) {
+      msgEl.textContent = `Are you sure you want to reset the authenticator for "${username}"? They will be forced to re-enroll on their next login.`;
+    }
+    if (resetTotpOverlay) resetTotpOverlay.classList.add('show');
+  }
+
+  function closeResetTotpDialog() {
+    if (resetTotpOverlay) resetTotpOverlay.classList.remove('show');
+    userToResetTotp = null;
+  }
+
+  async function confirmResetTotp() {
+    if (!userToResetTotp) return;
+
+    try {
+      if (window.adminApi?.resetTotp) {
+        await window.adminApi.resetTotp(userToResetTotp.id);
+      }
+
+      closeResetTotpDialog();
+      showToast(`Authenticator reset for "${userToResetTotp.username}"`, 'success');
+    } catch (error) {
+      console.error('Error resetting authenticator:', error);
+      showToast('Error resetting authenticator', 'danger');
     }
   }
 

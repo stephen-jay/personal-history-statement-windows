@@ -129,6 +129,25 @@
     </div>
   </div>
 
+  <!-- CONFIRM RESET TOTP DIALOG -->
+  <div class="overlay" id="resetTotpOverlay">
+    <div class="dialog">
+      <div class="dialog-icon" style="color: #f59e0b; background: rgba(245, 158, 11, 0.1);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="M12 8v4"/>
+          <path d="M12 16h.01"/>
+        </svg>
+      </div>
+      <div class="dialog-title">Reset Authenticator</div>
+      <div class="dialog-msg" id="resetTotpMsg">Are you sure you want to reset the authenticator for this user? They will be forced to re-enroll on their next login.</div>
+      <div class="dialog-actions">
+        <button class="btn-dialog-cancel" id="btnResetTotpCancel">Cancel</button>
+        <button class="btn-dialog-confirm" id="btnResetTotpConfirm" style="background: #f59e0b; border-color: #f59e0b;">Yes, Reset</button>
+      </div>
+    </div>
+  </div>
+
   <!-- TOAST -->
   <div class="toast" id="toast"></div>
 

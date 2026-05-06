@@ -1,0 +1,120 @@
+<!-- PAGE: CARD MANAGEMENT -->
+<div id="card-management-view" class="admin-view" style="display: none;">
+  <section class="card-management-container">
+    <!-- Header -->
+    <div class="card-management-header">
+      <h1>Card Management</h1>
+      <p>Register, assign, and manage NFC/RFID cards</p>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="card-management-kpis">
+      <div class="kpi-card">
+        <div class="kpi-icon">📇</div>
+        <div class="kpi-value" id="kpi-total-cards">0</div>
+        <div class="kpi-label">TOTAL CARDS</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">✓</div>
+        <div class="kpi-value" id="kpi-available-cards">0</div>
+        <div class="kpi-label">AVAILABLE</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">👤</div>
+        <div class="kpi-value" id="kpi-assigned-cards">0</div>
+        <div class="kpi-label">ASSIGNED</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="card-management-tabs">
+      <button class="card-tab-btn active" data-filter="all">All Cards</button>
+      <button class="card-tab-btn" data-filter="available">Available</button>
+      <button class="card-tab-btn" data-filter="assigned">Assigned</button>
+    </div>
+
+    <!-- Register New Card Button -->
+    <div class="card-management-toolbar">
+      <button id="btn-register-card" class="btn primary">Register New Card</button>
+    </div>
+
+    <!-- Register Card Modal -->
+    <div id="register-card-modal" class="modal" style="display: none;">
+      <div class="modal-overlay"></div>
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h2>Register New Card</h2>
+          <button class="modal-close" id="btn-close-register-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="register-tap-zone" id="register-tap-zone" aria-live="polite">
+            <span class="tap-ring tap-ring--1"></span>
+            <span class="tap-ring tap-ring--2"></span>
+            <span class="tap-ring tap-ring--3"></span>
+            <div class="tap-core">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="width: 60px; height: 60px;">
+                <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z" />
+                <path d="M8 8.5h8M8 11.5h5M8 14.5h6" />
+              </svg>
+            </div>
+          </div>
+          <div class="register-copy">
+            <div class="tap-label" id="register-tap-label">Tap your card</div>
+            <div class="tap-sub" id="register-tap-sub">Hold the RFID / NFC card flat against the reader</div>
+          </div>
+          <div id="register-status-message" class="register-status" style="display: none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-cancel-register" class="btn secondary">Cancel</button>
+          <button id="btn-confirm-register" class="btn primary" disabled>Register</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assign Personnel Modal -->
+    <div id="assign-personnel-modal" class="modal" style="display: none;">
+      <div class="modal-overlay" data-assign-modal-close></div>
+      <div class="modal-dialog assign-modal-dialog">
+        <div class="modal-header">
+          <div>
+            <h2 id="assign-personnel-title">Assign Card to Personnel</h2>
+            <p id="assign-personnel-subtitle" class="assign-modal-subtitle">Pick the personnel who should own this card</p>
+          </div>
+          <button class="modal-close" id="btn-close-assign-modal" data-assign-modal-close>&times;</button>
+        </div>
+        <div class="modal-body assign-modal-body">
+          <div class="assign-modal-search">
+            <input id="assign-personnel-search" type="search" placeholder="Search personnel by name or ID" />
+          </div>
+          <div id="assign-personnel-list" class="assign-personnel-list"></div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-cancel-assign-modal" class="btn secondary" data-assign-modal-close>Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cards Table -->
+    <div class="card-management-table">
+      <table>
+        <thead>
+          <tr>
+            <th>CARD UID</th>
+            <th>TYPE</th>
+            <th>STATUS</th>
+            <th>ASSIGNED TO</th>
+            <th>ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody id="cards-table-body">
+          <tr style="text-align: center; color: #999;">
+            <td colspan="5">No cards registered yet.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Status message -->
+    <div id="card-management-status" class="status-message" style="display: none;"></div>
+  </section>
+</div>

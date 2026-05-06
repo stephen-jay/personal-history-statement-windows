@@ -157,6 +157,17 @@ CREATE TABLE IF NOT EXISTS personnel (
   deleted_at timestamptz
 );
 
+CREATE TABLE IF NOT EXISTS personnel_card_registrations (
+  personnel_id text PRIMARY KEY REFERENCES personnel(id) ON DELETE CASCADE,
+  card_uid text NOT NULL UNIQUE,
+  registered_at timestamptz NOT NULL DEFAULT NOW(),
+  updated_at timestamptz NOT NULL DEFAULT NOW()
+);
+DROP TRIGGER IF EXISTS trg_personnel_card_registrations_updated_at ON personnel_card_registrations;
+CREATE TRIGGER trg_personnel_card_registrations_updated_at
+BEFORE UPDATE ON personnel_card_registrations
+FOR EACH ROW EXECUTE FUNCTION apollo_set_updated_at();
+
 DROP TRIGGER IF EXISTS trg_personnel_updated_at ON personnel;
 CREATE TRIGGER trg_personnel_updated_at
 BEFORE UPDATE ON personnel

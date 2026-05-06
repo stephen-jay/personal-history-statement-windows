@@ -7,13 +7,13 @@ import { renderList, renderRosterSkeleton } from './list.js';
 import { setActiveNav, setAppView, setTopbarSection } from './views.js';
 import { createFormNav } from './form-nav.js';
 import { createPhsModalController } from './phs-modal.js';
-import { showConfirm } from './confirm.js';
 import { squareThumbnailDataUrl } from './photo-thumbnail.js';
 import { initAdminUsersView } from './admin-users.js';
 import { initToastSystem } from './toast.js';
 import { buildAutoFillRecord } from './autofill.js';
 import { initAuditLogs } from './audit-log.js';
 import { initSettingsView } from './settings.js';
+import { openPostSaveModal, createCardManagementController } from './card-management.js';
 import { show as showLoader, hide as hideLoader } from './loader.js';
 
 function showError(msg) {
@@ -50,10 +50,24 @@ async function loadAnalyticsPage() {
   hideLoader();
 }
 
+async function loadCardsPage() {
+  const container = document.getElementById('cards-content');
+  if (!container) return;
+  try {
+    const response = await fetch('pages/card-management.html');
+    if (response.ok) {
+      container.innerHTML = await response.text();
+    }
+  } catch (e) {
+    console.error('Failed to load cards page', e);
+  }
+}
+
 (async function bootstrap() {
   try {
     await loadFormPages();
     await loadAnalyticsPage();
+    await loadCardsPage();
 
     // Initialize toast system
     window.toast = initToastSystem();
@@ -245,6 +259,7 @@ async function loadAnalyticsPage() {
     const listView = document.getElementById('list-view');
     const analyticsView = document.getElementById('analytics-view');
     const adminView = document.getElementById('admin-view');
+    const cardsView = document.getElementById('cards-view');
     const auditView = document.getElementById('audit-view');
     const settingsView = document.getElementById('settings-view');
     const auditTbody = document.getElementById('audit-logs-tbody');
@@ -274,9 +289,11 @@ async function loadAnalyticsPage() {
     const canViewAnalytics = roles.includes('admin') || roles.includes('viewer');
 
     const navAdmin = document.getElementById('nav-admin');
+    const navCards = document.getElementById('nav-cards');
     const navAudit = document.getElementById('nav-audit');
     const navSettings = document.getElementById('nav-settings');
     if (navAdmin) navAdmin.hidden = !isAdmin;
+    if (navCards) navCards.hidden = !isAdmin;
     if (navAudit) navAudit.hidden = !isAdmin;
     if (navSettings) navSettings.hidden = !isAdmin;
     if (btnAutoFillPhs) btnAutoFillPhs.disabled = !canEdit;
@@ -315,6 +332,11 @@ async function loadAnalyticsPage() {
     })();
 
     
+    let cardManagementCtl = null;
+    if (typeof createCardManagementController === 'function') {
+      cardManagementCtl = createCardManagementController();
+    }
+
     let showAuditLogs;
     if (initAuditLogs) {
       const auditLogCtl = initAuditLogs({
@@ -327,6 +349,8 @@ async function loadAnalyticsPage() {
         analyticsView,
         adminView,
         auditView,
+        cardsView,
+        settingsView,
         setActiveNav,
         setAppView,
         topbarSection,
@@ -348,6 +372,7 @@ async function loadAnalyticsPage() {
       listView.classList.add('active');
       if (analyticsView) analyticsView.classList.remove('active');
       if (adminView) adminView.classList.remove('active');
+      if (cardsView) cardsView.classList.remove('active');
       if (auditView) auditView.classList.remove('active');
       if (settingsView) settingsView.classList.remove('active');
       setActiveNav('list');
@@ -700,18 +725,18 @@ async function loadAnalyticsPage() {
     listDeps.showForm = showForm;
     listDeps.loadList = loadList;
 
-    async function showAnalytics() {
+    function showAnalytics() {
       if (!canViewAnalytics) {
         window.toast.warning('You do not have permission to view analytics.');
         return;
       }
       if (phsModalCtl.isOpen()) {
-        const ok = await phsModalCtl.close(false);
-        if (!ok) return;
+        if (!phsModalCtl.close(false)) return;
       }
       listView.classList.remove('active');
       if (analyticsView) analyticsView.classList.add('active');
       if (adminView) adminView.classList.remove('active');
+      if (cardsView) cardsView.classList.remove('active');
       if (auditView) auditView.classList.remove('active');
       if (settingsView) settingsView.classList.remove('active');
       setActiveNav('analytics');
@@ -722,22 +747,45 @@ async function loadAnalyticsPage() {
       });
     }
 
-    async function showAdminUsers() {
+    function showAdminUsers() {
       if (!isAdmin) {
         window.toast.error('Admin access required.');
         return;
       }
       if (phsModalCtl && phsModalCtl.isOpen()) {
-        await phsModalCtl.close(false);
+        phsModalCtl.close(false);
       }
       listView.classList.remove('active');
       if (analyticsView) analyticsView.classList.remove('active');
       if (adminView) adminView.classList.add('active');
+      if (cardsView) cardsView.classList.remove('active');
       if (auditView) auditView.classList.remove('active');
       if (settingsView) settingsView.classList.remove('active');
       setActiveNav('admin');
       setAppView('admin');
       setTopbarSection(topbarSection, 'User management');
+    }
+
+    function showCards() {
+      if (!isAdmin) {
+        window.toast.error('Admin access required.');
+        return;
+      }
+      if (phsModalCtl && phsModalCtl.isOpen()) {
+        phsModalCtl.close(false);
+      }
+      listView.classList.remove('active');
+      if (analyticsView) analyticsView.classList.remove('active');
+      if (adminView) adminView.classList.remove('active');
+      if (auditView) auditView.classList.remove('active');
+      if (settingsView) settingsView.classList.remove('active');
+      if (cardsView) cardsView.classList.add('active');
+      setActiveNav('cards');
+      setAppView('cards');
+      setTopbarSection(topbarSection, 'Card Management');
+      if (cardManagementCtl && typeof cardManagementCtl.show === 'function') {
+        cardManagementCtl.show();
+      }
     }
 
     function showSettings() {
@@ -752,6 +800,7 @@ async function loadAnalyticsPage() {
       if (analyticsView) analyticsView.classList.remove('active');
       if (adminView) adminView.classList.remove('active');
       if (auditView) auditView.classList.remove('active');
+      if (cardsView) cardsView.classList.remove('active');
       if (settingsView) settingsView.classList.add('active');
       setActiveNav('settings');
       setAppView('settings');
@@ -767,6 +816,7 @@ async function loadAnalyticsPage() {
         if (which === 'list') showList();
         if (which === 'analytics') showAnalytics();
         if (which === 'admin') showAdminUsers();
+        if (which === 'cards') showCards();
         if (which === 'settings') showSettings();
         if (settingsView && which === 'audit') settingsView.classList.remove('active');
         if (which === 'audit') showAuditLogs();
@@ -785,16 +835,15 @@ async function loadAnalyticsPage() {
 
     if (btnLogout) {
       btnLogout.addEventListener('click', function () {
-        showConfirm('Are you sure you want to log out?', { confirmText: 'Log out', cancelText: 'Cancel' }).then(function (confirmed) {
-          if (!confirmed) return;
-          if (window.authApi && typeof window.authApi.logout === 'function') {
-            window.authApi.logout().finally(function () {
-              window.location.href = 'login.html';
-            });
-            return;
-          }
-          window.location.href = 'login.html';
-        });
+        var confirmed = confirm('Are you sure you want to log out?');
+        if (!confirmed) return;
+        if (window.authApi && typeof window.authApi.logout === 'function') {
+          window.authApi.logout().finally(function () {
+            window.location.href = 'login.html';
+          });
+          return;
+        }
+        window.location.href = 'login.html';
       });
     }
 
@@ -1003,16 +1052,45 @@ async function loadAnalyticsPage() {
       e.preventDefault();
       const data = formData.getFormData();
       var isUpdate = !!(data && data.id);
-      const msg = isUpdate ? 'Save changes to this personnel record?' : 'Save this new personnel record?';
-      const confirmed = await showConfirm(msg, { confirmText: 'Save', cancelText: 'Cancel' });
+      var confirmed = confirm(
+        isUpdate
+          ? 'Save changes to this personnel record?'
+          : 'Save this new personnel record?'
+      );
       if (!confirmed) return;
-      window.personnelApi.save(data).then(function () {
-        // After saving, force refresh the roster so cache is updated
+      try {
+        if (typeof openPostSaveModal !== 'function') {
+          throw new Error('Post-save setup modal is unavailable.');
+        }
+
+        // 1. Save the personnel record first to get the ID (especially for new records)
+        const savedPersonnel = await window.personnelApi.save(data);
+        if (!savedPersonnel || !savedPersonnel.id) {
+          throw new Error('Failed to obtain a valid personnel ID after saving.');
+        }
+
+        // 2. Open the post-save setup modal using the saved record (which now has an ID)
+        const setupResult = await openPostSaveModal(savedPersonnel);
+        if (!setupResult || !setupResult.ok) {
+          // If user cancelled the setup, we still saved the personnel, so just refresh list
+          showList({ forceCloseModal: true, forceRefresh: true });
+          return;
+        }
+
+        // After saving and setup, force refresh the roster so cache is updated
         showList({ forceCloseModal: true, forceRefresh: true });
-      }).catch(function (err) {
+
+        if (window.toast && typeof window.toast.success === 'function') {
+          if (setupResult.skipped) {
+            window.toast.success('Personnel saved. Username created. Card assignment skipped.');
+          } else {
+            window.toast.success('Personnel saved with username and card assignment.');
+          }
+        }
+      } catch (err) {
         console.error(err);
         window.toast.error('Could not save: ' + (err && err.message ? err.message : 'Unknown error'));
-      });
+      }
     });
 
     formData.setChildrenRows([]);

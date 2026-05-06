@@ -62,6 +62,53 @@ function registerIpcHandlers(ipcMain, app, config) {
     return newSession.user ? { user: newSession.user } : null;
   });
 
+  // --- Passwordless / Multi-step Auth Handlers ---
+  
+  ipcMain.handle('auth:beginLogin', async function (_evt, payload) {
+    const body = payload || {};
+    const username = String(body.username || '').trim();
+    if (!username) throw new Error('Missing username.');
+    return await auth.beginLogin(username);
+  });
+
+  ipcMain.handle('auth:verifyCard', async function (_evt, payload) {
+    const body = payload || {};
+    const challengeId = body.challengeId;
+    const cardUid = String(body.cardUid || '').trim();
+    if (!challengeId || !cardUid) throw new Error('Missing challengeId or cardUid.');
+    return await auth.verifyCardStep(challengeId, cardUid);
+  });
+
+  ipcMain.handle('auth:enrollTotp', async function (_evt, payload) {
+    const body = payload || {};
+    const challengeId = body.challengeId;
+    if (!challengeId) throw new Error('Missing challengeId.');
+    return await auth.enrollTotp(challengeId);
+  });
+
+  ipcMain.handle('auth:verifyTotp', async function (_evt, payload) {
+    const body = payload || {};
+    const challengeId = body.challengeId;
+    const token = String(body.token || '').trim();
+    if (!challengeId || !token) throw new Error('Missing challengeId or token.');
+    
+    const result = await auth.verifyTotpStep(challengeId, token);
+    const newSession = { token: result && result.token ? String(result.token) : '', user: result && result.user ? result.user : null };
+    auth.setAuthSession(newSession);
+    return newSession.user ? { user: newSession.user } : null;
+  });
+
+  ipcMain.handle('auth:adminResetTotp', async function (_evt, payload) {
+    const body = payload || {};
+    const targetUserId = body.targetUserId;
+    if (!targetUserId) throw new Error('Missing targetUserId.');
+    const session = auth.getAuthSession();
+    const adminUserId = session && session.user ? session.user.id : null;
+    if (!adminUserId) throw new Error('Unauthorized.');
+    return await auth.adminResetTotp(adminUserId, targetUserId);
+  });
+
+
   ipcMain.handle('auth:session', async function () {
     const session = auth.getAuthSession();
     if (!session || !session.token || !session.user) return null;
@@ -364,6 +411,175 @@ function registerIpcHandlers(ipcMain, app, config) {
     } catch (e) {
       console.error('Failed to fetch audit logs:', e);
       return [];
+    }
+  });
+
+  // Card management IPC handlers (basic scaffolding)
+  ipcMain.handle('cards:list', async function () {
+    const pool = getPgPool();
+    if (!pool) throw new Error('DATABASE_URL is required for cards:list');
+    await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS assigned_username text NULL');
+    await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS personnel_id text NULL');
+    const res = await pool.query(
+      `SELECT c.id, c.card_uid, c.status, c.personnel_id, c.assigned_username, c.created_at, c.updated_at,
+              p.full_name as personnel_name, u.full_name as assigned_user_full_name
+       FROM cards c
+       LEFT JOIN personnel p ON c.personnel_id = p.id
+       LEFT JOIN app_users u ON u.username = c.assigned_username
+       ORDER BY c.created_at DESC LIMIT 1000`
+    );
+    return { cards: res.rows || [] };
+  });
+
+  ipcMain.handle('cards:lookup', async function (_evt, payload) {
+    const body = payload || {};
+    const cardUid = String(body.card_uid || body.cardId || body.card_id || '').trim();
+    if (!cardUid) throw new Error('card_uid is required');
+    const pool = getPgPool();
+    if (!pool) throw new Error('DATABASE_URL is required for cards:lookup');
+    await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS assigned_username text NULL');
+    await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS personnel_id text NULL');
+    const res = await pool.query(
+      `SELECT c.*, p.full_name as personnel_name, p.id as personnel_db_id, u.full_name as assigned_user_full_name
+       FROM cards c
+       LEFT JOIN personnel p ON c.personnel_id = p.id
+       LEFT JOIN app_users u ON u.username = c.assigned_username
+       WHERE LOWER(TRIM(c.card_uid)) = LOWER(TRIM($1))
+       LIMIT 1`,
+      [cardUid]
+    );
+    return { card: res.rows && res.rows[0] ? res.rows[0] : null };
+  });
+
+  ipcMain.handle('cards:loginLookup', async function (_evt, payload) {
+    const body = payload || {};
+    const cardUid = String(body.card_uid || body.cardId || body.card_id || '').trim();
+    if (!cardUid) throw new Error('card_uid is required');
+    const pool = getPgPool();
+    if (!pool) throw new Error('DATABASE_URL is required for cards:loginLookup');
+    await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS assigned_username text NULL');
+
+    const res = await pool.query(
+      `
+        SELECT
+          c.card_uid,
+          c.status,
+          c.personnel_id,
+          c.assigned_username,
+          p.full_name AS personnel_name,
+          COALESCE(u.username, '') AS username,
+          COALESCE(u.full_name, '') AS user_full_name,
+          COALESCE(au.username, '') AS assigned_username_resolved,
+          COALESCE(au.full_name, '') AS assigned_user_full_name
+        FROM cards c
+        LEFT JOIN personnel p ON p.id = c.personnel_id
+        LEFT JOIN app_users u ON u.username = c.personnel_id OR LOWER(u.full_name) = LOWER(p.full_name)
+        LEFT JOIN app_users au ON au.username = c.assigned_username
+        WHERE LOWER(TRIM(c.card_uid)) = LOWER(TRIM($1))
+        LIMIT 1
+      `,
+      [cardUid]
+    );
+
+    return { card: res.rows && res.rows[0] ? res.rows[0] : null };
+  });
+
+  ipcMain.handle('cards:register', async function (_evt, payload) {
+    const body = payload || {};
+    const cardUid = String(body.card_uid || body.cardId || '').trim();
+    const createdBy = String(body.created_by || '') || null;
+    console.log(`[CARDS] Registering card: ${cardUid}`);
+    if (!cardUid) {
+      console.log(`[CARDS] ERROR: card_uid is required`);
+      throw new Error('card_uid is required');
+    }
+    const pool = getPgPool();
+    if (!pool) {
+      console.log(`[CARDS] ERROR: DATABASE_URL is required`);
+      throw new Error('DATABASE_URL is required for cards:register');
+    }
+    try {
+      await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS assigned_username text NULL');
+      
+      // Check for existing card case-insensitively
+      const existing = await pool.query('SELECT card_uid FROM cards WHERE LOWER(TRIM(card_uid)) = LOWER(TRIM($1))', [cardUid]);
+      if (existing.rows && existing.rows.length > 0) {
+        console.log(`[CARDS] ERROR: Card UID already registered (case-insensitive check): ${cardUid}`);
+        throw new Error('Card UID already registered');
+      }
+
+      console.log(`[CARDS] Inserting card_uid=${cardUid} into cards table`);
+      const res = await pool.query('INSERT INTO cards (card_uid, status, created_by, assigned_username) VALUES ($1, $2, $3, NULL) RETURNING *', [cardUid, 'available', createdBy]);
+      console.log(`[CARDS] Card registered successfully:`, res.rows[0]);
+      return { card: res.rows && res.rows[0] ? res.rows[0] : null };
+    } catch (e) {
+      console.log(`[CARDS] Caught error during registration:`, e.code, e.message);
+      if (e && (e.code === '23505' || e.message === 'Card UID already registered')) {
+        console.log(`[CARDS] Duplicate key error detected - throwing duplicate message`);
+        throw new Error('Card UID already registered');
+      }
+      console.log(`[CARDS] Re-throwing error:`, e.message);
+      throw e;
+    }
+  });
+
+  ipcMain.handle('cards:assign', async function (_evt, payload) {
+    const body = payload || {};
+    const cardUid = String(body.card_uid || '').trim();
+    const personnelId = String(body.personnel_id || '').trim();
+    const assignedUsername = String(body.assigned_username || body.username || '').trim();
+    if (!cardUid || (!personnelId && !assignedUsername)) throw new Error('card_uid and personnel_id or assigned_username are required');
+    const pool = getPgPool();
+    if (!pool) throw new Error('DATABASE_URL is required for cards:assign');
+    await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS assigned_username text NULL');
+    await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS personnel_id text NULL');
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // mark card assigned and set personnel_id
+      const updateRes = await client.query(
+        'UPDATE cards SET status = $1, personnel_id = $2, assigned_username = $3, updated_at = NOW() WHERE LOWER(TRIM(card_uid)) = LOWER(TRIM($4))',
+        ['assigned', personnelId || null, assignedUsername || null, cardUid]
+      );
+
+      if (updateRes.rowCount === 0) {
+        throw new Error('Card UID not found or registration mismatch');
+      }
+
+      // keep legacy personnel_card_registrations in sync when personnel is used
+      if (personnelId) {
+        await client.query('INSERT INTO personnel_card_registrations (personnel_id, card_uid) VALUES ($1, $2) ON CONFLICT (personnel_id) DO UPDATE SET card_uid = EXCLUDED.card_uid, updated_at = NOW()', [personnelId, cardUid]);
+      }
+      await client.query('COMMIT');
+      return { ok: true };
+    } catch (e) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      throw e;
+    } finally {
+      client.release();
+    }
+  });
+
+  ipcMain.handle('cards:unassign', async function (_evt, payload) {
+    const body = payload || {};
+    const cardUid = String(body.card_uid || '').trim();
+    if (!cardUid) throw new Error('card_uid is required');
+    const pool = getPgPool();
+    if (!pool) throw new Error('DATABASE_URL is required for cards:unassign');
+    await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS assigned_username text NULL');
+    await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS personnel_id text NULL');
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('UPDATE cards SET status = $1, personnel_id = NULL, assigned_username = NULL, updated_at = NOW() WHERE LOWER(TRIM(card_uid)) = LOWER(TRIM($2))', ['available', cardUid]);
+      await client.query('DELETE FROM personnel_card_registrations WHERE LOWER(TRIM(card_uid)) = LOWER(TRIM($1))', [cardUid]);
+      await client.query('COMMIT');
+      return { ok: true };
+    } catch (e) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      throw e;
+    } finally {
+      client.release();
     }
   });
 }

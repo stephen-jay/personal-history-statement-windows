@@ -1,5 +1,7 @@
 const REMOVED_FIELDS = new Set(['brOfSvc']);
 
+const CARD_REGISTRATION_TABLE = 'personnel_card_registrations';
+
 const PERSONNEL_FIELD_MAP = {
   fullName: 'full_name',
   nameLast: 'name_last',
@@ -160,6 +162,7 @@ const CHILD_TABLES = [
 
 module.exports = {
   REMOVED_FIELDS,
+  CARD_REGISTRATION_TABLE,
   PERSONNEL_FIELD_MAP,
   CHILD_TABLES
 };

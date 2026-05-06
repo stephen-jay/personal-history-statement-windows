@@ -6,6 +6,8 @@ export function initAuditLogs({
   analyticsView,
   adminView,
   auditView,
+  cardsView,
+  settingsView,
   setActiveNav,
   setAppView,
   topbarSection,
@@ -68,6 +70,8 @@ export function initAuditLogs({
       listView.classList.remove('active');
       if (analyticsView) analyticsView.classList.remove('active');
       if (adminView) adminView.classList.remove('active');
+      if (cardsView) cardsView.classList.remove('active');
+      if (settingsView) settingsView.classList.remove('active');
       if (auditView) auditView.classList.add('active');
       setActiveNav('audit');
       setAppView('audit');
