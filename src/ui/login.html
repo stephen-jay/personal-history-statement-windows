@@ -1,93 +1,228 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:;" />
-  <title>Personnel History Statement System - Login</title>
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:;" />
+  <title>PHS System - Secure Login</title>
   <link rel="stylesheet" href="css/login.css" />
 </head>
+
 <body>
-  <main class="login-main" role="main">
-    <section class="login-shell" aria-label="System sign in">
-      <div class="login-left">
-        <div class="brand-wrap" aria-label="Personnel History Statement System">
-          <div class="brand-seal" aria-hidden="true">
-            <svg viewBox="0 0 48 48" width="36" height="36" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="24" cy="24" r="21" stroke="currentColor" stroke-width="1.6" stroke-opacity="0.45"/>
-              <circle cx="24" cy="24" r="16" stroke="currentColor" stroke-width="1.2" stroke-opacity="0.3"/>
-              <path d="M24 12L27 21H36L29 26L32 35L24 30L16 35L19 26L12 21H21L24 12Z" fill="currentColor" fill-opacity="0.2"/>
+  <div class="login-wrapper">
+    <div class="login-card">
+      <!-- LEFT PANEL -->
+      <div class="panel-left">
+        <!-- Brand Header -->
+        <div class="brand-header">
+          <div class="badge-shield">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
           </div>
-          <div class="brand-text">
-            <p class="brand-mini">Welcome to</p>
-            <h1>PHS System</h1>
+          <div class="brand-info">
+            <div class="brand-name">PHS System</div>
+            <div class="brand-subtitle">Personnel History Statement System</div>
           </div>
         </div>
 
+        <!-- Headline Section -->
+        <div class="headline-section">
+          <div>
+            <div class="headline-word">Secure.</div>
+            <div class="headline-word">Reliable.</div>
+            <div class="headline-word">Centralized.</div>
+          </div>
+          <p class="supporting-text">
+            A unified platform for managing personnel records and delivering accurate, standardized reports.
+          </p>
+        </div>
+
+        <!-- Powered By -->
+        <div class="powered-by">
+          <div class="powered-label">Powered by</div>
+          <div class="logo-row">
+            <img src="images/thinktech.png" alt="ThinkTech" />
+            <img src="images/ansys.png" alt="ANSYS" />
+            <img src="images/hendexis.png" alt="Hendexis" class="logo-hendexis" />
+          </div>
+        </div>
+
+        <!-- Mesh Overlay -->
+        <svg class="mesh-overlay" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="mesh" x="0" y="0" width="50" height="50" patternUnits="userSpaceOnUse">
+              <path d="M0,0 Q12.5,12.5 25,0 T50,0 M0,0 Q12.5,12.5 0,25" fill="none" stroke="currentColor"
+                stroke-width="0.5" />
+            </pattern>
+          </defs>
+          <rect width="200" height="200" fill="url(#mesh)" />
+        </svg>
+      </div>
+
+      <!-- RIGHT PANEL -->
+      <div class="panel-right">
+        <!-- STEPPER -->
+        <div class="stepper">
+          <div class="step active" id="step-indicator-1">
+            <div class="step-circle">1</div>
+            <div class="step-label">Username</div>
+          </div>
+          <div class="step-line"></div>
+          <div class="step pending" id="step-indicator-2">
+            <div class="step-circle">2</div>
+            <div class="step-label">Tap Card</div>
+          </div>
+          <div class="step-line"></div>
+          <div class="step pending" id="step-indicator-3">
+            <div class="step-circle">3</div>
+            <div class="step-label">Verify</div>
+          </div>
+        </div>
+
+        <!-- CONTENT -->
         <form id="login-form" novalidate>
-          <label for="username">Username</label>
-          <div class="field-wrap">
-            <span class="field-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21a8 8 0 0 0-16 0"/>
-                <circle cx="12" cy="8" r="4"/>
-              </svg>
-            </span>
-            <input id="username" name="username" type="text" placeholder="Enter your username" autocomplete="username" required />
-          </div>
+          <div class="auth-content">
+            <!-- STEP 1: Username -->
+            <div class="step-content visible" id="step-username">
+              <div class="username-card">
+                <div class="username-avatar">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                </div>
+                <h2>Enter your username</h2>
+                <p class="username-subtitle">Enter your assigned personnel username<br/>to continue securely.</p>
+                <div class="input-wrap">
+                  <span class="input-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                      <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                  </span>
+                  <input type="text" id="username-input" placeholder="Enter your username" autocomplete="username" />
+                </div>
+                <button class="btn-primary" id="btn-next-username">Next <span>&rarr;</span></button>
+              </div>
+            </div>
 
-          <label for="password">Password</label>
-          <div class="field-wrap">
-            <span class="field-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="4" y="11" width="16" height="10" rx="2"/>
-                <path d="M8 11V8a4 4 0 1 1 8 0v3"/>
-              </svg>
-            </span>
-            <input id="password" name="password" type="password" placeholder="Enter your password" autocomplete="current-password" required />
-            <button class="toggle-password" id="toggle-password" type="button" aria-label="Show password" aria-pressed="false">
-              <svg class="icon-eye" viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-              <svg class="icon-eye-off" viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2 12s4-7 10-7c2.4 0 4.5.8 6.2 2"/>
-                <path d="M22 12s-4 7-10 7c-2.4 0-4.5-.8-6.2-2"/>
-                <path d="m3 3 18 18"/>
-              </svg>
-            </button>
-          </div>
+            <!-- STEP 2: Tap Card -->
+            <div class="step-content" id="step-card" hidden>
+              <h2>Tap your assigned card</h2>
+              <p class="step-desc">Hold your NFC/RFID card near the reader<br/>to continue securely.</p>
 
-          <div class="forgot-wrap">
-            <button type="button" class="linkish">Forgot Password?</button>
-          </div>
+              <!-- Circular NFC Reader -->
+              <div class="nfc-orbit" id="nfc-orbit">
+                <div class="nfc-ring nfc-ring-1"></div>
+                <div class="nfc-ring nfc-ring-2"></div>
+                <div class="nfc-ring nfc-ring-3"></div>
+                <div class="nfc-card-wrap">
+                  <svg class="nfc-card-svg" width="88" height="60" viewBox="0 0 88 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="88" height="60" rx="7" fill="#1e293b"/>
+                    <rect x="10" y="16" width="16" height="12" rx="2" fill="#94a3b8"/>
+                    <line x1="14" y1="16" x2="14" y2="28" stroke="#64748b" stroke-width="0.8"/>
+                    <line x1="18" y1="16" x2="18" y2="28" stroke="#64748b" stroke-width="0.8"/>
+                    <line x1="10" y1="20" x2="26" y2="20" stroke="#64748b" stroke-width="0.8"/>
+                    <line x1="10" y1="24" x2="26" y2="24" stroke="#64748b" stroke-width="0.8"/>
+                    <path d="M 62 22 A 6 6 0 0 1 62 38" stroke="#475569" stroke-width="2" stroke-linecap="round" fill="none"/>
+                    <path d="M 66 18 A 12 12 0 0 1 66 42" stroke="#475569" stroke-width="2" stroke-linecap="round" fill="none"/>
+                    <path d="M 70 14 A 18 18 0 0 1 70 46" stroke="#475569" stroke-width="2" stroke-linecap="round" fill="none"/>
+                    <rect x="10" y="46" width="68" height="3" rx="1.5" fill="#0f172a"/>
+                  </svg>
+                </div>
+              </div>
 
-          <button id="sign-in" class="sign-in-btn" type="submit">LOGIN</button>
-          <p id="login-error" class="login-error" role="alert" aria-live="polite"></p>
+              <!-- Status -->
+              <div class="nfc-status" id="nfc-status">
+                <span class="nfc-status-dot"></span>
+                <span class="nfc-status-text" id="card-login-message">Waiting for NFC/RFID card...</span>
+              </div>
+
+              <button class="btn-link" id="btn-cancel-card">Cancel</button>
+            </div>
+
+            <!-- Step 3: Verify (TOTP) -->
+            <div class="step-content" id="step-verify" hidden>
+              <h2>Two-Factor Authentication</h2>
+              <p class="step-desc">Enter the 6-digit code from your authenticator app.</p>
+              <div class="otp-row" id="verify-otp-row">
+                <input class="otp-box" maxlength="1" type="text" inputmode="numeric" />
+                <input class="otp-box" maxlength="1" type="text" inputmode="numeric" />
+                <input class="otp-box" maxlength="1" type="text" inputmode="numeric" />
+                <input class="otp-box" maxlength="1" type="text" inputmode="numeric" />
+                <input class="otp-box" maxlength="1" type="text" inputmode="numeric" />
+                <input class="otp-box" maxlength="1" type="text" inputmode="numeric" />
+              </div>
+              <input type="hidden" id="verify-otp" />
+              <button class="btn-primary" id="btn-verify-totp" type="button">Login <span>→</span></button>
+              <button class="btn-link" id="btn-cancel-totp" type="button">Cancel</button>
+            </div>
+
+            <!-- STEP 3B: TOTP Enrollment (Hidden) -->
+            <div class="step-content" id="step-enroll" hidden>
+              <div class="enroll-header">
+                <div class="enroll-icon-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                </div>
+                <div>
+                  <h2>Setup Authenticator</h2>
+                  <p class="enroll-subtitle">Link your authenticator app to continue.</p>
+                </div>
+              </div>
+
+              <div class="enroll-layout">
+                <div class="qr-container">
+                  <img id="totp-qr" src="" alt="QR Code" />
+                  <div class="qr-label">Scan with your app</div>
+                </div>
+                <div class="manual-info">
+                  <ol class="enroll-steps">
+                    <li>Get <strong>Google Authenticator</strong> or <strong>Authy</strong></li>
+                    <li>Scan the QR code</li>
+                    <li>Enter the 6-digit code to confirm</li>
+                  </ol>
+                  <div class="secret-box">
+                    <code id="totp-secret-text"></code>
+                    <button id="btn-copy-secret" class="btn-copy" type="button">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="enroll-otp-label">ENTER THE CODE FROM YOUR APP TO CONFIRM SETUP</div>
+              <div class="otp-row" id="enroll-otp-row">
+                <input class="otp-box-enroll" maxlength="1" type="text" inputmode="numeric" />
+                <input class="otp-box-enroll" maxlength="1" type="text" inputmode="numeric" />
+                <input class="otp-box-enroll" maxlength="1" type="text" inputmode="numeric" />
+                <input class="otp-box-enroll" maxlength="1" type="text" inputmode="numeric" />
+                <input class="otp-box-enroll" maxlength="1" type="text" inputmode="numeric" />
+                <input class="otp-box-enroll" maxlength="1" type="text" inputmode="numeric" />
+              </div>
+              <input type="hidden" id="enroll-otp" />
+              <button class="btn-primary" id="btn-verify-enroll">Verify &amp; Login <span>→</span></button>
+              <p class="enroll-trouble">&#x24D8; Having trouble? Rescan the QR code or <button class="btn-inline-link" id="btn-cancel-enroll" type="button">try again</button>.</p>
+            </div>
+
+          </div>
         </form>
 
-        <p class="login-footer-links">FAQ | Features | Support</p>
-      </div>
+        <!-- ERROR MESSAGE (global, sits above footer) -->
+        <p id="login-error" class="error-text" role="alert"></p>
 
-      <div class="login-right" aria-hidden="true">
-        <div class="right-inner">
-          <div class="about-logos" aria-hidden="true">
-            <img class="about-logo" src="images/thinktech.png" alt="ThinkTech logo" />
-            <img class="about-logo" src="images/ansys.png" alt="Ansys logo" />
-            <img class="about-logo about-logo--hendexis" src="images/hendexis.png" alt="Hendexis logo" />
-          </div>
-          <h2>About PHS</h2>
-          <p>
-            The Personnel History Statement (PHS) System centralizes personnel records,
-            standardizes printable form output, and supports accurate reporting in one secure platform.
-          </p>
-          <p class="about-build">Version 1.0.8 · Build 2026.05</p>
+        <!-- FOOTER -->
+        <div class="login-footer">
+          <span class="footer-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> FAQ</span> | <span class="footer-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Features</span> | <span class="footer-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg> Support</span>
         </div>
       </div>
-    </section>
-  </main>
+    </div>
+  </div>
 
   <script type="module" src="js/login.js"></script>
 </body>
+
 </html>

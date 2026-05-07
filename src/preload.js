@@ -9,8 +9,15 @@ contextBridge.exposeInMainWorld('personnelApi', {
 
 contextBridge.exposeInMainWorld('authApi', {
   login: (username, password) => ipcRenderer.invoke('auth:login', { username: username, password: password }),
+  beginLogin: (username) => ipcRenderer.invoke('auth:beginLogin', { username }),
+  verifyCardStep: (challengeId, cardUid) => ipcRenderer.invoke('auth:verifyCard', { challengeId, cardUid }),
+  enrollTotp: (challengeId) => ipcRenderer.invoke('auth:enrollTotp', { challengeId }),
+  verifyTotp: (challengeId, token) => ipcRenderer.invoke('auth:verifyTotp', { challengeId, token }),
   getSession: () => ipcRenderer.invoke('auth:session'),
   logout: () => ipcRenderer.invoke('auth:logout'),
+  changePassword: (currentPassword, newPassword) =>
+    ipcRenderer.invoke('auth:changePassword', { currentPassword, newPassword }),
+  createUser: (payload) => ipcRenderer.invoke('admin:createUser', payload),
 });
 
 contextBridge.exposeInMainWorld('adminApi', {
@@ -20,11 +27,42 @@ contextBridge.exposeInMainWorld('adminApi', {
   updateUserRole: (userId, roleName) => ipcRenderer.invoke('admin:updateUserRole', { userId, roleName }),
   deleteUser: (userId) => ipcRenderer.invoke('admin:deleteUser', { userId }),
   getAuditLogs: () => ipcRenderer.invoke('admin:auditLogs'),
+  resetTotp: (targetUserId) => ipcRenderer.invoke('auth:adminResetTotp', { targetUserId }),
 });
 
 contextBridge.exposeInMainWorld('exportApi', {
   savePhsPdf: (payload) => ipcRenderer.invoke('export:phsPdf', payload),
   savePhsWord: (payload) => ipcRenderer.invoke('export:phsWord', payload),
+});
+
+contextBridge.exposeInMainWorld('cardApi', {
+  onCardDetected: (cb) => {
+    ipcRenderer.on('card-detected', (evt, cardUID) => {
+      try { cb(cardUID); } catch (_) {}
+    });
+  },
+  onCardStatus: (cb) => {
+    ipcRenderer.on('card-status', (evt, payload) => {
+      try { cb(payload); } catch (_) {}
+    });
+  }
+});
+
+contextBridge.exposeInMainWorld('cardManagementApi', {
+  listCards: () => ipcRenderer.invoke('cards:list'),
+  getCards: () => ipcRenderer.invoke('cards:list'),
+  lookupCard: (payload) => ipcRenderer.invoke('cards:lookup', payload),
+  loginLookupCard: (payload) => ipcRenderer.invoke('cards:loginLookup', payload),
+  registerCard: (payload) => ipcRenderer.invoke('cards:register', payload),
+  assignCard: (payload) => {
+    const body = payload || {};
+    return ipcRenderer.invoke('cards:assign', {
+      card_uid: body.card_uid || body.cardId,
+      personnel_id: body.personnel_id || body.personnelId,
+      assigned_username: body.assigned_username || body.username,
+    });
+  },
+  unassignCard: (payload) => ipcRenderer.invoke('cards:unassign', payload),
 });
 
 contextBridge.exposeInMainWorld('updateApi', {
@@ -46,4 +84,16 @@ contextBridge.exposeInMainWorld('updateApi', {
   downloadUpdate: () => ipcRenderer.invoke('update:download'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
   checkForUpdates: () => ipcRenderer.invoke('update:check')
+});
+
+// Expose app-level info (version)
+contextBridge.exposeInMainWorld('appApi', {
+  getVersion: async () => {
+    try {
+      const res = await ipcRenderer.invoke('app:version');
+      return res && res.version ? String(res.version) : null;
+    } catch (e) {
+      return null;
+    }
+  }
 });

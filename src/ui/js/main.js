@@ -12,7 +12,10 @@ import { initAdminUsersView } from './admin-users.js';
 import { initToastSystem } from './toast.js';
 import { buildAutoFillRecord } from './autofill.js';
 import { initAuditLogs } from './audit-log.js';
+import { initSettingsView } from './settings.js';
+import { openPostSaveModal, createCardManagementController } from './card-management.js';
 import { show as showLoader, hide as hideLoader } from './loader.js';
+import { initNotifications } from './notifications.js';
 
 function showError(msg) {
   document.body.innerHTML = '<div style="padding:24px;font-family:sans-serif;max-width:500px"><h2>Error</h2><p>' + String(msg).replace(/</g, '&lt;') + '</p><p>Check the console (Ctrl+Shift+I) for details.</p></div>';
@@ -48,13 +51,31 @@ async function loadAnalyticsPage() {
   hideLoader();
 }
 
+async function loadCardsPage() {
+  const container = document.getElementById('cards-content');
+  if (!container) return;
+  try {
+    const response = await fetch('pages/card-management.html');
+    if (response.ok) {
+      container.innerHTML = await response.text();
+    }
+  } catch (e) {
+    console.error('Failed to load cards page', e);
+  }
+}
+
 (async function bootstrap() {
   try {
     await loadFormPages();
     await loadAnalyticsPage();
+    await loadCardsPage();
 
     // Initialize toast system
     window.toast = initToastSystem();
+
+    // Initialize notification system
+    const notifCtl = initNotifications({ toast: window.toast });
+    window.notify = notifCtl ? notifCtl.notify : function () {};
 
     const isPackagedApp = (() => {
       try {
@@ -240,10 +261,17 @@ async function loadAnalyticsPage() {
       return;
     }
 
+    // Fire login activity notification
+    if (window.notify) {
+      window.notify('activity', 'User Signed In', (session.user.username || session.user) + ' logged in successfully.');
+    }
+
     const listView = document.getElementById('list-view');
     const analyticsView = document.getElementById('analytics-view');
     const adminView = document.getElementById('admin-view');
+    const cardsView = document.getElementById('cards-view');
     const auditView = document.getElementById('audit-view');
+    const settingsView = document.getElementById('settings-view');
     const auditTbody = document.getElementById('audit-logs-tbody');
     const btnRefreshAudit = document.getElementById('btn-refresh-audit');
     const phsModalEl = document.getElementById('phs-modal');
@@ -271,9 +299,13 @@ async function loadAnalyticsPage() {
     const canViewAnalytics = roles.includes('admin') || roles.includes('viewer');
 
     const navAdmin = document.getElementById('nav-admin');
+    const navCards = document.getElementById('nav-cards');
     const navAudit = document.getElementById('nav-audit');
+    const navSettings = document.getElementById('nav-settings');
     if (navAdmin) navAdmin.hidden = !isAdmin;
+    if (navCards) navCards.hidden = !isAdmin;
     if (navAudit) navAudit.hidden = !isAdmin;
+    if (navSettings) navSettings.hidden = !isAdmin;
     if (btnAutoFillPhs) btnAutoFillPhs.disabled = !canEdit;
 
     var btnNew = document.getElementById('btn-new');
@@ -289,7 +321,32 @@ async function loadAnalyticsPage() {
       initAdminUsersView({ adminViewEl: adminView, adminApi: window.adminApi });
     }
 
+    const settingsCtl = initSettingsView({
+      settingsViewEl: settingsView,
+      updateApi: window.updateApi,
+      appApi: window.appApi,
+      authApi: window.authApi,
+      toast: window.toast
+    });
+
+    // Populate sidebar version text (best-effort)
+    (async function setSidebarVersion() {
+      try {
+        const el = document.getElementById('sidebar-version');
+        if (!el) return;
+        if (window.appApi && typeof window.appApi.getVersion === 'function') {
+          const ver = await window.appApi.getVersion();
+          if (ver) el.textContent = 'Current version: ' + ver;
+        }
+      } catch (e) { /* ignore */ }
+    })();
+
     
+    let cardManagementCtl = null;
+    if (typeof createCardManagementController === 'function') {
+      cardManagementCtl = createCardManagementController();
+    }
+
     let showAuditLogs;
     if (initAuditLogs) {
       const auditLogCtl = initAuditLogs({
@@ -302,6 +359,8 @@ async function loadAnalyticsPage() {
         analyticsView,
         adminView,
         auditView,
+        cardsView,
+        settingsView,
         setActiveNav,
         setAppView,
         topbarSection,
@@ -323,7 +382,9 @@ async function loadAnalyticsPage() {
       listView.classList.add('active');
       if (analyticsView) analyticsView.classList.remove('active');
       if (adminView) adminView.classList.remove('active');
+      if (cardsView) cardsView.classList.remove('active');
       if (auditView) auditView.classList.remove('active');
+      if (settingsView) settingsView.classList.remove('active');
       setActiveNav('list');
       setAppView('list');
       setTopbarSection(topbarSection, 'Personnels');
@@ -426,8 +487,71 @@ async function loadAnalyticsPage() {
     // Roster cache: persist records after first successful fetch.
     // Only re-fetch when explicitly requested (forceRefresh) or when stale.
     const ROSTER_STALE_MS = 5 * 60 * 1000; // 5 minutes
-    // Minimum visible time for the roster skeleton. Keep long enough to paint.
-    const ROSTER_SKELETON_MIN_MS = 1500;
+    // Minimum visible time for the roster skeleton. Start with a sensible default
+    // and adapt based on measured network speed (bandwidth/connection hints).
+    let ROSTER_SKELETON_MIN_MS = 1500;
+
+    // Estimate a reasonable skeleton minimum based on connection hints or a
+    // lightweight bandwidth measurement. This runs once and updates the
+    // `ROSTER_SKELETON_MIN_MS` value when available.
+    (function initAdaptiveSkeletonMs() {
+      async function measureBandwidthMbps(urls) {
+        const candidates = urls || ['images/thinktech.png', 'images/ansys.png', 'images/hendexis.png'];
+        for (const u of candidates) {
+          try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 1500);
+            const start = performance.now();
+            const resp = await fetch(u, { cache: 'no-store', signal: controller.signal });
+            clearTimeout(timeout);
+            if (!resp.ok) continue;
+            const blob = await resp.blob();
+            const elapsed = (performance.now() - start) / 1000; // seconds
+            if (elapsed <= 0) continue;
+            const bytes = blob.size || 1024; // fallback
+            const mbps = (bytes * 8) / (elapsed * 1_000_000);
+            if (mbps > 0) return mbps;
+          } catch (_) {
+            // try next candidate
+          }
+        }
+        return null;
+      }
+
+      async function estimateSkeletonMinMs() {
+        // 1) Network Information API heuristic
+        try {
+          const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+          if (conn && conn.effectiveType) {
+            switch (conn.effectiveType) {
+              case 'slow-2g': return 3000;
+              case '2g': return 3000;
+              case '3g': return 1800;
+              case '4g': return 800;
+              default: break;
+            }
+          }
+        } catch (_) {}
+
+        // 2) Measure bandwidth by downloading a small local image (fast, low-cost)
+        try {
+          const mbps = await measureBandwidthMbps();
+          if (mbps && isFinite(mbps) && mbps > 0) {
+            // Derive a min ms from bandwidth. Tunable constant: 2000.
+            const ms = Math.round(2000 / mbps);
+            return Math.min(3000, Math.max(150, ms));
+          }
+        } catch (_) {}
+
+        // Fallback
+        return 1500;
+      }
+
+      // Run in background; don't block startup.
+      estimateSkeletonMinMs().then(function (ms) {
+        if (ms && typeof ms === 'number') ROSTER_SKELETON_MIN_MS = ms;
+      }).catch(function () {});
+    })();
     let rosterCache = { records: null, ts: 0 };
 
     // Ensure the skeleton CSS/animation is present at runtime. Some environments
@@ -484,7 +608,7 @@ async function loadAnalyticsPage() {
             renderAnalytics(rosterCache.records, { openSummary: openSummary });
             try { hideLoader(); } catch (_) {}
             resolve(rosterCache.records);
-          }, 80);
+          }, 60);
         });
       }
 
@@ -531,7 +655,7 @@ async function loadAnalyticsPage() {
             } catch (_) {}
             hideLoader();
             resolve(records);
-          }, 150);
+          }, 60);
         });
       }).catch(function (err) {
         hideLoader();
@@ -622,7 +746,9 @@ async function loadAnalyticsPage() {
       listView.classList.remove('active');
       if (analyticsView) analyticsView.classList.add('active');
       if (adminView) adminView.classList.remove('active');
+      if (cardsView) cardsView.classList.remove('active');
       if (auditView) auditView.classList.remove('active');
+      if (settingsView) settingsView.classList.remove('active');
       setActiveNav('analytics');
       setAppView('analytics');
       setTopbarSection(topbarSection, 'Dashboard');
@@ -642,10 +768,56 @@ async function loadAnalyticsPage() {
       listView.classList.remove('active');
       if (analyticsView) analyticsView.classList.remove('active');
       if (adminView) adminView.classList.add('active');
+      if (cardsView) cardsView.classList.remove('active');
       if (auditView) auditView.classList.remove('active');
+      if (settingsView) settingsView.classList.remove('active');
       setActiveNav('admin');
       setAppView('admin');
       setTopbarSection(topbarSection, 'User management');
+    }
+
+    function showCards() {
+      if (!isAdmin) {
+        window.toast.error('Admin access required.');
+        return;
+      }
+      if (phsModalCtl && phsModalCtl.isOpen()) {
+        phsModalCtl.close(false);
+      }
+      listView.classList.remove('active');
+      if (analyticsView) analyticsView.classList.remove('active');
+      if (adminView) adminView.classList.remove('active');
+      if (auditView) auditView.classList.remove('active');
+      if (settingsView) settingsView.classList.remove('active');
+      if (cardsView) cardsView.classList.add('active');
+      setActiveNav('cards');
+      setAppView('cards');
+      setTopbarSection(topbarSection, 'Card Management');
+      if (cardManagementCtl && typeof cardManagementCtl.show === 'function') {
+        cardManagementCtl.show();
+      }
+    }
+
+    function showSettings() {
+      if (!isAdmin) {
+        window.toast.error('Admin access required.');
+        return;
+      }
+      if (phsModalCtl && phsModalCtl.isOpen()) {
+        phsModalCtl.close(false);
+      }
+      listView.classList.remove('active');
+      if (analyticsView) analyticsView.classList.remove('active');
+      if (adminView) adminView.classList.remove('active');
+      if (auditView) auditView.classList.remove('active');
+      if (cardsView) cardsView.classList.remove('active');
+      if (settingsView) settingsView.classList.add('active');
+      setActiveNav('settings');
+      setAppView('settings');
+      setTopbarSection(topbarSection, 'Settings');
+      if (settingsCtl && typeof settingsCtl.refreshVersion === 'function') {
+        settingsCtl.refreshVersion();
+      }
     }
 
     document.querySelectorAll('.nav-item').forEach(function (tab) {
@@ -654,6 +826,9 @@ async function loadAnalyticsPage() {
         if (which === 'list') showList();
         if (which === 'analytics') showAnalytics();
         if (which === 'admin') showAdminUsers();
+        if (which === 'cards') showCards();
+        if (which === 'settings') showSettings();
+        if (settingsView && which === 'audit') settingsView.classList.remove('active');
         if (which === 'audit') showAuditLogs();
       });
     });
@@ -883,7 +1058,7 @@ async function loadAnalyticsPage() {
       }
     });
 
-    phsForm.addEventListener('submit', function (e) {
+    phsForm.addEventListener('submit', async function (e) {
       e.preventDefault();
       const data = formData.getFormData();
       var isUpdate = !!(data && data.id);
@@ -893,13 +1068,52 @@ async function loadAnalyticsPage() {
           : 'Save this new personnel record?'
       );
       if (!confirmed) return;
-      window.personnelApi.save(data).then(function () {
-        // After saving, force refresh the roster so cache is updated
+      try {
+        if (typeof openPostSaveModal !== 'function') {
+          throw new Error('Post-save setup modal is unavailable.');
+        }
+
+        // 1. Save the personnel record first to get the ID (especially for new records)
+        const savedPersonnel = await window.personnelApi.save(data);
+        if (!savedPersonnel || !savedPersonnel.id) {
+          throw new Error('Failed to obtain a valid personnel ID after saving.');
+        }
+
+        // 2. Open the post-save setup modal using the saved record (which now has an ID)
+        const setupResult = await openPostSaveModal(savedPersonnel);
+        if (!setupResult || !setupResult.ok) {
+          // If user cancelled the setup, we still saved the personnel, so just refresh list
+          showList({ forceCloseModal: true, forceRefresh: true });
+          return;
+        }
+
+        // After saving and setup, force refresh the roster so cache is updated
         showList({ forceCloseModal: true, forceRefresh: true });
-      }).catch(function (err) {
+
+        // Fire notification
+        const savedName = [
+          (data.nameLast || ''),
+          (data.nameFirst || '')
+        ].filter(Boolean).join(', ') || (data.fullName || 'Unknown');
+        if (window.notify) {
+          if (isUpdate) {
+            window.notify('audit', 'Personnel Updated', savedName + ' record was updated.');
+          } else {
+            window.notify('personnel', 'New Personnel Added', savedName + ' was added to the system.');
+          }
+        }
+
+        if (window.toast && typeof window.toast.success === 'function') {
+          if (setupResult.skipped) {
+            window.toast.success('Personnel saved. Username created. Card assignment skipped.');
+          } else {
+            window.toast.success('Personnel saved with username and card assignment.');
+          }
+        }
+      } catch (err) {
         console.error(err);
         window.toast.error('Could not save: ' + (err && err.message ? err.message : 'Unknown error'));
-      });
+      }
     });
 
     formData.setChildrenRows([]);

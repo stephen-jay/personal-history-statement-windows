@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
-const { REMOVED_FIELDS, PERSONNEL_FIELD_MAP, CHILD_TABLES } = require('../shared/schema');
+const { REMOVED_FIELDS, CARD_REGISTRATION_TABLE, PERSONNEL_FIELD_MAP, CHILD_TABLES } = require('../shared/schema');
 
 let dataFile = null;
 
@@ -10,7 +10,15 @@ let pgPool = null;
 function initDatabase(url, jsonPath) {
   dataFile = jsonPath;
   if (url && !pgPool) {
-    pgPool = new Pool({ connectionString: url });
+    try {
+      console.log('[DB] initDatabase: attempting to create pg Pool');
+      console.log('[DB] connection string (masked):', String(url).replace(/:(?:[^:]+)@/, ':****@'));
+      pgPool = new Pool({ connectionString: url });
+      console.log('[DB] initDatabase: pg Pool created');
+    } catch (e) {
+      console.error('[DB] initDatabase: failed to create pg Pool:', e && e.message ? e.message : e);
+      pgPool = null;
+    }
   }
 }
 
@@ -82,7 +90,8 @@ function normalizeFromDbRow(row) {
   const out = {
     id: row.id,
     version: typeof row.version === 'number' ? row.version : null,
-    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null
+    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
+    cardUID: row.card_uid || null
   };
   Object.keys(PERSONNEL_FIELD_MAP).forEach(function (srcKey) {
     out[srcKey] = row[PERSONNEL_FIELD_MAP[srcKey]];
@@ -104,6 +113,22 @@ async function getPersonnelColumnSet(client) {
     "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'personnel'"
   );
   return new Set((result.rows || []).map(function (r) { return r.column_name; }));
+}
+
+async function hasTable(client, tableName) {
+  const result = await client.query('SELECT to_regclass($1) AS regclass', ['public.' + tableName]);
+  return !!(result.rows && result.rows[0] && result.rows[0].regclass);
+}
+
+async function ensureCardRegistrationTable(client) {
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS personnel_card_registrations (
+      personnel_id text PRIMARY KEY REFERENCES personnel(id) ON DELETE CASCADE,
+      card_uid text UNIQUE NOT NULL,
+      updated_at timestamptz NOT NULL DEFAULT NOW(),
+      created_at timestamptz NOT NULL DEFAULT NOW()
+    )
+  `);
 }
 
 function assertPersonnelColumnsAvailable(personnelColumnSet, record) {
@@ -136,12 +161,24 @@ async function getPostgresData() {
     const records = base.rows.map(normalizeFromDbRow);
     if (!records.length) return [];
     const ids = records.map((r) => r.id);
+    const cardTableExists = await hasTable(client, CARD_REGISTRATION_TABLE);
+    const cardByPersonnelId = new Map();
+    if (cardTableExists) {
+      const cardRows = await client.query(
+        'SELECT personnel_id, card_uid FROM ' + CARD_REGISTRATION_TABLE + ' WHERE personnel_id = ANY($1::text[])',
+        [ids]
+      );
+      (cardRows.rows || []).forEach(function (row) {
+        cardByPersonnelId.set(row.personnel_id, row.card_uid || null);
+      });
+    }
     const childGrouped = {};
     for (const def of CHILD_TABLES) {
       const q = await client.query('SELECT * FROM ' + def.table + ' WHERE personnel_id = ANY($1::text[]) ORDER BY id ASC', [ids]);
       childGrouped[def.sourceKey] = groupByPersonnelId(q.rows);
     }
     records.forEach(function (rec) {
+      rec.cardUID = cardByPersonnelId.get(rec.id) || rec.cardUID || null;
       for (const def of CHILD_TABLES) {
         const rows = (childGrouped[def.sourceKey] && childGrouped[def.sourceKey].get(rec.id)) || [];
         rec[def.sourceKey] = rows.map(function (row) {
@@ -242,6 +279,19 @@ async function savePostgresRecord(record, currentUserId) {
       }
     }
 
+    let cardTableExists = await hasTable(client, CARD_REGISTRATION_TABLE);
+    if (cardTableExists && Object.prototype.hasOwnProperty.call(safe, 'cardUID')) {
+      const cardUID = safe.cardUID == null ? '' : String(safe.cardUID).trim();
+      if (cardUID) {
+        await client.query(
+          'INSERT INTO ' + CARD_REGISTRATION_TABLE + ' (personnel_id, card_uid) VALUES ($1, $2) ON CONFLICT (personnel_id) DO UPDATE SET card_uid = EXCLUDED.card_uid, updated_at = NOW()',
+          [id, cardUID]
+        );
+      } else {
+        await client.query('DELETE FROM ' + CARD_REGISTRATION_TABLE + ' WHERE personnel_id = $1', [id]);
+      }
+    }
+
     await client.query('COMMIT');
     return {
       ...safe,
@@ -251,6 +301,9 @@ async function savePostgresRecord(record, currentUserId) {
     };
   } catch (e) {
     await client.query('ROLLBACK');
+    if (e && e.code === '23505' && /card_uid|personnel_card_registrations/i.test(String(e.constraint || '') + ' ' + String(e.detail || ''))) {
+      throw new Error('This card is already linked to another personnel record. Use a different card or unlink it first.');
+    }
     throw e;
   } finally {
     client.release();
