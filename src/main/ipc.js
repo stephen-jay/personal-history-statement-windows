@@ -525,6 +525,7 @@ function registerIpcHandlers(ipcMain, app, config) {
 
   ipcMain.handle('cards:assign', async function (_evt, payload) {
     const body = payload || {};
+    // `cardUid` is stored exactly as read from the NFC reader (no truncation). This ensures future lookups match the full UID.
     const cardUid = String(body.card_uid || '').trim();
     const personnelId = String(body.personnel_id || '').trim();
     const assignedUsername = String(body.assigned_username || body.username || '').trim();
@@ -536,10 +537,26 @@ function registerIpcHandlers(ipcMain, app, config) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+      
+      let finalAssignedUsername = assignedUsername || null;
+      if (!finalAssignedUsername && personnelId) {
+        // Try to find the associated app_user by matching ID or Full Name
+        const userLookup = await client.query(`
+          SELECT u.username 
+          FROM app_users u 
+          LEFT JOIN personnel p ON p.id = $1 
+          WHERE u.username = $1 OR LOWER(u.full_name) = LOWER(p.full_name)
+          LIMIT 1
+        `, [personnelId]);
+        if (userLookup.rows && userLookup.rows.length > 0) {
+          finalAssignedUsername = userLookup.rows[0].username;
+        }
+      }
+
       // mark card assigned and set personnel_id
       const updateRes = await client.query(
         'UPDATE cards SET status = $1, personnel_id = $2, assigned_username = $3, updated_at = NOW() WHERE LOWER(TRIM(card_uid)) = LOWER(TRIM($4))',
-        ['assigned', personnelId || null, assignedUsername || null, cardUid]
+        ['assigned', personnelId || null, finalAssignedUsername, cardUid]
       );
 
       if (updateRes.rowCount === 0) {

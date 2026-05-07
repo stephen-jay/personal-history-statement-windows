@@ -2,6 +2,34 @@ const { getPgPool } = require('./database');
 const fs = require('fs');
 const path = require('path');
 
+// ---------------------------------------------------------------------------
+// DB Retry Helper
+// Automatically retries a DB query/operation on transient connection errors
+// (ETIMEDOUT, ECONNRESET, ECONNREFUSED, EPIPE) up to maxRetries times.
+// This prevents mid-flow crashes when the DB server is briefly unreachable.
+// ---------------------------------------------------------------------------
+async function withDbRetry(fn, maxRetries = 3, delayMs = 800) {
+  const RETRYABLE_CODES = new Set(['ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'EPIPE']);
+  let lastErr;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const isRetryable = RETRYABLE_CODES.has(err.code) || RETRYABLE_CODES.has(err.syscall);
+      if (!isRetryable || attempt === maxRetries) throw err;
+      lastErr = err;
+      console.warn(`[DB Retry] Attempt ${attempt}/${maxRetries} failed (${err.code}), retrying in ${delayMs * attempt}ms...`);
+      await new Promise(r => setTimeout(r, delayMs * attempt));
+    }
+  }
+  throw lastErr;
+}
+
+function isConnectionError(err) {
+  return ['ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'EPIPE'].includes(err.code);
+}
+
+
 let authSessionPath = null;
 
 function initAuth(userDataPath) {
@@ -243,6 +271,16 @@ async function verifyCardStep(challengeId, cardUid) {
   }
   
   const challenge = challengeRes.rows[0];
+
+  // --- Fallback: resume the flow if the card was already verified ---
+  // This happens when a DB timeout occurred mid-flow (e.g. during TOTP step)
+  // and the user re-taps their card. Instead of erroring, we resume from
+  // wherever the challenge currently is.
+  if (challenge.status === 'pending_enrollment' || challenge.status === 'pending_totp') {
+    console.warn(`[Auth] Card tapped on challenge already at '${challenge.status}' — resuming flow.`);
+    return { status: challenge.status, resumed: true };
+  }
+
   if (challenge.status !== 'pending_card') {
     throw new Error('Invalid challenge state for card verification.');
   }
@@ -251,14 +289,26 @@ async function verifyCardStep(challengeId, cardUid) {
     throw new Error('Too many failed attempts. Please restart login.');
   }
   
-  // Verify card belongs to the user
-  const cardRes = await pool.query(
+  // Verify card belongs to the user (with retry on transient connection errors)
+  // Try exact UID match first
+  let cardRes = await withDbRetry(() => pool.query(
     `SELECT c.card_uid 
      FROM cards c 
      LEFT JOIN app_users u ON u.username = c.assigned_username
      WHERE LOWER(TRIM(c.card_uid)) = LOWER(TRIM($1)) AND u.id = $2 AND c.status = 'assigned'`,
     [cardUid, challenge.user_id]
-  );
+  ));
+  // If not found, fall back to a starts‑with match (handles legacy trimmed UIDs)
+  if (!cardRes.rows || !cardRes.rows.length) {
+    console.warn(`[Auth] Exact UID lookup failed for '${cardUid}'. Trying prefix match.`);
+    cardRes = await withDbRetry(() => pool.query(
+      `SELECT c.card_uid 
+       FROM cards c 
+       LEFT JOIN app_users u ON u.username = c.assigned_username
+       WHERE LOWER(TRIM(c.card_uid)) LIKE LOWER(TRIM($1)) || '%' AND u.id = $2 AND c.status = 'assigned'`,
+      [cardUid, challenge.user_id]
+    ));
+  }
   
   if (!cardRes.rows || !cardRes.rows.length) {
     await pool.query('UPDATE auth_challenges SET attempts = attempts + 1 WHERE id = $1', [challengeId]);
@@ -303,14 +353,27 @@ async function enrollTotp(challengeId) {
     }
   }
   
-  const secret = generateSecret();
-  // Encrypting at rest is recommended, but storing plain text to begin with if no encryption key provided.
-  // In a real prod environment, use a symmetric key.
-  
-  await pool.query(
-    'INSERT INTO app_user_totp (user_id, totp_secret, totp_enabled) VALUES ($1, $2, false) ON CONFLICT (user_id) DO UPDATE SET totp_secret = $2',
-    [challenge.user_id, secret]
+  // Reuse existing secret if one was already generated but not yet enabled.
+  // This prevents QR/secret mismatch if enrollTotp is called more than once
+  // (e.g. user goes back, page reloads, or a DB timeout causes a retry).
+  let secret;
+  const existingTotp = await pool.query(
+    'SELECT totp_secret, totp_enabled FROM app_user_totp WHERE user_id = $1',
+    [challenge.user_id]
   );
+  if (existingTotp.rows.length && existingTotp.rows[0].totp_secret && !existingTotp.rows[0].totp_enabled) {
+    // Reuse the previously generated secret — keeps the QR consistent
+    secret = existingTotp.rows[0].totp_secret;
+  } else {
+    // Generate a new secret only on first enrollment or after a reset
+    secret = generateSecret();
+    // Encrypting at rest is recommended, but storing plain text to begin with if no encryption key provided.
+    // In a real prod environment, use a symmetric key.
+    await pool.query(
+      'INSERT INTO app_user_totp (user_id, totp_secret, totp_enabled) VALUES ($1, $2, false) ON CONFLICT (user_id) DO UPDATE SET totp_secret = $2',
+      [challenge.user_id, secret]
+    );
+  }
   
   const otpauthUrl = generateURI({ label: username, issuer: 'APOLLO Personnel DB', secret });
   const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
@@ -341,9 +404,22 @@ async function verifyTotpStep(challengeId, token) {
     throw new Error('Too many failed OTP attempts. Please restart login.');
   }
   
-  const userRes = await pool.query('SELECT totp_secret, totp_enabled FROM app_user_totp WHERE user_id = $1', [challenge.user_id]);
-  const userTotp = userRes.rows && userRes.rows.length ? userRes.rows[0] : null;
-  
+  // Fetch TOTP secret with retry on transient connection errors.
+  // Connection errors do NOT count as a failed OTP attempt.
+  let userTotp;
+  try {
+    const userRes = await withDbRetry(() =>
+      pool.query('SELECT totp_secret, totp_enabled FROM app_user_totp WHERE user_id = $1', [challenge.user_id])
+    );
+    userTotp = userRes.rows && userRes.rows.length ? userRes.rows[0] : null;
+  } catch (err) {
+    if (isConnectionError(err)) {
+      console.error('[Auth] DB unreachable during TOTP verify (not counted as failed attempt):', err.code);
+      throw new Error('Database temporarily unreachable. Please try again.');
+    }
+    throw err;
+  }
+
   if (!userTotp || !userTotp.totp_secret) {
     throw new Error('TOTP secret not found. Enrollment required.');
   }
@@ -356,6 +432,7 @@ async function verifyTotpStep(challengeId, token) {
   console.log(`====================\n`);
   
   if (!isValid || !isValid.valid) {
+    // Only increment attempts for genuinely wrong codes, not connection errors
     await pool.query('UPDATE auth_challenges SET attempts = attempts + 1 WHERE id = $1', [challengeId]);
     throw new Error('Invalid or expired OTP code.');
   }

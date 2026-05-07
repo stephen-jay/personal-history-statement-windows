@@ -15,6 +15,7 @@ import { initAuditLogs } from './audit-log.js';
 import { initSettingsView } from './settings.js';
 import { openPostSaveModal, createCardManagementController } from './card-management.js';
 import { show as showLoader, hide as hideLoader } from './loader.js';
+import { initNotifications } from './notifications.js';
 
 function showError(msg) {
   document.body.innerHTML = '<div style="padding:24px;font-family:sans-serif;max-width:500px"><h2>Error</h2><p>' + String(msg).replace(/</g, '&lt;') + '</p><p>Check the console (Ctrl+Shift+I) for details.</p></div>';
@@ -71,6 +72,10 @@ async function loadCardsPage() {
 
     // Initialize toast system
     window.toast = initToastSystem();
+
+    // Initialize notification system
+    const notifCtl = initNotifications({ toast: window.toast });
+    window.notify = notifCtl ? notifCtl.notify : function () {};
 
     const isPackagedApp = (() => {
       try {
@@ -254,6 +259,11 @@ async function loadCardsPage() {
     if (!session || !session.user) {
       window.location.href = 'login.html';
       return;
+    }
+
+    // Fire login activity notification
+    if (window.notify) {
+      window.notify('activity', 'User Signed In', (session.user.username || session.user) + ' logged in successfully.');
     }
 
     const listView = document.getElementById('list-view');
@@ -1079,6 +1089,19 @@ async function loadCardsPage() {
 
         // After saving and setup, force refresh the roster so cache is updated
         showList({ forceCloseModal: true, forceRefresh: true });
+
+        // Fire notification
+        const savedName = [
+          (data.nameLast || ''),
+          (data.nameFirst || '')
+        ].filter(Boolean).join(', ') || (data.fullName || 'Unknown');
+        if (window.notify) {
+          if (isUpdate) {
+            window.notify('audit', 'Personnel Updated', savedName + ' record was updated.');
+          } else {
+            window.notify('personnel', 'New Personnel Added', savedName + ' was added to the system.');
+          }
+        }
 
         if (window.toast && typeof window.toast.success === 'function') {
           if (setupResult.skipped) {

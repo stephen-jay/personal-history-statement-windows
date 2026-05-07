@@ -460,7 +460,14 @@ function rerenderRoster(records, deps) {
         const record = records.find(function (r) { return String(r.id) === String(id); });
         const version = record && record.version != null ? Number(record.version) : null;
         window.personnelApi.delete(id, version).then(function () {
-          deps.loadList(true);
+                  if (window.notify) {
+                    const deletedName = [
+                      (record && record.nameLast) || '',
+                      (record && record.nameFirst) || ''
+                    ].filter(Boolean).join(', ') || (record && record.fullName) || 'A record';
+                    window.notify('audit', 'Personnel Deleted', deletedName + ' was removed from the system.');
+                  }
+                  deps.loadList(true);
         }).catch(function (err) {
           window.toast.error('Delete failed: ' + (err && err.message ? err.message : String(err)));
         });
