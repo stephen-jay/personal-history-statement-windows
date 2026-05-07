@@ -6,6 +6,7 @@ import { buildStandalonePhsHtml, suggestedExportBasename } from './phs-export-ht
 import { renderList, renderRosterSkeleton } from './list.js';
 import { setActiveNav, setAppView, setTopbarSection } from './views.js';
 import { createFormNav } from './form-nav.js';
+import { showConfirm } from './confirm.js';
 import { createPhsModalController } from './phs-modal.js';
 import { squareThumbnailDataUrl } from './photo-thumbnail.js';
 import { initAdminUsersView } from './admin-users.js';
@@ -844,8 +845,8 @@ async function loadCardsPage() {
     });
 
     if (btnLogout) {
-      btnLogout.addEventListener('click', function () {
-        var confirmed = confirm('Are you sure you want to log out?');
+      btnLogout.addEventListener('click', async function () {
+        var confirmed = await showConfirm('Are you sure you want to log out?', { confirmText: 'Logout', cancelText: 'Cancel' });
         if (!confirmed) return;
         if (window.authApi && typeof window.authApi.logout === 'function') {
           window.authApi.logout().finally(function () {
@@ -1062,10 +1063,11 @@ async function loadCardsPage() {
       e.preventDefault();
       const data = formData.getFormData();
       var isUpdate = !!(data && data.id);
-      var confirmed = confirm(
+      var confirmed = await showConfirm(
         isUpdate
           ? 'Save changes to this personnel record?'
-          : 'Save this new personnel record?'
+          : 'Save this new personnel record?',
+        { confirmText: 'Save', cancelText: 'Cancel' }
       );
       if (!confirmed) return;
       try {

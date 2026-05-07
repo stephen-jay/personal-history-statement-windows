@@ -3,7 +3,7 @@ export function showConfirm(message, opts) {
   opts = opts || {};
   const title = opts.title || '';
   const confirmText = opts.confirmText || 'OK';
-  const cancelText = opts.cancelText || 'Cancel';
+  const cancelText = (typeof opts.cancelText === 'undefined') ? 'Cancel' : opts.cancelText;
 
   return new Promise(function (resolve) {
     let dlg = document.getElementById('app-confirm-dialog');
@@ -35,7 +35,15 @@ export function showConfirm(message, opts) {
     titleEl.textContent = title || '';
     bodyEl.textContent = message || '';
     btnConfirm.textContent = confirmText;
-    btnCancel.textContent = cancelText;
+    if (cancelText) {
+      btnCancel.textContent = cancelText;
+      btnCancel.style.display = '';
+      panel.classList.remove('alert');
+    } else {
+      btnCancel.textContent = '';
+      btnCancel.style.display = 'none';
+      panel.classList.add('alert');
+    }
 
     function cleanup() {
       dlg.classList.remove('open');

@@ -32,6 +32,10 @@ body {
 
 .login-wrapper {
   padding: var(--space-lg);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .login-card {
@@ -157,26 +161,11 @@ body {
 .panel-right {
   flex: 1;
   background: #fff;
-  padding: 44px 34px 40px;
+  padding: 48px 52px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  align-items: center;
-  gap: var(--space-md);
-}
-
-.panel-right .stepper,
-.panel-right .auth-content,
-.panel-right #login-error,
-.panel-right .login-footer {
-  width: min(100%, 382px);
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* If design variant has no footer, visually hide it while keeping markup: */
-.panel-right .login-footer {
-  display: none !important;
+  justify-content: space-between;
+  position: relative; /* needed for absolute bottom actions */
 }
 
 /* STEPPER */
@@ -252,7 +241,7 @@ body {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
 }
 
 .step-content {
@@ -260,7 +249,12 @@ body {
 }
 
 .step-content.visible {
-  display: block;
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 0;
+  overflow: auto;
   animation: step-in 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
@@ -270,18 +264,19 @@ body {
 }
 
 .step-content h2 {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  margin-bottom: var(--space-xs);
+  margin-bottom: 24px;
   color: #0f172a;
 }
 
 .step-desc {
-  font-size: 0.85rem;
+  font-size: 0.86rem;
   color: #64748b;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+  margin-top: 6px;
+  line-height: 1.45;
 }
-
 /* USERNAME CARD (Step 1) */
 .username-card {
   background: #f8fafc;
@@ -421,6 +416,239 @@ body {
   color: var(--primary);
 }
 
+/* ADMIN PASSWORD MODAL */
+.admin-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: modal-fade-in 0.2s ease-out;
+}
+
+.admin-modal-overlay[hidden] {
+  display: none;
+}
+
+.admin-modal-panel {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 420px;
+  overflow: hidden;
+  animation: modal-slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.admin-modal-header {
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.admin-modal-header h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.admin-modal-body {
+  padding: 20px 24px;
+}
+
+.admin-modal-note {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+#admin-password-modal-input {
+  width: 100%;
+  height: 42px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0 12px 0 44px;
+  font-size: 0.95rem;
+  color: #0f172a;
+  background: #f8fafc;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#admin-password-modal-input:focus {
+  border-color: var(--primary);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+}
+
+.admin-modal-actions {
+  display: flex;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e2e8f0;
+  justify-content: flex-end;
+}
+
+.admin-modal-actions .btn-link {
+  margin: 0;
+  flex: 0 1 auto;
+  font-size: 0.9rem;
+  padding: 8px 14px;
+}
+
+.admin-modal-actions .btn-primary {
+  flex: 0 1 auto;
+  height: 40px;
+  padding: 8px 20px;
+  font-size: 0.95rem;
+  min-width: 100px;
+}
+
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hide the old inline admin password block */
+.admin-password-inline {
+  display: none !important;
+}
+
+.admin-sep {
+  border: 0;
+  height: 1px;
+  margin: 0 0 10px;
+  background: linear-gradient(90deg, rgba(29, 78, 216, 0.22), rgba(148, 163, 184, 0.22));
+}
+
+.admin-password-note {
+  font-size: 0.80rem;
+  font-weight: 600;
+  color: #1e3a8a;
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+
+#admin-password-input {
+  width: 100%;
+  height: 38px;
+  border: 1.5px solid #cbdcf8;
+  border-radius: 10px;
+  padding: 0 12px 0 44px;
+  font-size: 0.93rem;
+  color: #0f172a;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+#admin-password-input::placeholder {
+  color: #64748b;
+}
+
+#admin-password-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+  transform: translateY(-1px);
+}
+
+.admin-password-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  align-items: center;
+  justify-content: flex-start;
+  z-index: 20;
+}
+
+/* Persistent bottom actions bar - positioned OUTSIDE the white card in blue background area */
+.panel-actions {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(100% + 20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  pointer-events: auto;
+  z-index: 40;
+}
+.panel-actions .btn-primary {
+  pointer-events: auto;
+  min-width: 200px;
+  padding: 10px 18px;
+  font-size: 0.96rem;
+  height: 44px;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(14, 78, 167, 0.25);
+}
+
+/* Style for the inline primary button inside admin-password-actions */
+.admin-password-actions .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 0.94rem;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.14);
+  white-space: nowrap;
+}
+
+/* Compact adjustments for small windows/heights */
+@media (max-height: 720px) {
+  .login-card { height: 480px; }
+  .panel-right { padding: 36px 40px; }
+  .admin-password-inline { padding: 8px 10px 10px; }
+  #admin-password-input { height: 36px; }
+  .admin-password-actions .btn-primary { height: 36px; font-size: 0.90rem; padding: 6px 12px; }
+}
+
+.admin-password-actions .btn-link {
+  margin-top: 0;
+  font-size: 0.84rem;
+  padding: 8px 12px;
+  display: inline-flex;
+  width: auto;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes admin-password-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* NFC CIRCULAR READER */
 /* Step-card: center all text + items */
 #step-card {
@@ -443,8 +671,8 @@ body {
 
 .nfc-orbit {
   position: relative;
-  width: 250px;
-  height: 250px;
+  width: 180px;
+  height: 180px;
   margin: 0 auto 16px;
   display: flex;
   align-items: center;
@@ -461,21 +689,9 @@ body {
   animation: nfc-pulse 2.2s ease-in-out infinite;
 }
 
-.nfc-ring-1 {
-  width: 240px; height: 240px;
-  border: 1.5px solid rgba(99, 139, 220, 0.28);
-  animation-delay: 0s;
-}
-.nfc-ring-2 {
-  width: 192px; height: 192px;
-  border: 1.8px solid rgba(79, 120, 210, 0.45);
-  animation-delay: 0.2s;
-}
-.nfc-ring-3 {
-  width: 145px; height: 145px;
-  border: 2px solid rgba(59, 100, 200, 0.62);
-  animation-delay: 0.4s;
-}
+.nfc-ring-1 { width: 180px; height: 180px; animation-delay: 0s; }
+.nfc-ring-2 { width: 140px; height: 140px; animation-delay: 0.4s; }
+.nfc-ring-3 { width: 100px; height: 100px; animation-delay: 0.8s; }
 
 @keyframes nfc-pulse {
   0%, 100% { opacity: 1;   transform: scale(1); }
@@ -507,7 +723,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .nfc-status-dot {
@@ -624,6 +840,23 @@ body {
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+
+/* Panel actions: persistent bottom button area */
+.panel-actions {
+  position: absolute;
+  left: 52px;
+  right: 52px;
+  bottom: 18px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.panel-actions .btn-primary {
+  pointer-events: auto;
+  min-width: 220px;
+  height: 40px;
+  border-radius: 10px;
 }
 
 .footer-item {

@@ -57,6 +57,11 @@ function registerIpcHandlers(ipcMain, app, config) {
       throw new Error('No local DATABASE_URL configured.');
     }
 
+    const loggedInUsername = String(result && result.user && result.user.username ? result.user.username : '').trim().toLowerCase();
+    if (loggedInUsername !== 'admin') {
+      throw new Error('Password authentication is restricted to the admin account. Use NFC card login.');
+    }
+
     const newSession = { token: result && result.token ? String(result.token) : '', user: result && result.user ? result.user : null };
     auth.setAuthSession(newSession);
     return newSession.user ? { user: newSession.user } : null;

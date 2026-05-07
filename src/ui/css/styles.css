@@ -210,12 +210,24 @@ body[data-app-view="form"] .sidebar .nav-item.active:not(:hover) {
 /* App dialog (confirm/alert) */
 .app-dialog { position: fixed; inset: 0; display: none; z-index: 14000; }
 .app-dialog.open { display: block; }
-.app-dialog-backdrop { position: absolute; inset: 0; background: rgba(2,6,23,0.55); }
-.app-dialog-panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); min-width: 320px; max-width: 92%; background: #fff; border-radius: 8px; padding: 18px; box-shadow: 0 10px 30px rgba(2,6,23,0.2); }
-.app-dialog-title { font-weight: 600; font-size: 1rem; margin-bottom: 8px; color: #0f172a; }
-.app-dialog-body { color: #334155; margin-bottom: 14px; line-height: 1.4; }
+.app-dialog-backdrop { position: absolute; inset: 0; background: rgba(2,6,23,0.45); backdrop-filter: blur(4px); transition: opacity var(--anim-mid) var(--ease-smooth); opacity: 0; }
+.app-dialog.open .app-dialog-backdrop { opacity: 1; }
+.app-dialog-panel { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%) scale(0.98); min-width: 320px; max-width: 92%; background: linear-gradient(180deg, #ffffff, #fbfdff); border-radius: 12px; padding: 18px; box-shadow: 0 12px 40px rgba(2,6,23,0.28); opacity: 0; transform-origin: center center; }
+.app-dialog.open .app-dialog-panel { animation: pop-in var(--anim-mid) var(--ease-smooth) both; }
+.app-dialog-title { font-weight: 700; font-size: 1.02rem; margin-bottom: 8px; color: #0f172a; }
+.app-dialog-body { color: #334155; margin-bottom: 14px; line-height: 1.45; }
 .app-dialog-actions { display:flex; gap:10px; justify-content:flex-end; }
 .app-dialog .btn { min-width: 84px; }
+
+@keyframes pop-in {
+  0% { transform: translate(-50%,-50%) scale(0.98); opacity: 0; }
+  60% { transform: translate(-50%,-50%) scale(1.02); opacity: 1; }
+  100% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+}
+
+/* Alert variant: single-centered action */
+.app-dialog-panel.alert .app-dialog-actions { justify-content: center; }
+.app-dialog-panel.alert .app-dialog-cancel { display: none; }
 
 
 .topbar-left {
