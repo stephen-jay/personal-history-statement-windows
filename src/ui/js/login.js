@@ -291,8 +291,14 @@ function resetToStart() {
   currentCanUsePassword = false;
   var adminInline = $('admin-password-inline');
   if (adminInline) adminInline.hidden = true;
+  var adminModal = $('admin-password-modal');
+  if (adminModal) adminModal.hidden = true;
   var adminPwdInput = $('admin-password-input');
   if (adminPwdInput) adminPwdInput.value = '';
+  var adminModalInput = $('admin-password-modal-input');
+  if (adminModalInput) adminModalInput.value = '';
+  var bottomBtn = $('btn-admin-password-bottom');
+  if (bottomBtn) bottomBtn.hidden = true;
   showStep('step-username');
   var un = $('username-input');
   if (un) { un.value = ''; un.focus(); }
@@ -398,12 +404,15 @@ async function handleNextUsername() {
     showStep('step-card');
     startCardTapListening();
 
-    // Reveal inline password option only if explicitly allowed by backend.
+    // Reveal admin password modal only if explicitly allowed by backend.
     try {
-      var adminInline = $('admin-password-inline');
-      if (adminInline) adminInline.hidden = !currentCanUsePassword;
+      var modalOverlay = $('admin-password-modal');
+      if (modalOverlay) modalOverlay.hidden = !currentCanUsePassword;
+      var bottomBtn = $('btn-admin-password-bottom');
+      // hide bottom persistent button when admin modal is shown to avoid confusion
+      if (bottomBtn) bottomBtn.hidden = currentCanUsePassword;
       if (currentCanUsePassword) {
-        var pwd = $('admin-password-input');
+        var pwd = $('admin-password-modal-input');
         if (pwd) pwd.focus();
       }
     } catch (_) {}
@@ -429,15 +438,18 @@ async function handleAdminPassword() {
     setError('Missing username.');
     return;
   }
-  var pwdEl = $('admin-password-input');
+  // Read from modal input instead of inline input
+  var pwdEl = $('admin-password-modal-input') || $('admin-password-input');
   var pwd = pwdEl && pwdEl.value ? String(pwdEl.value) : '';
   if (!pwd) {
     setError('Please enter your password.');
     return;
   }
 
-  var btn = $('btn-admin-password');
+  var btn = $('btn-admin-password-modal') || $('btn-admin-password');
   if (btn) { btn.disabled = true; btn.innerHTML = 'Logging in...'; }
+  var bottomBtn = $('btn-admin-password-bottom');
+  if (bottomBtn) { bottomBtn.disabled = true; bottomBtn.innerHTML = 'Logging in...'; }
   setError('');
 
   try {
@@ -450,6 +462,7 @@ async function handleAdminPassword() {
     setError(mapLoginError(err));
   } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = 'Login <span>&rarr;</span>'; }
+    if (bottomBtn) { bottomBtn.disabled = false; bottomBtn.innerHTML = 'Login <span>&rarr;</span>'; }
   }
 }
 
@@ -602,7 +615,16 @@ function initListeners() {
   }
 
   if ($('btn-admin-password')) $('btn-admin-password').addEventListener('click', handleAdminPassword);
+  if ($('btn-admin-password-modal')) $('btn-admin-password-modal').addEventListener('click', handleAdminPassword);
+  if ($('btn-admin-password-bottom')) $('btn-admin-password-bottom').addEventListener('click', handleAdminPassword);
   if ($('btn-cancel-admin')) $('btn-cancel-admin').addEventListener('click', resetToStart);
+  if ($('btn-close-admin-modal')) {
+    $('btn-close-admin-modal').addEventListener('click', function() {
+      var modal = $('admin-password-modal');
+      if (modal) modal.hidden = true;
+      resetToStart();
+    });
+  }
 
   resetToStart();
 }
