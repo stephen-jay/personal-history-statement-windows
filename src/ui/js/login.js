@@ -95,6 +95,8 @@ var USE_PASSWORDLESS_FLOW = true;
 // State Machine Variables
 var currentChallengeId = null;
 var cardTapListenerActive = false;
+var currentLoginUsername = '';
+var currentCanUsePassword = false;
 
 function readAttemptState() {
   try {
@@ -196,6 +198,7 @@ function mapLoginError(err) {
   if (lower.includes('user account is disabled')) return 'User account is disabled.';
   if (lower.includes('card not recognized') || lower.includes('not assigned to this user')) return 'Card not recognized or not assigned to this user.';
   if (lower.includes('invalid or expired otp')) return 'Invalid or expired OTP code.';
+  if (lower.includes('password authentication is restricted')) return 'Password login is only available for admin. Please use NFC card login.';
   if (lower.includes('fetch failed') || lower.includes('network') || lower.includes('econnrefused')) return 'Cannot reach the server. Check API status and network connection.';
   
   return 'Error: ' + msg;
@@ -284,6 +287,12 @@ function resetToStart() {
   if (orbit) orbit.classList.remove('nfc-error');
 
   currentChallengeId = null;
+  currentLoginUsername = '';
+  currentCanUsePassword = false;
+  var adminInline = $('admin-password-inline');
+  if (adminInline) adminInline.hidden = true;
+  var adminPwdInput = $('admin-password-input');
+  if (adminPwdInput) adminPwdInput.value = '';
   showStep('step-username');
   var un = $('username-input');
   if (un) { un.value = ''; un.focus(); }
@@ -373,6 +382,8 @@ async function handleNextUsername() {
     return;
   }
 
+  currentLoginUsername = username;
+
   var btn = $('btn-next-username');
   btn.disabled = true;
   btn.innerHTML = 'Checking...';
@@ -382,9 +393,20 @@ async function handleNextUsername() {
     var res = await window.authApi.beginLogin(username);
     if (!res || !res.challengeId) throw new Error('Failed to start login challenge.');
     currentChallengeId = res.challengeId;
+    currentCanUsePassword = !!res.canUsePassword;
     
     showStep('step-card');
     startCardTapListening();
+
+    // Reveal inline password option only if explicitly allowed by backend.
+    try {
+      var adminInline = $('admin-password-inline');
+      if (adminInline) adminInline.hidden = !currentCanUsePassword;
+      if (currentCanUsePassword) {
+        var pwd = $('admin-password-input');
+        if (pwd) pwd.focus();
+      }
+    } catch (_) {}
   } catch (err) {
     if (String((err && err.message) || '').toLowerCase().includes('user not found')) {
         registerFailedAttempt();
@@ -393,6 +415,41 @@ async function handleNextUsername() {
   } finally {
     btn.disabled = false;
     btn.innerHTML = 'Next <span>&rarr;</span>';
+  }
+}
+
+async function handleAdminPassword() {
+  if (refreshLockoutUi()) return;
+  if (!currentCanUsePassword) {
+    setError('Password login is not available for this account.');
+    return;
+  }
+  var username = currentLoginUsername || (($('username-input') && $('username-input').value) || '').trim();
+  if (!username) {
+    setError('Missing username.');
+    return;
+  }
+  var pwdEl = $('admin-password-input');
+  var pwd = pwdEl && pwdEl.value ? String(pwdEl.value) : '';
+  if (!pwd) {
+    setError('Please enter your password.');
+    return;
+  }
+
+  var btn = $('btn-admin-password');
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Logging in...'; }
+  setError('');
+
+  try {
+    var session = await window.authApi.login(username, pwd);
+    if (!session) throw new Error('Login failed.');
+    clearAttemptState();
+    window.location.href = 'index.html';
+  } catch (err) {
+    registerFailedAttempt();
+    setError(mapLoginError(err));
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = 'Login <span>&rarr;</span>'; }
   }
 }
 
@@ -543,6 +600,9 @@ function initListeners() {
   if ($('btn-copy-secret')) {
     $('btn-copy-secret').addEventListener('click', copySecretToClipboard);
   }
+
+  if ($('btn-admin-password')) $('btn-admin-password').addEventListener('click', handleAdminPassword);
+  if ($('btn-cancel-admin')) $('btn-cancel-admin').addEventListener('click', resetToStart);
 
   resetToStart();
 }

@@ -151,10 +151,11 @@ body {
 .panel-right {
   flex: 1;
   background: #fff;
-  padding: 48px 52px;
+  padding: 48px 52px 24px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
+  position: relative;
 }
 
 /* STEPPER */
@@ -230,7 +231,9 @@ body {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
+  overflow: auto;
+  min-height: 0;
 }
 
 .step-content {
@@ -238,7 +241,12 @@ body {
 }
 
 .step-content.visible {
-  display: block;
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 0;
+  overflow: auto;
   animation: step-in 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
@@ -248,17 +256,18 @@ body {
 }
 
 .step-content h2 {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 700;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   color: #0f172a;
 }
 
 .step-desc {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: #64748b;
-  margin-bottom: 24px;
-  margin-top: -16px;
+  margin-bottom: 12px;
+  margin-top: -8px;
+  line-height: 1.4;
 }
 
 /* USERNAME CARD (Step 1) */
@@ -399,14 +408,114 @@ body {
   color: var(--primary);
 }
 
+/* STEP 2 - Admin password option */
+.admin-password-inline {
+  position: relative;
+  margin-top: 6px;
+  padding: 10px 12px 64px 12px;
+  border: 1px solid #dbe6fb;
+  border-radius: 14px;
+  background:
+    radial-gradient(120px 80px at 12% 8%, rgba(29, 78, 216, 0.08), transparent 70%),
+    linear-gradient(180deg, #f8fbff 0%, #f2f7ff 100%);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.06);
+  animation: admin-password-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  margin-bottom: 8px;
+}
+
+.admin-sep {
+  border: 0;
+  height: 1px;
+  margin: 0 0 10px;
+  background: linear-gradient(90deg, rgba(29, 78, 216, 0.22), rgba(148, 163, 184, 0.22));
+}
+
+.admin-password-note {
+  font-size: 0.80rem;
+  font-weight: 600;
+  color: #1e3a8a;
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+
+#admin-password-input {
+  width: 100%;
+  height: 38px;
+  border: 1.5px solid #cbdcf8;
+  border-radius: 10px;
+  padding: 0 12px 0 44px;
+  font-size: 0.93rem;
+  color: #0f172a;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+#admin-password-input::placeholder {
+  color: #64748b;
+}
+
+#admin-password-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+  transform: translateY(-1px);
+}
+
+.admin-password-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  padding: 8px 12px 12px;
+  border-top: 1px solid #f0f0f0;
+  z-index: 20;
+}
+
+.admin-password-actions .btn-primary {
+  height: 38px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 0.93rem;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.12);
+}
+
+/* Compact adjustments for small windows/heights */
+@media (max-height: 720px) {
+  .login-card { height: 480px; }
+  .panel-right { padding: 36px 40px; }
+  .admin-password-inline { padding: 10px; }
+  #admin-password-input { height: 38px; }
+  .admin-password-actions .btn-primary { height: 36px; font-size: 0.92rem; }
+}
+
+.admin-password-actions .btn-link {
+  margin-top: 2px;
+  font-size: 0.82rem;
+}
+
+@keyframes admin-password-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* NFC CIRCULAR READER */
 --nfc-color: #3b82f6;
 
 .nfc-orbit {
   position: relative;
-  width: 180px;
-  height: 180px;
-  margin: 0 auto 16px;
+  width: 150px;
+  height: 150px;
+  margin: 0 auto 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -420,9 +529,9 @@ body {
   animation: nfc-ripple 2.4s ease-out infinite;
 }
 
-.nfc-ring-1 { width: 180px; height: 180px; animation-delay: 0s; }
-.nfc-ring-2 { width: 140px; height: 140px; animation-delay: 0.4s; }
-.nfc-ring-3 { width: 100px; height: 100px; animation-delay: 0.8s; }
+.nfc-ring-1 { width: 150px; height: 150px; animation-delay: 0s; }
+.nfc-ring-2 { width: 110px; height: 110px; animation-delay: 0.4s; }
+.nfc-ring-3 { width: 70px; height: 70px; animation-delay: 0.8s; }
 
 @keyframes nfc-ripple {
   0%   { opacity: 0.7; transform: scale(0.92); }
@@ -449,7 +558,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .nfc-status-dot {
@@ -542,6 +651,23 @@ body {
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+
+/* Panel actions: persistent bottom button area */
+.panel-actions {
+  position: absolute;
+  left: 52px;
+  right: 52px;
+  bottom: 18px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.panel-actions .btn-primary {
+  pointer-events: auto;
+  min-width: 220px;
+  height: 40px;
+  border-radius: 10px;
 }
 
 .footer-item {

@@ -1,4 +1,5 @@
 import { TOTAL_PAGES } from './constants.js';
+import { showAlert } from './confirm.js';
 
 let currentPage = 1;
 
@@ -42,21 +43,22 @@ export function createFormNav(phsForm) {
     }
   }
 
-  function goNext() {
+  async function goNext() {
     if (currentPage === TOTAL_PAGES) {
       if (validateAllPages()) {
         document.getElementById('validation-summary').hidden = true;
         phsForm.dispatchEvent(new Event('submit', { cancelable: true }));
       }
     } else {
-      if (validatePage(currentPage)) {
+      const ok = await validatePage(currentPage);
+      if (ok) {
         document.getElementById('validation-summary').hidden = true;
         showPage(currentPage + 1);
       }
     }
   }
 
-  function validatePage(pageNum) {
+  async function validatePage(pageNum) {
     const pageEl = document.querySelector(`.form-page[data-page="${pageNum}"]`);
     if (!pageEl) return true;
 
@@ -76,7 +78,7 @@ export function createFormNav(phsForm) {
       if (window.toast) {
         window.toast.error('Please correct the highlighted fields before proceeding.');
       } else {
-        alert('Please correct the highlighted fields before proceeding.');
+        await showAlert('Please correct the highlighted fields before proceeding.');
       }
       if (firstInvalid) {
         firstInvalid.focus();

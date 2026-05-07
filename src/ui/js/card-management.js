@@ -1023,7 +1023,9 @@ export function createCardManagementController() {
   }
 
   async function handleUnassignCard(cardUid) {
-    if (!confirm('Unassign this card? It will return to the available pool.')) return;
+    const { showConfirm } = await import('./confirm.js');
+    const ok = await showConfirm('Unassign this card? It will return to the available pool.', { confirmText: 'Unassign', cancelText: 'Cancel' });
+    if (!ok) return;
 
     try {
       if (!window.cardManagementApi || typeof window.cardManagementApi.unassignCard !== 'function') {

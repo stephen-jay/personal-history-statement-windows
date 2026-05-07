@@ -237,7 +237,7 @@ async function beginLogin(username) {
   const pool = getPgPool();
   if (!pool) throw new Error('DATABASE_URL is required for local auth.');
   
-  const userRow = await pool.query('SELECT id, is_active FROM app_users WHERE username = $1', [username]);
+  const userRow = await pool.query('SELECT id, username, is_active FROM app_users WHERE username = $1', [username]);
   if (!userRow.rows || !userRow.rows.length) {
     throw new Error('User not found.');
   }
@@ -253,8 +253,10 @@ async function beginLogin(username) {
      RETURNING id`,
     [user.id]
   );
+
+  const canUsePassword = String(user.username || '').trim().toLowerCase() === 'admin';
   
-  return { challengeId: res.rows[0].id };
+  return { challengeId: res.rows[0].id, canUsePassword };
 }
 
 async function verifyCardStep(challengeId, cardUid) {
