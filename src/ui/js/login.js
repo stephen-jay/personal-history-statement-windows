@@ -58,6 +58,8 @@ function setError(message) {
   showToast(message, 'error');
 }
 
+let nfcErrorTimeout = null;
+
 function setCardMessage(message) {
   var el = $('card-login-message');
   var orbit = $('nfc-orbit');
@@ -65,9 +67,10 @@ function setCardMessage(message) {
 
   if (el) el.textContent = message || 'Waiting for NFC/RFID card...';
 
-  // Toggle error state on the NFC orbit
+  // Toggle error state on the NFC orbit and status row
   var isError = message && (
     message.toLowerCase().includes('not recognized') ||
+    message.toLowerCase().includes('assigned') ||
     message.toLowerCase().includes('error') ||
     message.toLowerCase().includes('failed') ||
     message.toLowerCase().includes('invalid') ||
@@ -75,12 +78,23 @@ function setCardMessage(message) {
     message.toLowerCase().includes('timeout')
   );
 
-  if (orbit) {
-    if (isError) {
-      orbit.classList.add('nfc-error');
-    } else {
-      orbit.classList.remove('nfc-error');
-    }
+  // Clear any existing timeout
+  if (nfcErrorTimeout) {
+    clearTimeout(nfcErrorTimeout);
+    nfcErrorTimeout = null;
+  }
+
+  if (isError) {
+    if (orbit) orbit.classList.add('nfc-error');
+    if (status) status.classList.add('nfc-error');
+    
+    // Auto-reset back to waiting state after 3 seconds
+    nfcErrorTimeout = setTimeout(() => {
+      setCardMessage('');
+    }, 3000);
+  } else {
+    if (orbit) orbit.classList.remove('nfc-error');
+    if (status) status.classList.remove('nfc-error');
   }
 }
 
@@ -281,7 +295,14 @@ function resetToStart() {
 
   // Reset NFC orbit to idle state
   var orbit = $('nfc-orbit');
+  var status = $('nfc-status');
   if (orbit) orbit.classList.remove('nfc-error');
+  if (status) status.classList.remove('nfc-error');
+  
+  if (typeof nfcErrorTimeout !== 'undefined' && nfcErrorTimeout) {
+    clearTimeout(nfcErrorTimeout);
+    nfcErrorTimeout = null;
+  }
 
   currentChallengeId = null;
   showStep('step-username');
