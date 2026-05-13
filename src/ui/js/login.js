@@ -268,6 +268,10 @@ function showStep(stepId) {
     el.classList.add('visible');
   }
 
+  if (stepId !== 'step-card') {
+    stopCardTapListening();
+  }
+
   // Update Stepper
   if (stepId === 'step-username') updateStepper(1);
   else if (stepId === 'step-card') updateStepper(2);

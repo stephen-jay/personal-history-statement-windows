@@ -42,7 +42,7 @@ The application supports the following environment variables for deployment:
 #### Database Configuration
 ```powershell
 # PostgreSQL Connection (required for using database instead of local JSON files)
-$env:DATABASE_URL = "postgresql://username:password@10.10.218.144:5432/apollo_db"
+$env:DATABASE_URL = "postgresql://USER:PASSWORD@HOST:PORT/DBNAME"
 
 # Read from PostgreSQL (fallback to JSON if unavailable)
 $env:USE_POSTGRES_READ = "true"
@@ -60,7 +60,7 @@ $env:ENABLE_DUAL_WRITE = "true"
 $env:USE_REMOTE_API = "false"
 
 # Remote API base URL (if using remote API)
-$env:REMOTE_API_BASE = "http://10.10.218.144:3210"
+$env:REMOTE_API_BASE = "http://API_HOST:3210"
 ```
 
 ### Installation on Target Machine
@@ -68,7 +68,7 @@ $env:REMOTE_API_BASE = "http://10.10.218.144:3210"
 1. **Copy the installer to the server/target machine**
    ```powershell
    # From your build machine
-   Copy-Item -Path "dist\APOLLO Personnel Database Setup*.exe" -Destination "\\10.10.218.144\shared\installers\" -Force
+   Copy-Item -Path "dist\APOLLO Personnel Database Setup*.exe" -Destination "\\HOST\shared\installers\" -Force
    ```
 
 2. **Run the installer on the target machine**
@@ -91,7 +91,7 @@ $env:REMOTE_API_BASE = "http://10.10.218.144:3210"
    **Option B: Create a .env file**
    - Create `.env` in the application installation directory:
      ```
-     DATABASE_URL=postgresql://username:password@10.10.218.144:5432/apollo_db
+     DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DBNAME
      USE_POSTGRES_READ=true
      USE_POSTGRES_WRITE=true
      ENABLE_DUAL_WRITE=true
@@ -100,7 +100,7 @@ $env:REMOTE_API_BASE = "http://10.10.218.144:3210"
    **Option C: Create a launch script** (`launch.bat`)
    ```batch
    @echo off
-   set DATABASE_URL=postgresql://username:password@10.10.218.144:5432/apollo_db
+   set DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DBNAME
    set USE_POSTGRES_READ=true
    set USE_POSTGRES_WRITE=true
    set ENABLE_DUAL_WRITE=true
@@ -132,7 +132,7 @@ Before deploying, test the connection:
 
 ```powershell
 # Set environment variable
-$env:DATABASE_URL = "postgresql://username:password@10.10.218.144:5432/apollo_db"
+$env:DATABASE_URL = "postgresql://USER:PASSWORD@HOST:PORT/DBNAME"
 
 # Run a test connection script (optional - creates test-db-connection.js)
 npm run test:db  # If available
@@ -167,10 +167,10 @@ npm start
 ### Backup & Recovery
 ```powershell
 # Backup PostgreSQL database
-pg_dump -h 10.10.218.144 -U username -W apollo_db > backup_apollo_db.sql
+pg_dump -h HOST -U username -W apollo_db > backup_apollo_db.sql
 
 # Restore PostgreSQL database
-psql -h 10.10.218.144 -U username -W apollo_db < backup_apollo_db.sql
+psql -h HOST -U username -W apollo_db < backup_apollo_db.sql
 ```
 
 ## Troubleshooting

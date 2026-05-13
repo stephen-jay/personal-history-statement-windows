@@ -1,5 +1,5 @@
 {
-  "DATABASE_URL": "postgresql://apollo_app:ApolloApp2026@10.10.218.144:5432/apollo_db",
+  "DATABASE_URL": "postgresql://USER:PASSWORD@HOST:PORT/DBNAME",
   "USE_REMOTE_API": "false",
   "USE_POSTGRES_READ": "true",
   "USE_POSTGRES_WRITE": "true",

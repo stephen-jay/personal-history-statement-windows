@@ -108,6 +108,25 @@ function registerIpcHandlers(ipcMain, app, config) {
     return await auth.adminResetTotp(adminUserId, targetUserId);
   });
 
+  ipcMain.handle('admin:enrollTotpForUser', async function (_evt, payload) {
+    const session = auth.getAuthSession();
+    if (!session || !session.user) throw new Error('Unauthorized.');
+    const body = payload || {};
+    const userId = body.userId;
+    if (!userId) throw new Error('Missing userId.');
+    return await auth.enrollTotpForUser(userId);
+  });
+
+  ipcMain.handle('admin:verifyTotpForUser', async function (_evt, payload) {
+    const session = auth.getAuthSession();
+    if (!session || !session.user) throw new Error('Unauthorized.');
+    const body = payload || {};
+    const userId = body.userId;
+    const token = String(body.token || '').trim();
+    if (!userId || !token) throw new Error('Missing userId or token.');
+    return await auth.verifyTotpForUser(userId, token);
+  });
+
 
   ipcMain.handle('auth:session', async function () {
     const session = auth.getAuthSession();
@@ -415,22 +434,6 @@ function registerIpcHandlers(ipcMain, app, config) {
   });
 
   // Card management IPC handlers (basic scaffolding)
-  ipcMain.handle('cards:list', async function () {
-    const pool = getPgPool();
-    if (!pool) throw new Error('DATABASE_URL is required for cards:list');
-    await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS assigned_username text NULL');
-    await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS personnel_id text NULL');
-    const res = await pool.query(
-      `SELECT c.id, c.card_uid, c.status, c.personnel_id, c.assigned_username, c.created_at, c.updated_at,
-              p.full_name as personnel_name, u.full_name as assigned_user_full_name
-       FROM cards c
-       LEFT JOIN personnel p ON c.personnel_id = p.id
-       LEFT JOIN app_users u ON u.username = c.assigned_username
-       ORDER BY c.created_at DESC LIMIT 1000`
-    );
-    return { cards: res.rows || [] };
-  });
-
   ipcMain.handle('cards:lookup', async function (_evt, payload) {
     const body = payload || {};
     const cardUid = String(body.card_uid || body.cardId || body.card_id || '').trim();
@@ -523,6 +526,48 @@ function registerIpcHandlers(ipcMain, app, config) {
     }
   });
 
+  ipcMain.handle('cards:list', async function () {
+    const pool = getPgPool();
+    if (!pool) return { cards: [] };
+    try {
+      // Ensure migration-add columns exist to avoid query errors during migration
+      await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS assigned_username text NULL');
+      await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS personnel_id text NULL');
+
+      // Detect which timestamp column is available so the query doesn't fail
+      const colRes = await pool.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='cards' AND column_name IN ('registered_at','created_at','updated_at')");
+      const foundCols = (colRes.rows || []).map(r => r.column_name);
+      let dateCol = null;
+      if (foundCols.includes('registered_at')) dateCol = 'registered_at';
+      else if (foundCols.includes('created_at')) dateCol = 'created_at';
+      else if (foundCols.includes('updated_at')) dateCol = 'updated_at';
+
+      let query;
+      if (dateCol) {
+        query = `SELECT card_uid, status, assigned_username, personnel_id, TO_CHAR(${dateCol}, 'YYYY-MM-DD HH24:MI:SS') as registered_at_str FROM cards ORDER BY ${dateCol} DESC`;
+      } else {
+        // No timestamp column available; return rows without date ordering
+        query = `SELECT card_uid, status, assigned_username, personnel_id, NULL::text as registered_at_str FROM cards ORDER BY card_uid ASC`;
+      }
+
+      const res = await pool.query(query);
+
+      const formattedCards = (res.rows || []).map(row => ({
+        card_uid: row.card_uid,
+        uid: row.card_uid,
+        status: row.status,
+        assigned_username: row.assigned_username,
+        personnel_id: row.personnel_id,
+        date: row.registered_at_str
+      }));
+
+      return { cards: formattedCards };
+    } catch (e) {
+      console.error('[CARDS] list failed:', e && e.message ? e.message : e);
+      return { cards: [] };
+    }
+  });
+
   ipcMain.handle('cards:assign', async function (_evt, payload) {
     const body = payload || {};
     // `cardUid` is stored exactly as read from the NFC reader (no truncation). This ensures future lookups match the full UID.
@@ -597,6 +642,19 @@ function registerIpcHandlers(ipcMain, app, config) {
       throw e;
     } finally {
       client.release();
+    }
+  });
+
+  // DB status check for UI diagnostics
+  ipcMain.handle('db:status', async function () {
+    const pool = getPgPool();
+    if (!pool) return { ok: false, error: 'no-pool' };
+    try {
+      await pool.query('SELECT 1');
+      return { ok: true };
+    } catch (e) {
+      console.error('[DB] status check failed:', e && e.message ? e.message : e);
+      return { ok: false, error: String(e && e.message ? e.message : e) };
     }
   });
 }

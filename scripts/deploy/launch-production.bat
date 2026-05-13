@@ -11,7 +11,7 @@ REM
 REM =============================================================================
 
 REM Set your PostgreSQL connection string here
-SET DATABASE_URL=postgresql://apollo_app:ApolloApp2026@10.10.218.144:5432/apollo_db
+SET DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DBNAME
 
 REM Enable PostgreSQL read operations (fallback to JSON if unavailable)
 SET USE_POSTGRES_READ=true
@@ -26,14 +26,15 @@ REM Optional: Use remote API instead of local database
 REM SET USE_REMOTE_API=false
 
 REM Optional: Remote API base URL
-REM SET REMOTE_API_BASE=http://10.10.218.144:3210
+REM SET REMOTE_API_BASE=http://API_HOST:3210
 
 REM =============================================================================
 REM Launch the application
 REM =============================================================================
 
-REM Get the directory where this script is located
+REM Get the directory where this script is located and resolve the project root
 SET SCRIPT_DIR=%~dp0
+SET BASE_DIR=%~dp0..\..\
 
 REM Check if running from Program Files (installed version)
 IF EXIST "%ProgramFiles%\APOLLO Personnel Database\APOLLO Personnel Database.exe" (
@@ -43,17 +44,17 @@ IF EXIST "%ProgramFiles%\APOLLO Personnel Database\APOLLO Personnel Database.exe
 )
 
 REM Check if running from current directory (development mode)
-IF EXIST "%SCRIPT_DIR%node_modules\.bin\electron.cmd" (
+IF EXIST "%BASE_DIR%node_modules\.bin\electron.cmd" (
     echo Launching APOLLO Personnel Database in development mode...
-    cd /d "%SCRIPT_DIR%"
+    cd /d "%BASE_DIR%"
     call npm start
     exit /b %ERRORLEVEL%
 )
 
 REM Fallback: Try to find the executable
-IF EXIST "%SCRIPT_DIR%dist\APOLLO Personnel Database.exe" (
+IF EXIST "%BASE_DIR%dist\APOLLO Personnel Database.exe" (
     echo Launching APOLLO Personnel Database from dist folder...
-    start "" "%SCRIPT_DIR%dist\APOLLO Personnel Database.exe"
+    start "" "%BASE_DIR%dist\APOLLO Personnel Database.exe"
     exit /b 0
 )
 

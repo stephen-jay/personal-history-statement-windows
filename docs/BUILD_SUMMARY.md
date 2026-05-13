@@ -47,7 +47,7 @@ Located in `dist/` folder:
    **Option A: System Environment Variables**
    ```
    Variable: DATABASE_URL
-   Value: postgresql://apollo_app:ApolloApp2026@10.10.218.144:5432/apollo_db
+   Value: postgresql://USER:PASSWORD@HOST:PORT/DBNAME
    
    Variable: USE_POSTGRES_READ
    Value: true
@@ -78,7 +78,7 @@ Located in `dist/` folder:
 - **Port**: 5432
 - **Database**: apollo_db
 - **User**: apollo_app
-- **Password**: ApolloApp2026 (⚠️ Change in production)
+- **Password**: YOUR_SECURE_PASSWORD (⚠️ Change in production)
 
 ### Tables Initialized ✅
 
@@ -125,7 +125,7 @@ Located in `dist/` folder:
 npm run test:db
 
 # With environment variable
-$env:DATABASE_URL = "postgresql://apollo_app:ApolloApp2026@10.10.218.144:5432/apollo_db"
+$env:DATABASE_URL = "postgresql://USER:PASSWORD@HOST:PORT/DBNAME"
 npm run test:db
 ```
 
@@ -136,7 +136,7 @@ npm run test:db
 ⚠️ **IMPORTANT - PRODUCTION CHECKLIST:**
 
 1. **Change Database Password**
-   - Current: ApolloApp2026
+   - Current: YOUR_SECURE_PASSWORD
    - Set a strong password in PostgreSQL
    - Update all deployment configurations
 
@@ -207,7 +207,7 @@ The target NAS/server shows the following folders:
 
 ```powershell
 # Backup
-$env:PGPASSWORD = "ApolloApp2026"
+$env:PGPASSWORD = "YOUR_PASSWORD"
 pg_dump -h 10.10.218.144 -U apollo_app apollo_db > apollo_backup.sql
 
 # Restore

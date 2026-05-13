@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld('authApi', {
   changePassword: (currentPassword, newPassword) =>
     ipcRenderer.invoke('auth:changePassword', { currentPassword, newPassword }),
   createUser: (payload) => ipcRenderer.invoke('admin:createUser', payload),
+  enrollTotpForUser: (userId) => ipcRenderer.invoke('admin:enrollTotpForUser', { userId }),
+  verifyTotpForUser: (userId, token) => ipcRenderer.invoke('admin:verifyTotpForUser', { userId, token }),
 });
 
 contextBridge.exposeInMainWorld('adminApi', {
@@ -46,11 +48,13 @@ contextBridge.exposeInMainWorld('cardApi', {
       try { cb(payload); } catch (_) {}
     });
   }
+  ,getStatus: () => ipcRenderer.invoke('rfid:status')
 });
 
 contextBridge.exposeInMainWorld('cardManagementApi', {
   listCards: () => ipcRenderer.invoke('cards:list'),
   getCards: () => ipcRenderer.invoke('cards:list'),
+  dbStatus: () => ipcRenderer.invoke('db:status'),
   lookupCard: (payload) => ipcRenderer.invoke('cards:lookup', payload),
   loginLookupCard: (payload) => ipcRenderer.invoke('cards:loginLookup', payload),
   registerCard: (payload) => ipcRenderer.invoke('cards:register', payload),

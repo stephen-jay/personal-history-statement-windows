@@ -10,7 +10,7 @@
     "dist": "electron-builder --win",
     "migrate:images": "node scripts/db/migrate-images-to-base64.js",
     "test:db": "node scripts/db/test-database-connection.js",
-    "test:db:production": "node -e \"process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://user:password@10.10.218.144:5432/apollo_db'; require('child_process').execSync('node scripts/db/test-database-connection.js', {stdio: 'inherit'})\""
+    "test:db:production": "node -e \"require('child_process').execSync('node scripts/db/test-database-connection.js', {stdio: 'inherit'})\""
   },
   "author": "",
   "license": "MIT",

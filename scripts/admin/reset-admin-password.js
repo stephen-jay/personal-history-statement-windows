@@ -6,10 +6,10 @@ const { Pool } = require('pg');
 
 const databaseUrl = process.env.DATABASE_URL || '';
 const username = process.env.RESET_USERNAME || 'admin';
-const newPassword = process.env.RESET_PASSWORD || 'ApolloApp2026';
+const newPassword = process.env.RESET_PASSWORD || '';
 
-if (!databaseUrl) {
-  console.error('Missing DATABASE_URL');
+if (!databaseUrl || !newPassword) {
+  console.error('Missing DATABASE_URL or RESET_PASSWORD in environment.');
   process.exit(1);
 }
 

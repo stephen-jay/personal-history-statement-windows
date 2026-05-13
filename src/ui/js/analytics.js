@@ -120,6 +120,14 @@ function educationAttainmentLevel(record) {
   return null;
 }
 
+/**
+ * Check if a person has graduated from college
+ * (independent of whether they have higher education)
+ */
+function hasCollegeDegree(record) {
+  return !!(normalizeValue(record.collegeLocation) && normalizeValue(record.collegeGraduated));
+}
+
 function parseSeminarDateMonthKey(inclusiveDateStr) {
   var s = normalizeValue(inclusiveDateStr);
   if (!s) return null;
@@ -633,7 +641,7 @@ export function renderAnalytics(records, opts) {
         rows = subset.filter(function (r) { return !hasEducationRecord(r); });
         openEduModal('Personnel with No Educational Records', rows, '#94a3b8');
       } else if (filterKey === 'college') {
-        rows = subset.filter(function (r) { return educationAttainmentLevel(r) === 'College Graduate'; });
+        rows = subset.filter(hasCollegeDegree);
         openEduModal('College Graduates', rows, '#3b82f6');
       } else {
         rows = subset.slice();
@@ -677,9 +685,8 @@ export function renderAnalytics(records, opts) {
       pushUnique(eduToNames[level], rosterLabel(r));
     }
   });
-  var collegeGraduateCount = (eduMap && Object.prototype.hasOwnProperty.call(eduMap, 'College Graduate'))
-    ? eduMap['College Graduate']
-    : 0;
+  // Count anyone with a college degree (including those with higher education)
+  var collegeGraduateCount = subset.filter(hasCollegeDegree).length;
   if (kpiCollege) kpiCollege.textContent = String(collegeGraduateCount);
   renderBarChart('chart-education-level', eduMap, {
     fixedOrder: eduOrder,

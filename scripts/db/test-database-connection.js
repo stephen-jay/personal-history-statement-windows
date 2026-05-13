@@ -7,7 +7,7 @@
  * Verifies that the PostgreSQL database is properly configured and accessible
  *
  * Usage:
- *   $env:DATABASE_URL = "postgresql://username:password@10.10.218.144:5432/apollo_db"
+ *   $env:DATABASE_URL = "postgresql://USER:PASSWORD@HOST:PORT/DBNAME"
  *   node scripts/db/test-database-connection.js
  */
 
@@ -20,7 +20,7 @@ console.log('=== APOLLO Personnel Database - Connection Test ===\n');
 if (!DATABASE_URL) {
   console.error('❌ ERROR: DATABASE_URL environment variable not set');
   console.error('\nExample:');
-  console.error('  $env:DATABASE_URL = "postgresql://username:password@10.10.218.144:5432/apollo_db"');
+  console.error('  $env:DATABASE_URL = "postgresql://USER:PASSWORD@HOST:PORT/DBNAME"');
   process.exit(1);
 }
 

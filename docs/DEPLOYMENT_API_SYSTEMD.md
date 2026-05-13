@@ -217,7 +217,7 @@ sudo cat /etc/default/phs-api
 sudo cat /etc/default/phs-api | grep DATABASE_URL
 
 # Test connection
-psql "postgresql://apollo_app:ApolloApp2026@10.10.218.144:5432/apollo_db" -c "SELECT 1"
+psql "postgresql://USER:PASSWORD@HOST:PORT/DBNAME" -c "SELECT 1"
 ```
 
 ## Security Notes

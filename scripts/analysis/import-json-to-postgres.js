@@ -5,7 +5,7 @@
  * APOLLO JSON -> PostgreSQL importer
  *
  * Usage (PowerShell):
- *   $env:DATABASE_URL="postgresql://apollo_app:***@10.10.218.144:5432/apollo_db"
+ *   $env:DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DBNAME"
  *   node scripts/import-json-to-postgres.js
  */
 

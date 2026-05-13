@@ -472,6 +472,61 @@ async function verifyTotpStep(challengeId, token) {
   };
 }
 
+async function enrollTotpForUser(userId) {
+  const pool = getPgPool();
+  if (!pool) throw new Error('DATABASE_URL is required.');
+
+  if (!userId) throw new Error('userId is required.');
+
+  const userRes = await pool.query('SELECT username FROM app_users WHERE id = $1 AND is_active = TRUE', [userId]);
+  if (!userRes.rows || !userRes.rows.length) throw new Error('User not found.');
+  const username = String(userRes.rows[0].username || '').trim() || 'User';
+
+  // Reuse an existing pending secret so the QR stays consistent on retries
+  let secret;
+  const existing = await pool.query(
+    'SELECT totp_secret, totp_enabled FROM app_user_totp WHERE user_id = $1',
+    [userId]
+  );
+  if (existing.rows.length && existing.rows[0].totp_secret && !existing.rows[0].totp_enabled) {
+    secret = existing.rows[0].totp_secret;
+  } else {
+    secret = generateSecret();
+    await pool.query(
+      'INSERT INTO app_user_totp (user_id, totp_secret, totp_enabled) VALUES ($1, $2, false) ON CONFLICT (user_id) DO UPDATE SET totp_secret = $2, totp_enabled = false',
+      [userId, secret]
+    );
+  }
+
+  const otpauthUrl = generateURI({ label: username, issuer: 'APOLLO Personnel DB', secret });
+  const qrCodeDataUrl = await QRCode.toDataURL(otpauthUrl);
+
+  return { secret, qrCodeDataUrl };
+}
+
+async function verifyTotpForUser(userId, token) {
+  const pool = getPgPool();
+  if (!pool) throw new Error('DATABASE_URL is required.');
+
+  if (!userId || !token) throw new Error('userId and token are required.');
+
+  const userTotp = await pool.query(
+    'SELECT totp_secret, totp_enabled FROM app_user_totp WHERE user_id = $1',
+    [userId]
+  );
+  if (!userTotp.rows || !userTotp.rows.length || !userTotp.rows[0].totp_secret) {
+    throw new Error('TOTP secret not found. Enrollment required.');
+  }
+
+  const isValid = await verify({ token: String(token).trim(), secret: userTotp.rows[0].totp_secret, epochTolerance: 120 });
+  if (!isValid || !isValid.valid) {
+    throw new Error('Invalid or expired OTP code.');
+  }
+
+  await pool.query('UPDATE app_user_totp SET totp_enabled = true WHERE user_id = $1', [userId]);
+  return { ok: true };
+}
+
 async function adminResetTotp(adminUserId, targetUserId) {
   const pool = getPgPool();
   if (!pool) throw new Error('DATABASE_URL is required.');
@@ -521,5 +576,7 @@ module.exports = {
   verifyCardStep,
   enrollTotp,
   verifyTotpStep,
-  adminResetTotp
+  adminResetTotp,
+  enrollTotpForUser,
+  verifyTotpForUser,
 };

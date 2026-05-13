@@ -6,6 +6,7 @@ import { buildStandalonePhsHtml, suggestedExportBasename } from './phs-export-ht
 import { renderList, renderRosterSkeleton } from './list.js';
 import { setActiveNav, setAppView, setTopbarSection } from './views.js';
 import { createFormNav } from './form-nav.js';
+import { initEducationValidation } from './education-validation.js';
 import { createPhsModalController } from './phs-modal.js';
 import { squareThumbnailDataUrl } from './photo-thumbnail.js';
 import { initAdminUsersView } from './admin-users.js';
@@ -16,6 +17,7 @@ import { initSettingsView } from './settings.js';
 import { openPostSaveModal, createCardManagementController } from './card-management.js';
 import { show as showLoader, hide as hideLoader } from './loader.js';
 import { initNotifications } from './notifications.js';
+import { showConfirm } from './confirm.js';
 
 function showError(msg) {
   document.body.innerHTML = '<div style="padding:24px;font-family:sans-serif;max-width:500px"><h2>Error</h2><p>' + String(msg).replace(/</g, '&lt;') + '</p><p>Check the console (Ctrl+Shift+I) for details.</p></div>';
@@ -67,6 +69,7 @@ async function loadCardsPage() {
 (async function bootstrap() {
   try {
     await loadFormPages();
+    initEducationValidation();
     await loadAnalyticsPage();
     await loadCardsPage();
 
@@ -844,8 +847,13 @@ async function loadCardsPage() {
     });
 
     if (btnLogout) {
-      btnLogout.addEventListener('click', function () {
-        var confirmed = confirm('Are you sure you want to log out?');
+      btnLogout.addEventListener('click', async function () {
+        var confirmed = await showConfirm('Are you sure you want to log out of the system?', {
+          title: 'Log Out',
+          confirmText: 'Log Out',
+          cancelText: 'Cancel',
+          type: 'warning',
+        });
         if (!confirmed) return;
         if (window.authApi && typeof window.authApi.logout === 'function') {
           window.authApi.logout().finally(function () {
@@ -1058,16 +1066,58 @@ async function loadCardsPage() {
       }
     });
 
+    // ── Saving overlay helper ────────────────────────────────────────────────
+    function getSavingOverlay() {
+      let el = document.getElementById('phs-saving-overlay');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'phs-saving-overlay';
+        el.className = 'phs-saving-overlay';
+        el.setAttribute('aria-hidden', 'true');
+        el.setAttribute('role', 'status');
+        el.innerHTML =
+          '<div class="phs-saving-panel">' +
+            '<div class="phs-saving-spinner" aria-hidden="true"></div>' +
+            '<div class="phs-saving-label">Saving personnel record…</div>' +
+            '<div class="phs-saving-sublabel">Please wait a moment</div>' +
+          '</div>';
+        document.body.appendChild(el);
+      }
+      return el;
+    }
+    function showSavingOverlay() {
+      var el = getSavingOverlay();
+      el.setAttribute('aria-hidden', 'false');
+      el.classList.add('is-visible');
+    }
+    function hideSavingOverlay() {
+      var el = getSavingOverlay();
+      el.setAttribute('aria-hidden', 'true');
+      el.classList.remove('is-visible');
+    }
+
     phsForm.addEventListener('submit', async function (e) {
       e.preventDefault();
       const data = formData.getFormData();
       var isUpdate = !!(data && data.id);
-      var confirmed = confirm(
+
+      // Premium confirm dialog instead of browser confirm()
+      var confirmed = await showConfirm(
         isUpdate
-          ? 'Save changes to this personnel record?'
-          : 'Save this new personnel record?'
+          ? 'Are you sure you want to save the changes to this personnel record? This action cannot be undone.'
+          : 'Are you sure you want to save this new personnel record? The record will be submitted to the system.',
+        {
+          title: isUpdate ? 'Save Changes' : 'Save Personnel Record',
+          confirmText: isUpdate ? 'Save Changes' : 'Save Personnel',
+          cancelText: 'Cancel',
+          type: 'save',
+        }
       );
       if (!confirmed) return;
+
+      // Show animated saving overlay
+      showSavingOverlay();
+
       try {
         if (typeof openPostSaveModal !== 'function') {
           throw new Error('Post-save setup modal is unavailable.');
@@ -1079,7 +1129,11 @@ async function loadCardsPage() {
           throw new Error('Failed to obtain a valid personnel ID after saving.');
         }
 
-        // 2. Open the post-save setup modal using the saved record (which now has an ID)
+        // Brief pause so the saving overlay is visible before transitioning
+        await new Promise(function (r) { setTimeout(r, 420); });
+
+        // 2. Hide overlay then open the post-save setup modal
+        hideSavingOverlay();
         const setupResult = await openPostSaveModal(savedPersonnel);
         if (!setupResult || !setupResult.ok) {
           // If user cancelled the setup, we still saved the personnel, so just refresh list
@@ -1111,6 +1165,7 @@ async function loadCardsPage() {
           }
         }
       } catch (err) {
+        hideSavingOverlay();
         console.error(err);
         window.toast.error('Could not save: ' + (err && err.message ? err.message : 'Unknown error'));
       }

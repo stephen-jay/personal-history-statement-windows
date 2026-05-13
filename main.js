@@ -3,7 +3,7 @@ if (!electron || typeof electron === 'string' || !electron.app) {
   console.error('This app must be started with Electron. Use "npm start" or run the built .exe.');
   process.exit(1);
 }
-const { app, BrowserWindow, ipcMain } = electron;
+const { app, BrowserWindow, ipcMain, dialog } = electron;
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -69,12 +69,12 @@ loadExternalConfig();
 
 // --- Initialization ---
 const config = {
-  DATABASE_URL: process.env.DATABASE_URL || 'postgresql://apollo_app:ApolloApp2026@10.10.218.144:5432/apollo_db',
+  DATABASE_URL: process.env.DATABASE_URL || '',
   USE_POSTGRES_READ: /^(1|true|yes)$/i.test(String(process.env.USE_POSTGRES_READ || 'true')),
   USE_POSTGRES_WRITE: /^(1|true|yes)$/i.test(String(process.env.USE_POSTGRES_WRITE || 'true')),
   ENABLE_DUAL_WRITE: /^(1|true|yes)$/i.test(String(process.env.ENABLE_DUAL_WRITE || 'true')),
   USE_REMOTE_API: /^(1|true|yes)$/i.test(String(process.env.USE_REMOTE_API || 'false')),
-  REMOTE_API_BASE: String(process.env.REMOTE_API_BASE || 'http://10.10.218.144:3210'),
+  REMOTE_API_BASE: String(process.env.REMOTE_API_BASE || 'http://localhost:3210'),
   IMAGE_UPLOAD_DIR: path.join(app.getPath('userData'), 'personnel-images')
 };
 
@@ -209,6 +209,14 @@ function stopRfidWatcher() {
   rfidWatcherProcess = null;
 }
 
+// Allow renderer to query whether the RFID watcher process is running
+try {
+  const { ipcMain } = require('electron');
+  ipcMain.handle && ipcMain.handle('rfid:status', async () => {
+    return { watcherRunning: !!rfidWatcherProcess };
+  });
+} catch (_) {}
+
 function setupAutoUpdates() {
   if (!app.isPackaged) return;
 
@@ -282,6 +290,25 @@ function createWindow() {
   mainWindow.maximize();
   mainWindow.on('closed', () => { mainWindow = null; });
   mainWindow.setTitle('Personnel Database');
+
+  // Show a native confirm dialog if the renderer's beforeunload blocks navigation.
+  // This fires when the provisioning wizard is open and the user tries to reload.
+  mainWindow.webContents.on('will-prevent-unload', (event) => {
+    const choice = dialog.showMessageBoxSync(mainWindow, {
+      type: 'question',
+      buttons: ['Leave', 'Stay'],
+      defaultId: 1,
+      cancelId: 1,
+      title: 'Provisioning Incomplete',
+      message: 'Provisioning is not complete.',
+      detail: 'If you reload now, credentials will not be set up for this personnel.\n\nAre you sure you want to leave?',
+    });
+    if (choice === 0) {
+      // "Leave" — allow the reload by preventing the prevention
+      event.preventDefault();
+    }
+    // "Stay" (choice === 1) — do nothing; unload stays blocked
+  });
 
   registerExportHandlers(ipcMain, () => mainWindow);
 

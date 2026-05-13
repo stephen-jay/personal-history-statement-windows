@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { Pool } = require('pg');
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://user:password@10.10.218.144:5432/apollo_db'
+  connectionString: process.env.DATABASE_URL || 'postgresql://USER:PASSWORD@HOST:PORT/DBNAME'
 });
 
 async function main() {

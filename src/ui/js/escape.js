@@ -1,7 +1,8 @@
 export function normalizeValue(val) {
   if (val == null) return null;
   const trimmed = String(val).trim();
-  return trimmed === '' ? null : trimmed;
+  if (trimmed === '' || trimmed.toUpperCase() === 'N/A') return null;
+  return trimmed;
 }
 
 export function escapeHtml(value) {
