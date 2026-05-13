@@ -69,8 +69,10 @@ export function showConfirm(message, opts) {
     if (cancelText) {
       btnCancel.textContent = cancelText;
       btnCancel.style.display = '';
+      panel.classList.remove('alert');
     } else {
       btnCancel.style.display = 'none';
+      panel.classList.add('alert');
     }
 
     // Set type variant on panel & icon

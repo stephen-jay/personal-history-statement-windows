@@ -1100,7 +1100,6 @@ async function loadCardsPage() {
       e.preventDefault();
       const data = formData.getFormData();
       var isUpdate = !!(data && data.id);
-
       // Premium confirm dialog instead of browser confirm()
       var confirmed = await showConfirm(
         isUpdate

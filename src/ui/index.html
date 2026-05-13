@@ -8,7 +8,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.github.com; img-src 'self' data: blob:;" />
 
   <title>Personnel History Statement System</title>
 
@@ -377,7 +377,7 @@
                   <div class="settings-row-title">Release Notes</div>
                   <div class="settings-row-subtitle" id="settings-release-notes-label">See what changed</div>
                 </div>
-                <a class="btn secondary" id="settings-release-notes-link" href="https://github.com/stephen-jay/personal-history-statement-windows/releases" target="_blank" rel="noreferrer">View changelog</a>
+                <button type="button" class="btn secondary" id="settings-release-notes-link">View changelog</button>
               </div>
             </div>
           </div>
@@ -550,6 +550,33 @@
       </div>
 
       <div id="summary-content" class="summary-content"></div>
+
+    </div>
+
+  </div>
+
+  <!-- Changelog Modal -->
+  <div id="changelog-modal" class="changelog-modal" aria-hidden="true">
+
+    <div class="changelog-backdrop" id="changelog-backdrop"></div>
+
+    <div class="changelog-dialog" role="dialog" aria-modal="true" aria-labelledby="changelog-modal-title">
+
+      <div class="changelog-header">
+
+        <h2 id="changelog-modal-title">Release Notes</h2>
+
+        <button type="button" class="btn-close" id="changelog-close" aria-label="Close changelog">&times;</button>
+
+      </div>
+
+      <div id="changelog-content" class="changelog-content"></div>
+
+      <div class="changelog-actions">
+
+        <button type="button" class="btn secondary" id="changelog-close-btn">Close</button>
+
+      </div>
 
     </div>
 
