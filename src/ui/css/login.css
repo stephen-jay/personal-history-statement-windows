@@ -649,7 +649,6 @@ body {
   }
 }
 
-/* NFC CIRCULAR READER */
 /* Step-card: center all text + items */
 #step-card {
   text-align: center;
@@ -658,22 +657,108 @@ body {
   align-items: center;
   margin-top: auto;
   margin-bottom: auto;
+  justify-content: center;
 }
 
 #step-card h2 {
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 #step-card .step-desc {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   text-align: center;
+}
+
+/* Combined Auth Methods Layout */
+.auth-methods-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  margin-bottom: 16px;
+  padding: 0;
+}
+
+@media (max-width: 768px) {
+  .auth-methods-container {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    max-width: 100%;
+    padding: 0;
+  }
+}
+
+.auth-method {
+  background: #f8fafc;
+  border: 1.5px solid var(--border-light);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.auth-method:hover {
+  border-color: var(--primary);
+  box-shadow: 0 8px 20px rgba(29, 78, 216, 0.12);
+}
+
+.auth-method-header {
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.auth-method-header h3 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--charcoal);
+}
+
+.auth-method-desc {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  line-height: 1.3;
+}
+
+/* Card Method */
+.card-method {
+  min-height: auto;
+  padding: 8px;
+}
+
+/* Password Method */
+.password-method {
+  min-height: auto;
+  justify-content: center;
+  padding: 8px 16px 16px 16px;
+}
+
+.password-method .input-wrap {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.password-method #admin-password-input {
+  width: 100%;
+  height: 40px;
+  font-size: 0.9rem;
+}
+
+.password-method .btn-primary {
+  width: 100%;
+  margin-top: 6px;
 }
 
 .nfc-orbit {
   position: relative;
-  width: 180px;
-  height: 180px;
-  margin: 0 auto 16px;
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -689,9 +774,9 @@ body {
   animation: nfc-pulse 2.2s ease-in-out infinite;
 }
 
-.nfc-ring-1 { width: 180px; height: 180px; animation-delay: 0s; }
-.nfc-ring-2 { width: 140px; height: 140px; animation-delay: 0.4s; }
-.nfc-ring-3 { width: 100px; height: 100px; animation-delay: 0.8s; }
+.nfc-ring-1 { width: 120px; height: 120px; animation-delay: 0s; }
+.nfc-ring-2 { width: 90px; height: 90px; animation-delay: 0.4s; }
+.nfc-ring-3 { width: 60px; height: 60px; animation-delay: 0.8s; }
 
 @keyframes nfc-pulse {
   0%, 100% { opacity: 1;   transform: scale(1); }
@@ -710,6 +795,8 @@ body {
 
 .nfc-card-svg {
   display: block;
+  width: 60px;
+  height: 40px;
 }
 
 @keyframes nfc-float {
@@ -722,8 +809,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  margin-bottom: 16px;
+  gap: 5px;
+  margin-bottom: 8px;
 }
 
 .nfc-status-dot {
@@ -741,7 +828,7 @@ body {
 }
 
 .nfc-status-text {
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   color: #3b82f6;
   font-weight: 600;
 }

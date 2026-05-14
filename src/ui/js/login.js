@@ -293,16 +293,8 @@ function resetToStart() {
   currentChallengeId = null;
   currentLoginUsername = '';
   currentCanUsePassword = false;
-  var adminInline = $('admin-password-inline');
-  if (adminInline) adminInline.hidden = true;
-  var adminModal = $('admin-password-modal');
-  if (adminModal) adminModal.hidden = true;
   var adminPwdInput = $('admin-password-input');
   if (adminPwdInput) adminPwdInput.value = '';
-  var adminModalInput = $('admin-password-modal-input');
-  if (adminModalInput) adminModalInput.value = '';
-  var bottomBtn = $('btn-admin-password-bottom');
-  if (bottomBtn) bottomBtn.hidden = true;
   showStep('step-username');
   var un = $('username-input');
   if (un) { un.value = ''; un.focus(); }
@@ -407,19 +399,6 @@ async function handleNextUsername() {
     
     showStep('step-card');
     startCardTapListening();
-
-    // Reveal admin password modal only if explicitly allowed by backend.
-    try {
-      var modalOverlay = $('admin-password-modal');
-      if (modalOverlay) modalOverlay.hidden = !currentCanUsePassword;
-      var bottomBtn = $('btn-admin-password-bottom');
-      // hide bottom persistent button when admin modal is shown to avoid confusion
-      if (bottomBtn) bottomBtn.hidden = currentCanUsePassword;
-      if (currentCanUsePassword) {
-        var pwd = $('admin-password-modal-input');
-        if (pwd) pwd.focus();
-      }
-    } catch (_) {}
   } catch (err) {
     if (String((err && err.message) || '').toLowerCase().includes('user not found')) {
         registerFailedAttempt();
@@ -433,24 +412,20 @@ async function handleNextUsername() {
 
 async function handleAdminPassword() {
   if (refreshLockoutUi()) return;
-  if (!currentCanUsePassword) {
-    setError('Password login is not available for this account.');
-    return;
-  }
   var username = currentLoginUsername || (($('username-input') && $('username-input').value) || '').trim();
   if (!username) {
     setError('Missing username.');
     return;
   }
-  // Read from modal input instead of inline input
-  var pwdEl = $('admin-password-modal-input') || $('admin-password-input');
+  // Read from the visible inline admin input first; fall back to the legacy modal field.
+  var pwdEl = $('admin-password-input') || $('admin-password-modal-input');
   var pwd = pwdEl && pwdEl.value ? String(pwdEl.value) : '';
   if (!pwd) {
     setError('Please enter your password.');
     return;
   }
 
-  var btn = $('btn-admin-password-modal') || $('btn-admin-password');
+  var btn = $('btn-admin-password') || $('btn-admin-password-modal');
   if (btn) { btn.disabled = true; btn.innerHTML = 'Logging in...'; }
   var bottomBtn = $('btn-admin-password-bottom');
   if (bottomBtn) { bottomBtn.disabled = true; bottomBtn.innerHTML = 'Logging in...'; }
@@ -583,11 +558,15 @@ function initListeners() {
     loginForm.addEventListener('submit', function(e) {
       e.preventDefault();
       var unDiv = $('step-username');
+      var cardDiv = $('step-card');
       var enrollDiv = $('step-enroll');
       var verifyDiv = $('step-verify');
+      var adminPwdInput = $('admin-password-input');
       
       if (unDiv && !unDiv.hidden) {
         handleNextUsername();
+      } else if (cardDiv && !cardDiv.hidden && adminPwdInput && String(adminPwdInput.value || '').trim()) {
+        handleAdminPassword();
       } else if (enrollDiv && !enrollDiv.hidden) {
         handleVerifyTotp('enroll-otp', 'btn-verify-enroll');
       } else if (verifyDiv && !verifyDiv.hidden) {
