@@ -1,36 +1,37 @@
 const fs = require('fs');
 const path = require('path');
-const { Pool } = require('pg');
 const { REMOVED_FIELDS, CARD_REGISTRATION_TABLE, PERSONNEL_FIELD_MAP, CHILD_TABLES } = require('../shared/schema');
+const dbManager = require('./db-manager');
 
 let dataFile = null;
 
-let pgPool = null;
-
+/**
+ * Initialize the database layer.
+ * Delegates pool management to db-manager which handles the
+ * 3-tier fallback: Ubuntu PostgreSQL → Supabase → Local JSON.
+ *
+ * @param {string} url       - Primary (Ubuntu) PostgreSQL connection string
+ * @param {string} jsonPath  - Path to local JSON fallback file
+ */
 function initDatabase(url, jsonPath) {
   dataFile = jsonPath;
-  if (url && !pgPool) {
-    try {
-      console.log('[DB] initDatabase: attempting to create pg Pool');
-      console.log('[DB] connection string (masked):', String(url).replace(/:(?:[^:]+)@/, ':****@'));
-      pgPool = new Pool({ connectionString: url });
-      console.log('[DB] initDatabase: pg Pool created');
-    } catch (e) {
-      console.error('[DB] initDatabase: failed to create pg Pool:', e && e.message ? e.message : e);
-      pgPool = null;
-    }
-  }
+  const supabaseDbUrl = process.env.SUPABASE_DB_URL || '';
+  console.log('[DB] initDatabase: starting 3-tier connection manager');
+  console.log('[DB] primary (masked):', String(url || '').replace(/:(?:[^:]+)@/, ':****@'));
+  console.log('[DB] supabase fallback:', supabaseDbUrl ? 'configured' : 'not configured');
+  dbManager.initDbManager(url, supabaseDbUrl);
 }
 
+/**
+ * Returns the currently active PostgreSQL pool (Ubuntu or Supabase),
+ * or null if the local JSON fallback is active.
+ */
 function getPgPool() {
-  return pgPool;
+  return dbManager.getActivePool();
 }
 
 async function closeDatabase() {
-  if (!pgPool) return;
-  const pool = pgPool;
-  pgPool = null;
-  await pool.end();
+  await dbManager.closeDbManager();
 }
 
 function ensureDataFile() {
@@ -99,6 +100,27 @@ function normalizeFromDbRow(row) {
   return out;
 }
 
+// Heavy base64 columns excluded from the slim list payload. Per measured DB
+// stats (~1 MB per thumb mark, ~200 KB per handwritten entry, ~80 KB per
+// signature) these columns alone account for >95% of the personnel table's
+// payload. The roster avatar uses photo_data_url (~13 KB) which we keep.
+const HEAVY_LIST_FIELDS = new Set([
+  'signatureDataUrl',
+  'handwrittenEntryDataUrl',
+  'leftThumbMarkDataUrl',
+  'rightThumbMarkDataUrl'
+]);
+
+function buildListColumnList() {
+  // Scalar/light columns + photo, no signatures/thumb marks/handwriting.
+  const cols = ['id', 'version', 'updated_at'];
+  Object.keys(PERSONNEL_FIELD_MAP).forEach(function (srcKey) {
+    if (HEAVY_LIST_FIELDS.has(srcKey)) return;
+    cols.push(PERSONNEL_FIELD_MAP[srcKey]);
+  });
+  return cols;
+}
+
 function groupByPersonnelId(rows) {
   const map = new Map();
   rows.forEach(function (r) {
@@ -152,36 +174,94 @@ function assertPersonnelColumnsAvailable(personnelColumnSet, record) {
   );
 }
 
-async function getPostgresData() {
-  const pool = getPgPool();
-  if (!pool) throw new Error('DATABASE_URL is required for Postgres read');
-  const client = await pool.connect();
-  try {
-    const base = await client.query('SELECT * FROM personnel WHERE deleted_at IS NULL ORDER BY updated_at DESC');
-    const records = base.rows.map(normalizeFromDbRow);
-    if (!records.length) return [];
-    const ids = records.map((r) => r.id);
-    const cardTableExists = await hasTable(client, CARD_REGISTRATION_TABLE);
-    const cardByPersonnelId = new Map();
-    if (cardTableExists) {
-      const cardRows = await client.query(
-        'SELECT personnel_id, card_uid FROM ' + CARD_REGISTRATION_TABLE + ' WHERE personnel_id = ANY($1::text[])',
-        [ids]
+async function getPostgresList() {
+  // Slim roster payload: scalar fields + small avatar (photo_data_url).
+  // Skips signatures, handwritten entry, and thumb-mark columns (~2 MB/row),
+  // and skips child tables entirely. Roster + dashboard only need this.
+  const records = await dbManager.runWithFailover(async function (pool) {
+    const client = await pool.connect();
+    try {
+      const personnelColumnSet = await dbManager_getPersonnelColumns(client);
+      const wantCols = buildListColumnList().filter(function (c) { return personnelColumnSet.has(c); });
+      const colsSql = wantCols.map(function (c) { return '"' + c + '"'; }).join(', ');
+      const baseRes = await client.query(
+        'SELECT ' + colsSql + ' FROM personnel WHERE deleted_at IS NULL ORDER BY updated_at DESC'
       );
-      (cardRows.rows || []).forEach(function (row) {
-        cardByPersonnelId.set(row.personnel_id, row.card_uid || null);
-      });
+      const rows = baseRes.rows.map(normalizeFromDbRow);
+      if (!rows.length) return [];
+      // Attach card UID (single small extra query, same connection).
+      const ids = rows.map(function (r) { return r.id; });
+      const cardTableExistsRes = await client.query("SELECT to_regclass($1) AS regclass", ['public.' + CARD_REGISTRATION_TABLE]);
+      if (cardTableExistsRes.rows && cardTableExistsRes.rows[0] && cardTableExistsRes.rows[0].regclass) {
+        const cardRows = await client.query(
+          'SELECT personnel_id, card_uid FROM ' + CARD_REGISTRATION_TABLE + ' WHERE personnel_id = ANY($1::text[])',
+          [ids]
+        );
+        const cardByPersonnelId = new Map();
+        (cardRows.rows || []).forEach(function (r) { cardByPersonnelId.set(r.personnel_id, r.card_uid || null); });
+        rows.forEach(function (rec) {
+          rec.cardUID = cardByPersonnelId.get(rec.id) || rec.cardUID || null;
+        });
+      }
+      return rows;
+    } finally {
+      try { client.release(); } catch (_) {}
     }
-    const childGrouped = {};
-    for (const def of CHILD_TABLES) {
-      const q = await client.query('SELECT * FROM ' + def.table + ' WHERE personnel_id = ANY($1::text[]) ORDER BY id ASC', [ids]);
-      childGrouped[def.sourceKey] = groupByPersonnelId(q.rows);
-    }
-    records.forEach(function (rec) {
-      rec.cardUID = cardByPersonnelId.get(rec.id) || rec.cardUID || null;
+  });
+  if (records == null) {
+    throw new Error('No PostgreSQL tier is currently reachable');
+  }
+  return records;
+}
+
+// Cache the personnel column set briefly to avoid re-querying every call.
+let _personnelColumnSetCache = null;
+let _personnelColumnSetCacheAt = 0;
+async function dbManager_getPersonnelColumns(clientOrPool) {
+  const now = Date.now();
+  if (_personnelColumnSetCache && (now - _personnelColumnSetCacheAt) < 60000) {
+    return _personnelColumnSetCache;
+  }
+  const r = await clientOrPool.query(
+    "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'personnel'"
+  );
+  const set = new Set((r.rows || []).map(function (row) { return row.column_name; }));
+  _personnelColumnSetCache = set;
+  _personnelColumnSetCacheAt = now;
+  return set;
+}
+
+async function getPostgresOne(id) {
+  // Full record for a single personnel: heavy image columns + all child tables.
+  if (!id) return null;
+  const NOT_FOUND = '__NOT_FOUND__';
+  const result = await dbManager.runWithFailover(async function (pool) {
+    const client = await pool.connect();
+    try {
+      const baseRes = await client.query(
+        'SELECT * FROM personnel WHERE id = $1 AND deleted_at IS NULL LIMIT 1',
+        [id]
+      );
+      if (!baseRes.rowCount) return NOT_FOUND;
+      const rec = normalizeFromDbRow(baseRes.rows[0]);
+
+      const cardTableExists = await hasTable(client, CARD_REGISTRATION_TABLE);
+      if (cardTableExists) {
+        const cardRes = await client.query(
+          'SELECT card_uid FROM ' + CARD_REGISTRATION_TABLE + ' WHERE personnel_id = $1 LIMIT 1',
+          [id]
+        );
+        if (cardRes.rowCount) {
+          rec.cardUID = cardRes.rows[0].card_uid || rec.cardUID || null;
+        }
+      }
+
       for (const def of CHILD_TABLES) {
-        const rows = (childGrouped[def.sourceKey] && childGrouped[def.sourceKey].get(rec.id)) || [];
-        rec[def.sourceKey] = rows.map(function (row) {
+        const q = await client.query(
+          'SELECT * FROM ' + def.table + ' WHERE personnel_id = $1 ORDER BY id ASC',
+          [id]
+        );
+        rec[def.sourceKey] = (q.rows || []).map(function (row) {
           const item = {};
           Object.keys(def.map).forEach(function (srcKey) {
             item[srcKey] = row[def.map[srcKey]];
@@ -189,16 +269,67 @@ async function getPostgresData() {
           return item;
         });
       }
-    });
-    return records;
-  } finally {
-    client.release();
+      return rec;
+    } finally {
+      try { client.release(); } catch (_) {}
+    }
+  });
+  if (result == null) {
+    throw new Error('No PostgreSQL tier is currently reachable');
   }
+  if (result === NOT_FOUND) return null;
+  return result;
+}
+
+async function getPostgresData() {
+  const records = await dbManager.runWithFailover(async function (pool) {
+    const client = await pool.connect();
+    try {
+      const base = await client.query('SELECT * FROM personnel WHERE deleted_at IS NULL ORDER BY updated_at DESC');
+      const rows = base.rows.map(normalizeFromDbRow);
+      if (!rows.length) return [];
+      const ids = rows.map((r) => r.id);
+      const cardTableExists = await hasTable(client, CARD_REGISTRATION_TABLE);
+      const cardByPersonnelId = new Map();
+      if (cardTableExists) {
+        const cardRows = await client.query(
+          'SELECT personnel_id, card_uid FROM ' + CARD_REGISTRATION_TABLE + ' WHERE personnel_id = ANY($1::text[])',
+          [ids]
+        );
+        (cardRows.rows || []).forEach(function (row) {
+          cardByPersonnelId.set(row.personnel_id, row.card_uid || null);
+        });
+      }
+      const childGrouped = {};
+      for (const def of CHILD_TABLES) {
+        const q = await client.query('SELECT * FROM ' + def.table + ' WHERE personnel_id = ANY($1::text[]) ORDER BY id ASC', [ids]);
+        childGrouped[def.sourceKey] = groupByPersonnelId(q.rows);
+      }
+      rows.forEach(function (rec) {
+        rec.cardUID = cardByPersonnelId.get(rec.id) || rec.cardUID || null;
+        for (const def of CHILD_TABLES) {
+          const childRows = (childGrouped[def.sourceKey] && childGrouped[def.sourceKey].get(rec.id)) || [];
+          rec[def.sourceKey] = childRows.map(function (row) {
+            const item = {};
+            Object.keys(def.map).forEach(function (srcKey) {
+              item[srcKey] = row[def.map[srcKey]];
+            });
+            return item;
+          });
+        }
+      });
+      return rows;
+    } finally {
+      client.release();
+    }
+  });
+  if (records == null) {
+    throw new Error('No PostgreSQL tier is currently reachable');
+  }
+  return records;
 }
 
 async function savePostgresRecord(record, currentUserId) {
-  const pool = getPgPool();
-  if (!pool) throw new Error('DATABASE_URL is required for Postgres write');
   const safe = sanitizeRecord(record);
   const id = safe.id || String(Date.now());
   const expectedVersion =
@@ -207,112 +338,116 @@ async function savePostgresRecord(record, currentUserId) {
       : Number.isFinite(Number(safe.version))
         ? Number(safe.version)
         : null;
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    if (currentUserId) {
-      await client.query("SELECT set_config('app.current_user_id', $1, true)", [String(currentUserId)]);
-    }
-    const personnelColumnSet = await getPersonnelColumnSet(client);
-    assertPersonnelColumnsAvailable(personnelColumnSet, safe);
-    const cols = [];
-    const vals = [];
-    Object.keys(PERSONNEL_FIELD_MAP).forEach(function (srcKey) {
-      const dbCol = PERSONNEL_FIELD_MAP[srcKey];
-      if (!personnelColumnSet.has(dbCol)) return;
-      cols.push(dbCol);
-      vals.push(safe[srcKey] == null ? null : safe[srcKey]);
-    });
-    const insertCols = ['id'].concat(cols, ['updated_at']);
-    const insertVals = [id].concat(vals, [new Date().toISOString()]);
-    const insertPlaceholders = insertVals.map(function (_v, idx) { return '$' + (idx + 1); }).join(', ');
-    const insertSql = 'INSERT INTO personnel (' + insertCols.join(', ') + ') VALUES (' + insertPlaceholders + ') ON CONFLICT (id) DO NOTHING RETURNING version, updated_at';
-    const insertRes = await client.query(insertSql, insertVals);
-
-    var nextVersion = null;
-    var nextUpdatedAt = null;
-    if (insertRes.rowCount > 0) {
-      nextVersion = insertRes.rows[0].version;
-      nextUpdatedAt = insertRes.rows[0].updated_at;
-    } else {
-      if (expectedVersion == null) {
-        throw new Error(
-          'Concurrency conflict: record already exists. Reload the roster and retry your save.'
-        );
+  const result = await dbManager.runWithFailover(async function (pool) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      if (currentUserId) {
+        await client.query("SELECT set_config('app.current_user_id', $1, true)", [String(currentUserId)]);
       }
-      const setParts = cols.map(function (c, idx) {
-        return c + ' = $' + (idx + 1);
+      const personnelColumnSet = await getPersonnelColumnSet(client);
+      assertPersonnelColumnsAvailable(personnelColumnSet, safe);
+      const cols = [];
+      const vals = [];
+      Object.keys(PERSONNEL_FIELD_MAP).forEach(function (srcKey) {
+        const dbCol = PERSONNEL_FIELD_MAP[srcKey];
+        if (!personnelColumnSet.has(dbCol)) return;
+        cols.push(dbCol);
+        vals.push(safe[srcKey] == null ? null : safe[srcKey]);
       });
-      const updateSql =
-        'UPDATE personnel SET ' +
-        setParts.join(', ') +
-        ', updated_at = NOW(), version = version + 1 WHERE id = $' +
-        (cols.length + 1) +
-        ' AND version = $' +
-        (cols.length + 2) +
-        ' AND deleted_at IS NULL RETURNING version, updated_at';
-      const updateVals = vals.concat([id, expectedVersion]);
-      const updRes = await client.query(updateSql, updateVals);
-      if (updRes.rowCount === 0) {
-        throw new Error(
-          'Concurrency conflict: this record was updated by someone else. Reload and apply your changes again.'
-        );
-      }
-      nextVersion = updRes.rows[0].version;
-      nextUpdatedAt = updRes.rows[0].updated_at;
-    }
+      const insertCols = ['id'].concat(cols, ['updated_at']);
+      const insertVals = [id].concat(vals, [new Date().toISOString()]);
+      const insertPlaceholders = insertVals.map(function (_v, idx) { return '$' + (idx + 1); }).join(', ');
+      const insertSql = 'INSERT INTO personnel (' + insertCols.join(', ') + ') VALUES (' + insertPlaceholders + ') ON CONFLICT (id) DO NOTHING RETURNING version, updated_at';
+      const insertRes = await client.query(insertSql, insertVals);
 
-    for (const def of CHILD_TABLES) {
-      await client.query('DELETE FROM ' + def.table + ' WHERE personnel_id = $1', [id]);
-      const rows = Array.isArray(safe[def.sourceKey]) ? safe[def.sourceKey] : [];
-      for (const row of rows) {
-        const item = row || {};
-        const mapKeys = Object.keys(def.map);
-        const childCols = ['personnel_id'].concat(mapKeys.map(k => def.map[k]));
-        const childVals = [id];
-        mapKeys.forEach(function (srcKey) {
-          childVals.push(item[srcKey] == null ? null : item[srcKey]);
-        });
-        const childPlaceholders = childVals.map(function (_v, idx) { return '$' + (idx + 1); }).join(', ');
-        const childSql = 'INSERT INTO ' + def.table + ' (' + childCols.join(', ') + ') VALUES (' + childPlaceholders + ')';
-        await client.query(childSql, childVals);
-      }
-    }
-
-    let cardTableExists = await hasTable(client, CARD_REGISTRATION_TABLE);
-    if (cardTableExists && Object.prototype.hasOwnProperty.call(safe, 'cardUID')) {
-      const cardUID = safe.cardUID == null ? '' : String(safe.cardUID).trim();
-      if (cardUID) {
-        await client.query(
-          'INSERT INTO ' + CARD_REGISTRATION_TABLE + ' (personnel_id, card_uid) VALUES ($1, $2) ON CONFLICT (personnel_id) DO UPDATE SET card_uid = EXCLUDED.card_uid, updated_at = NOW()',
-          [id, cardUID]
-        );
+      var nextVersion = null;
+      var nextUpdatedAt = null;
+      if (insertRes.rowCount > 0) {
+        nextVersion = insertRes.rows[0].version;
+        nextUpdatedAt = insertRes.rows[0].updated_at;
       } else {
-        await client.query('DELETE FROM ' + CARD_REGISTRATION_TABLE + ' WHERE personnel_id = $1', [id]);
+        if (expectedVersion == null) {
+          throw new Error(
+            'Concurrency conflict: record already exists. Reload the roster and retry your save.'
+          );
+        }
+        const setParts = cols.map(function (c, idx) {
+          return c + ' = $' + (idx + 1);
+        });
+        const updateSql =
+          'UPDATE personnel SET ' +
+          setParts.join(', ') +
+          ', updated_at = NOW(), version = version + 1 WHERE id = $' +
+          (cols.length + 1) +
+          ' AND version = $' +
+          (cols.length + 2) +
+          ' AND deleted_at IS NULL RETURNING version, updated_at';
+        const updateVals = vals.concat([id, expectedVersion]);
+        const updRes = await client.query(updateSql, updateVals);
+        if (updRes.rowCount === 0) {
+          throw new Error(
+            'Concurrency conflict: this record was updated by someone else. Reload and apply your changes again.'
+          );
+        }
+        nextVersion = updRes.rows[0].version;
+        nextUpdatedAt = updRes.rows[0].updated_at;
       }
-    }
 
-    await client.query('COMMIT');
-    return {
-      ...safe,
-      id,
-      version: nextVersion,
-      updatedAt: nextUpdatedAt ? new Date(nextUpdatedAt).toISOString() : new Date().toISOString()
-    };
-  } catch (e) {
-    await client.query('ROLLBACK');
-    if (e && e.code === '23505' && /card_uid|personnel_card_registrations/i.test(String(e.constraint || '') + ' ' + String(e.detail || ''))) {
-      throw new Error('This card is already linked to another personnel record. Use a different card or unlink it first.');
+      for (const def of CHILD_TABLES) {
+        await client.query('DELETE FROM ' + def.table + ' WHERE personnel_id = $1', [id]);
+        const rows = Array.isArray(safe[def.sourceKey]) ? safe[def.sourceKey] : [];
+        for (const row of rows) {
+          const item = row || {};
+          const mapKeys = Object.keys(def.map);
+          const childCols = ['personnel_id'].concat(mapKeys.map(k => def.map[k]));
+          const childVals = [id];
+          mapKeys.forEach(function (srcKey) {
+            childVals.push(item[srcKey] == null ? null : item[srcKey]);
+          });
+          const childPlaceholders = childVals.map(function (_v, idx) { return '$' + (idx + 1); }).join(', ');
+          const childSql = 'INSERT INTO ' + def.table + ' (' + childCols.join(', ') + ') VALUES (' + childPlaceholders + ')';
+          await client.query(childSql, childVals);
+        }
+      }
+
+      let cardTableExists = await hasTable(client, CARD_REGISTRATION_TABLE);
+      if (cardTableExists && Object.prototype.hasOwnProperty.call(safe, 'cardUID')) {
+        const cardUID = safe.cardUID == null ? '' : String(safe.cardUID).trim();
+        if (cardUID) {
+          await client.query(
+            'INSERT INTO ' + CARD_REGISTRATION_TABLE + ' (personnel_id, card_uid) VALUES ($1, $2) ON CONFLICT (personnel_id) DO UPDATE SET card_uid = EXCLUDED.card_uid, updated_at = NOW()',
+            [id, cardUID]
+          );
+        } else {
+          await client.query('DELETE FROM ' + CARD_REGISTRATION_TABLE + ' WHERE personnel_id = $1', [id]);
+        }
+      }
+
+      await client.query('COMMIT');
+      return {
+        ...safe,
+        id,
+        version: nextVersion,
+        updatedAt: nextUpdatedAt ? new Date(nextUpdatedAt).toISOString() : new Date().toISOString()
+      };
+    } catch (e) {
+      try { await client.query('ROLLBACK'); } catch (_) { /* connection may already be dead */ }
+      if (e && e.code === '23505' && /card_uid|personnel_card_registrations/i.test(String(e.constraint || '') + ' ' + String(e.detail || ''))) {
+        throw new Error('This card is already linked to another personnel record. Use a different card or unlink it first.');
+      }
+      throw e;
+    } finally {
+      try { client.release(); } catch (_) {}
     }
-    throw e;
-  } finally {
-    client.release();
+  });
+  if (result == null) {
+    throw new Error('No PostgreSQL tier is currently reachable for write');
   }
+  return result;
 }
 
 async function deletePostgresRecord(id, expectedVersion, currentUserId) {
-  const pool = getPgPool();
-  if (!pool) throw new Error('DATABASE_URL is required for Postgres delete');
   if (expectedVersion == null || expectedVersion === '') {
     throw new Error('Concurrency conflict: missing record version for delete.');
   }
@@ -320,29 +455,35 @@ async function deletePostgresRecord(id, expectedVersion, currentUserId) {
   if (!Number.isFinite(ver)) {
     throw new Error('Concurrency conflict: invalid record version for delete.');
   }
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    if (currentUserId) {
-      await client.query("SELECT set_config('app.current_user_id', $1, true)", [String(currentUserId)]);
-    }
-    const res = await client.query(
-      'UPDATE personnel SET deleted_at = NOW(), updated_at = NOW(), version = version + 1 WHERE id = $1 AND version = $2 AND deleted_at IS NULL RETURNING id',
-      [id, ver]
-    );
-    if (res.rowCount === 0) {
-      throw new Error(
-        'Concurrency conflict: record already changed or removed. Reload the roster before deleting.'
+  const result = await dbManager.runWithFailover(async function (pool) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      if (currentUserId) {
+        await client.query("SELECT set_config('app.current_user_id', $1, true)", [String(currentUserId)]);
+      }
+      const res = await client.query(
+        'UPDATE personnel SET deleted_at = NOW(), updated_at = NOW(), version = version + 1 WHERE id = $1 AND version = $2 AND deleted_at IS NULL RETURNING id',
+        [id, ver]
       );
+      if (res.rowCount === 0) {
+        throw new Error(
+          'Concurrency conflict: record already changed or removed. Reload the roster before deleting.'
+        );
+      }
+      await client.query('COMMIT');
+      return true;
+    } catch (e) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      throw e;
+    } finally {
+      try { client.release(); } catch (_) {}
     }
-    await client.query('COMMIT');
-    return true;
-  } catch (e) {
-    await client.query('ROLLBACK');
-    throw e;
-  } finally {
-    client.release();
+  });
+  if (result == null) {
+    throw new Error('No PostgreSQL tier is currently reachable for delete');
   }
+  return result;
 }
 
 module.exports = {
@@ -352,6 +493,8 @@ module.exports = {
   saveJsonRecord,
   deleteJsonRecord,
   getPostgresData,
+  getPostgresList,
+  getPostgresOne,
   savePostgresRecord,
   deletePostgresRecord,
   closeDatabase

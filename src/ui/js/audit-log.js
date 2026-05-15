@@ -16,7 +16,8 @@ export function initAuditLogs({
   auditSearch,
   auditFilterAction,
   adminApi,
-  toast
+  toast,
+  showConfirm
 }) {
   let allAuditLogs = [];
   let currentPage = 1;
@@ -341,6 +342,37 @@ export function initAuditLogs({
     }
 
     
+
+    const btnClearAudit = document.getElementById('btn-clear-audit');
+    if (btnClearAudit) {
+      btnClearAudit.addEventListener('click', async function() {
+        if (!isAdmin) {
+          toast.error('Only administrators can clear audit logs.');
+          return;
+        }
+
+        const confirmed = await showConfirm({
+          title: 'Clear All Audit Logs?',
+          message: 'This will permanently delete ALL activity logs. This action cannot be undone.',
+          confirmText: 'Yes, Clear All',
+          cancelText: 'Cancel',
+          type: 'danger'
+        });
+
+        if (confirmed) {
+          try {
+            const result = await adminApi.clearAuditLogs();
+            if (result && result.ok) {
+              toast.success('Audit logs cleared successfully.');
+              loadAuditLogs(); // Refresh the view
+            }
+          } catch (err) {
+            console.error('Failed to clear audit logs:', err);
+            toast.error('Failed to clear logs: ' + (err.message || String(err)));
+          }
+        }
+      });
+    }
 
   return { showAuditLogs };
 }

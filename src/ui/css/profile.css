@@ -1,0 +1,234 @@
+/* =========================================================
+   User Profile Button & Dropdown
+   ========================================================= */
+
+.user-profile-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.user-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 12px 4px 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: inherit;
+  outline: none;
+}
+
+.user-profile-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.user-profile-btn[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+.user-profile-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f1f5f9;
+  border: 2px solid #fff;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.user-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-profile-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.user-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: inherit;
+}
+
+.user-role {
+  font-size: 0.72rem;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+.user-profile-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  opacity: 0.5;
+  transition: transform 0.2s ease;
+}
+
+.user-profile-btn[aria-expanded="true"] .user-profile-chevron {
+  transform: rotate(180deg);
+}
+
+.user-profile-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* =========================================================
+   Profile Dropdown
+   ========================================================= */
+
+.profile-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 260px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  z-index: 1000;
+  padding: 8px;
+  animation: dropdown-pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  transform-origin: top right;
+}
+
+@keyframes dropdown-pop {
+  from { opacity: 0; transform: translateY(-10px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.profile-dropdown[hidden] {
+  display: none !important;
+}
+
+.profile-dropdown-header {
+  padding: 12px 16px 16px;
+}
+
+.dropdown-user-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+.dropdown-role {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.profile-dropdown-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 4px 8px;
+}
+
+.profile-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  color: #475569;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.profile-dropdown-item:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.dropdown-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  opacity: 0.7;
+}
+
+.dropdown-item-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.profile-dropdown-item--danger {
+  color: #ef4444;
+}
+
+.profile-dropdown-item--danger:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.profile-dropdown-item--danger .dropdown-item-icon {
+  opacity: 1;
+}
+
+/* Specific styling for Topbar Dark Theme */
+.topbar--institutional .user-profile-btn {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.topbar--institutional .user-profile-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Specific styling for Topbar Light Theme (Dashboard / Roster) */
+body[data-app-view="list"] .user-profile-btn,
+body[data-app-view="analytics"] .user-profile-btn,
+body[data-app-view="admin"] .user-profile-btn,
+body[data-app-view="audit"] .user-profile-btn,
+body[data-app-view="settings"] .user-profile-btn {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+body[data-app-view="list"] .user-profile-btn:hover,
+body[data-app-view="analytics"] .user-profile-btn:hover,
+body[data-app-view="admin"] .user-profile-btn:hover,
+body[data-app-view="audit"] .user-profile-btn:hover,
+body[data-app-view="settings"] .user-profile-btn:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+body[data-app-view="list"] .user-role,
+body[data-app-view="analytics"] .user-role,
+body[data-app-view="admin"] .user-role,
+body[data-app-view="audit"] .user-role,
+body[data-app-view="settings"] .user-role {
+  color: #64748b;
+  opacity: 1;
+}

@@ -76,6 +76,14 @@ async function loadCardsPage() {
     // Initialize toast system
     window.toast = initToastSystem();
 
+    // Show success toast if just logged in
+    if (localStorage.getItem('phs.login_success') === 'true') {
+      localStorage.removeItem('phs.login_success');
+      setTimeout(() => {
+        if (window.toast) window.toast.success('Login successful. Welcome back!');
+      }, 500);
+    }
+
     // Initialize notification system
     const notifCtl = initNotifications({ toast: window.toast });
     window.notify = notifCtl ? notifCtl.notify : function () {};
@@ -269,6 +277,58 @@ async function loadCardsPage() {
       window.notify('activity', 'User Signed In', (session.user.username || session.user) + ' logged in successfully.');
     }
 
+    // --- User Profile Dropdown ---
+    function initProfileDropdown(user) {
+      const btn = document.getElementById('user-profile-btn');
+      const dropdown = document.getElementById('profile-dropdown');
+      if (!btn || !dropdown) return;
+
+      // Update dynamic content
+      const nameEls = document.querySelectorAll('.user-name, .dropdown-name');
+      const roleEls = document.querySelectorAll('.user-role, .dropdown-role');
+      const avatarImg = document.getElementById('user-avatar-img');
+
+      if (user) {
+        // Fix: session user object uses 'fullName' property, not 'full_name'
+        const displayName = user.fullName || (user.username ? user.username.charAt(0).toUpperCase() + user.username.slice(1) : 'Kenneth Abayon');
+        nameEls.forEach(el => el.textContent = displayName);
+        
+        // Handle role name more gracefully
+        let roleName = 'User';
+        if (Array.isArray(session.roles) && session.roles.length > 0) {
+          const primaryRole = session.roles[0];
+          roleName = primaryRole.charAt(0).toUpperCase() + primaryRole.slice(1);
+        } else if (user.username === 'admin') {
+          roleName = 'Administrator';
+        }
+        roleEls.forEach(el => el.textContent = roleName);
+      }
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', !isExpanded);
+        dropdown.hidden = isExpanded;
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+          btn.setAttribute('aria-expanded', 'false');
+          dropdown.hidden = true;
+        }
+      });
+
+      // Handle logout in dropdown
+      const logoutBtn = document.getElementById('btn-logout-dropdown');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+          if (btnLogout) btnLogout.click();
+        });
+      }
+    }
+
+    initProfileDropdown(session.user);
+
     const listView = document.getElementById('list-view');
     const analyticsView = document.getElementById('analytics-view');
     const adminView = document.getElementById('admin-view');
@@ -329,6 +389,7 @@ async function loadCardsPage() {
       updateApi: window.updateApi,
       appApi: window.appApi,
       authApi: window.authApi,
+      dbSyncApi: window.dbSyncApi,
       toast: window.toast
     });
 
@@ -372,7 +433,8 @@ async function loadCardsPage() {
         auditSearch,
         auditFilterAction,
         adminApi: window.adminApi,
-        toast: window.toast
+        toast: window.toast,
+        showConfirm: showConfirm
       });
       showAuditLogs = auditLogCtl.showAuditLogs;
     }
@@ -594,21 +656,30 @@ async function loadCardsPage() {
     function loadAllDataAndRender(options) {
       const opts = options || {};
       const force = !!opts.forceRefresh;
-      
+      const view = opts.view || 'list';
+      const renderRoster = view !== 'analytics'; // 'list' or 'both'
+      const renderAnalyticsView = view !== 'list'; // 'analytics' or 'both'
+      // Cap the artificial skeleton hold so a fast response isn't blocked by
+      // an old animation budget. The adaptive value can balloon to 1.5–3 s,
+      // which made the dashboard feel hung even when data arrived in 200 ms.
+      const skeletonFloor = Math.min(200, ROSTER_SKELETON_MIN_MS);
+
       // Use cache when available and not stale
       if (!force && rosterCache.records && (Date.now() - rosterCache.ts) < ROSTER_STALE_MS) {
         // Briefly show skeleton to avoid a blank gap while the DOM repaints,
         // then render the cached data almost immediately.
         try {
-          ensureSkeletonStyles();
-          renderRosterSkeleton(listDeps, Math.min(6, (rosterCache.records && rosterCache.records.length) || 6));
+          if (renderRoster) {
+            ensureSkeletonStyles();
+            renderRosterSkeleton(listDeps, Math.min(6, (rosterCache.records && rosterCache.records.length) || 6));
+          }
         } catch (_) {}
 
         return new Promise(function (resolve) {
           // Small delay to allow the browser to paint the skeleton.
           window.setTimeout(function () {
-            renderList(rosterCache.records, listDeps);
-            renderAnalytics(rosterCache.records, { openSummary: openSummary });
+            if (renderRoster) renderList(rosterCache.records, listDeps);
+            if (renderAnalyticsView) renderAnalytics(rosterCache.records, { openSummary: openSummary });
             try { hideLoader(); } catch (_) {}
             resolve(rosterCache.records);
           }, 60);
@@ -616,8 +687,10 @@ async function loadCardsPage() {
       }
 
       const startedAt = Date.now();
-      try { ensureSkeletonStyles(); } catch (_) {}
-      renderRosterSkeleton(listDeps, 6);
+      if (renderRoster) {
+        try { ensureSkeletonStyles(); } catch (_) {}
+        renderRosterSkeleton(listDeps, 6);
+      }
 
       // Show dashboard-specific overlay loader while fetching (do not hide content)
       try {
@@ -630,10 +703,10 @@ async function loadCardsPage() {
         }
       } catch (_) {}
 
-      return window.personnelApi.getAll().then(function (records) {
+      return window.personnelApi.getList().then(function (records) {
         const elapsed = Date.now() - startedAt;
-        const waitMs = Math.max(0, ROSTER_SKELETON_MIN_MS - elapsed);
-        
+        const waitMs = Math.max(0, skeletonFloor - elapsed);
+
         return new Promise(function (resolve) {
           if (!waitMs) return resolve(records);
           window.setTimeout(function () { resolve(records); }, waitMs);
@@ -641,8 +714,8 @@ async function loadCardsPage() {
       }).then(function (records) {
         rosterCache.records = records;
         rosterCache.ts = Date.now();
-        renderList(records, listDeps);
-        renderAnalytics(records, { openSummary: openSummary });
+        if (renderRoster) renderList(records, listDeps);
+        if (renderAnalyticsView) renderAnalytics(records, { openSummary: openSummary });
         // Small delay to ensure DOM updates are painted before hiding loader
         return new Promise(function (resolve) {
           window.setTimeout(function () {
@@ -669,11 +742,10 @@ async function loadCardsPage() {
     function loadList(forceRefresh) {
       // Clear any stale loader before rendering cached results
       try { hideLoader(); } catch (_) {}
-      return loadAllDataAndRender({ forceRefresh: !!forceRefresh }).catch(function (err) {
+      return loadAllDataAndRender({ forceRefresh: !!forceRefresh, view: 'list' }).catch(function (err) {
         console.error(err);
         window.toast.error('Could not load data: ' + (err && err.message ? err.message : 'Unknown error'));
         renderList([], listDeps);
-        renderAnalytics([], { openSummary: openSummary });
       });
     }
 
@@ -755,7 +827,7 @@ async function loadCardsPage() {
       setActiveNav('analytics');
       setAppView('analytics');
       setTopbarSection(topbarSection, 'Dashboard');
-      loadAllDataAndRender().catch(function () {
+      loadAllDataAndRender({ view: 'analytics' }).catch(function () {
         renderAnalytics([], { openSummary: openSummary });
       });
     }
@@ -820,6 +892,9 @@ async function loadCardsPage() {
       setTopbarSection(topbarSection, 'Settings');
       if (settingsCtl && typeof settingsCtl.refreshVersion === 'function') {
         settingsCtl.refreshVersion();
+      }
+      if (settingsCtl && typeof settingsCtl.refreshSyncStatus === 'function') {
+        settingsCtl.refreshSyncStatus();
       }
     }
 
@@ -1047,7 +1122,7 @@ async function loadCardsPage() {
           return;
         }
         // Fallback to fetching if cache is not yet populated
-        window.personnelApi.getAll().then(function (records) {
+        window.personnelApi.getList().then(function (records) {
           // update cache
           rosterCache.records = records;
           rosterCache.ts = Date.now();
@@ -1143,24 +1218,20 @@ async function loadCardsPage() {
         // After saving and setup, force refresh the roster so cache is updated
         showList({ forceCloseModal: true, forceRefresh: true });
 
-        // Fire notification
+        // Fire notification and toast (via notify system)
         const savedName = [
           (data.nameLast || ''),
           (data.nameFirst || '')
         ].filter(Boolean).join(', ') || (data.fullName || 'Unknown');
+        
         if (window.notify) {
           if (isUpdate) {
-            window.notify('audit', 'Personnel Updated', savedName + ' record was updated.');
+            window.notify('audit', 'Personnel Updated', `${savedName} record was updated successfully.`);
           } else {
-            window.notify('personnel', 'New Personnel Added', savedName + ' was added to the system.');
-          }
-        }
-
-        if (window.toast && typeof window.toast.success === 'function') {
-          if (setupResult.skipped) {
-            window.toast.success('Personnel saved. Username created. Card assignment skipped.');
-          } else {
-            window.toast.success('Personnel saved with username and card assignment.');
+            const extra = setupResult.skipped 
+              ? 'with username (card skipped).' 
+              : 'with username and card assignment.';
+            window.notify('personnel', 'New Personnel Added', `${savedName} was added to the system ${extra}`);
           }
         }
       } catch (err) {

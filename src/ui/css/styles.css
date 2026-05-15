@@ -927,7 +927,7 @@ body[data-app-view="form"] .topbar--institutional .topbar-seal {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  z-index: 10000;
+  z-index: 20000; /* Increased to stay above loader */
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1034,6 +1034,7 @@ body[data-app-view="form"] .topbar--institutional .topbar-seal {
 .toast.toast--closing {
   animation: slideOutRight 0.3s ease forwards;
 }
+
 
 .roster-toolbar__add--pill {
   border-radius: var(--radius-pill);
