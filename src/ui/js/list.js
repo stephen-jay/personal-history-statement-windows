@@ -3,6 +3,38 @@ import { buildDisplayFullName } from './form-data.js';
 import { escapeHtml, normalizeValue } from './escape.js';
 import { showConfirm } from './confirm.js';
 
+/**
+ * Open a record in the form/summary modal. The roster cache holds slim
+ * records (no signatures, thumb marks, handwriting, or child tables), so
+ * we fetch the full record on demand via personnelApi.getOne when the user
+ * clicks Edit/View. Falls back to the cached slim record if getOne isn't
+ * available or fails — that preserves prior behavior on older builds.
+ *
+ * @param {string} id  Personnel ID
+ * @param {object|undefined} slim  Cached roster row (may contain photo only)
+ * @param {(record: object) => void} render  Caller-supplied renderer
+ */
+function hydrateAndOpen(id, slim, render) {
+  const api = (typeof window !== 'undefined') ? window.personnelApi : null;
+  if (!api || typeof api.getOne !== 'function') {
+    if (slim) render(slim);
+    return;
+  }
+  Promise.resolve()
+    .then(function () { return api.getOne(id); })
+    .then(function (full) {
+      const merged = full || slim || null;
+      if (merged) render(merged);
+    })
+    .catch(function (err) {
+      console.warn('[LIST] getOne failed, using cached slim record:', err && err.message ? err.message : err);
+      if (slim) render(slim);
+      else if (typeof window !== 'undefined' && window.toast && window.toast.error) {
+        window.toast.error('Could not load record details.');
+      }
+    });
+}
+
 // Organization filter state
 let organizationFilter = null;
 let organizationFilterInitialized = false;
@@ -435,19 +467,23 @@ function rerenderRoster(records, deps) {
   deps.personnelTbody.querySelectorAll('.edit-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       const id = btn.getAttribute('data-id');
-      const record = records.find(function (r) { return String(r.id) === String(id); });
-      if (record) {
-        deps.setFormData(record);
+      if (!id) return;
+      const slim = records.find(function (r) { return String(r.id) === String(id); });
+      hydrateAndOpen(id, slim, function (full) {
+        deps.setFormData(full);
         deps.showForm();
-      }
+      });
     });
   });
 
   deps.personnelTbody.querySelectorAll('.view-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       const id = btn.getAttribute('data-id');
-      const record = records.find(function (r) { return String(r.id) === String(id); });
-      if (record) deps.openSummary(record);
+      if (!id) return;
+      const slim = records.find(function (r) { return String(r.id) === String(id); });
+      hydrateAndOpen(id, slim, function (full) {
+        deps.openSummary(full);
+      });
     });
   });
 

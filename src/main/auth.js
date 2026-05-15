@@ -30,10 +30,53 @@ function isConnectionError(err) {
 }
 
 
+const { createHash } = require('crypto');
+const dbManager = require('./db-manager');
+
 let authSessionPath = null;
+let localCredCachePath = null;
+
+// Simple local credential cache — updated on every successful DB login.
+// Used ONLY when both Ubuntu and Supabase are unreachable (local tier).
+let localCredCache = {};
+
+function hashForLocalCache(password) {
+  return createHash('sha256').update('phs-local-salt:' + password).digest('hex');
+}
+
+function loadLocalCredCache() {
+  if (!localCredCachePath) return;
+  try {
+    const raw = fs.readFileSync(localCredCachePath, 'utf8');
+    localCredCache = JSON.parse(raw) || {};
+  } catch (_) { localCredCache = {}; }
+}
+
+function saveLocalCredCache() {
+  if (!localCredCachePath) return;
+  try { fs.writeFileSync(localCredCachePath, JSON.stringify(localCredCache, null, 2), 'utf8'); } catch (_) {}
+}
+
+/**
+ * Called after every successful DB login to keep the local cache up-to-date.
+ * @param {string} username
+ * @param {string} plainPassword - the password the user just successfully logged in with
+ * @param {object} userMeta      - { id, username, fullName, roles }
+ */
+function updateLocalCredCache(username, plainPassword, userMeta) {
+  if (!username || !plainPassword) return;
+  localCredCache[String(username).toLowerCase()] = {
+    hash: hashForLocalCache(plainPassword),
+    user: userMeta,
+    cachedAt: new Date().toISOString(),
+  };
+  saveLocalCredCache();
+}
 
 function initAuth(userDataPath) {
   authSessionPath = path.join(userDataPath, 'auth-session.json');
+  localCredCachePath = path.join(userDataPath, 'auth-credentials-cache.json');
+  loadLocalCredCache();
 }
 
 let authSession = null;
@@ -124,6 +167,7 @@ async function createAdminUserLocal(payload) {
   const password = String(body.password || '');
   const fullName = String(body.fullName || body.full_name || '').trim();
   const roleName = String(body.roleName || body.role || '').trim();
+  const personnelId = String(body.personnelId || body.personnel_id || '').trim();
   if (!username || !password || !roleName) {
     throw new Error('username, password, and roleName are required.');
   }
@@ -131,19 +175,39 @@ async function createAdminUserLocal(payload) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
     const roleRow = await client.query('SELECT id FROM app_roles WHERE name = $1', [roleName]);
     if (!roleRow.rows || !roleRow.rows.length) {
       throw new Error('Unknown roleName.');
     }
     const roleId = roleRow.rows[0].id;
-    const inserted = await client.query(
-      `
-        INSERT INTO app_users (username, password_hash, full_name, is_active)
-        VALUES ($1, crypt($2, gen_salt('bf')), $3, TRUE)
-        RETURNING id, username, full_name
-      `,
-      [username, password, fullName]
+
+    // Check if personnel_id column exists (may not if migration hasn't run yet)
+    const colCheck = await client.query(
+      "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='app_users' AND column_name='personnel_id'"
     );
+    const hasPersonnelId = colCheck.rowCount > 0;
+
+    let inserted;
+    if (hasPersonnelId) {
+      inserted = await client.query(
+        `
+          INSERT INTO app_users (username, password_hash, full_name, personnel_id, is_active)
+          VALUES ($1, crypt($2, gen_salt('bf')), $3, $4, TRUE)
+          RETURNING id, username, full_name, personnel_id
+        `,
+        [username, password, fullName, personnelId || null]
+      );
+    } else {
+      inserted = await client.query(
+        `
+          INSERT INTO app_users (username, password_hash, full_name, is_active)
+          VALUES ($1, crypt($2, gen_salt('bf')), $3, TRUE)
+          RETURNING id, username, full_name
+        `,
+        [username, password, fullName]
+      );
+    }
     const userId = inserted.rows && inserted.rows[0] ? inserted.rows[0].id : null;
     if (!userId) throw new Error('Failed to create user.');
 
@@ -235,7 +299,19 @@ const QRCode = require('qrcode');
 
 async function beginLogin(username) {
   const pool = getPgPool();
-  if (!pool) throw new Error('DATABASE_URL is required for local auth.');
+
+  // ── Local tier fallback: no DB available ──────────────────────────────────
+  // When both Ubuntu and Supabase are unreachable, allow login from the
+  // local credential cache that was populated on the last successful login.
+  if (!pool) {
+    const key = String(username || '').toLowerCase();
+    if (localCredCache[key]) {
+      console.warn('[Auth] No DB available — using local credential cache for:', username);
+      // Return a fake challengeId so the flow continues; password is verified in verifyLocalCacheTier
+      return { challengeId: 'LOCAL_TIER:' + key, canUsePassword: true, localTier: true };
+    }
+    throw new Error('Database unavailable and no offline credentials cached for this user.');
+  }
   
   const userRow = await pool.query('SELECT id, username, is_active FROM app_users WHERE username = $1', [username]);
   if (!userRow.rows || !userRow.rows.length) {
@@ -563,6 +639,22 @@ async function adminResetTotp(adminUserId, targetUserId) {
   }
 }
 
+/**
+ * Verify a password against the local credential cache (used in local tier only).
+ * Returns the cached user session if the password matches.
+ */
+function verifyLocalCacheTier(username, password) {
+  const key = String(username || '').toLowerCase();
+  const entry = localCredCache[key];
+  if (!entry) throw new Error('No offline credentials cached for this user.');
+  if (entry.hash !== hashForLocalCache(password)) throw new Error('Incorrect password.');
+  console.warn('[Auth] Local tier login success for:', username);
+  return {
+    token: 'local-session',
+    user: entry.user,
+  };
+}
+
 module.exports = {
   initAuth,
   loadAuthSessionFromDisk,
@@ -581,4 +673,6 @@ module.exports = {
   adminResetTotp,
   enrollTotpForUser,
   verifyTotpForUser,
+  verifyLocalCacheTier,
+  updateLocalCredCache,
 };

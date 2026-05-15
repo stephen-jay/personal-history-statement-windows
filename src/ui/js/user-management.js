@@ -19,6 +19,7 @@
   const userCount = document.getElementById('userCount');
   const emptyState = document.getElementById('emptyState');
   const toast = document.getElementById('toast');
+  const btnResetAllUsers = document.getElementById('btnResetAllUsers');
   
   // Delete Dialog Elements
   const deleteOverlay = document.getElementById('deleteOverlay');
@@ -43,6 +44,7 @@
     btnCloseForm.addEventListener('click', () => closeFormPanel());
     btnCancelForm.addEventListener('click', () => closeFormPanel());
     btnCreateUser.addEventListener('click', () => createUser());
+    if (btnResetAllUsers) btnResetAllUsers.addEventListener('click', () => handleResetAllUsers());
     searchInput.addEventListener('input', () => filterUsers());
     
     // Delete listeners
@@ -231,6 +233,30 @@
     } catch (error) {
       console.error('Error creating user:', error);
       showToast('Error creating user', 'danger');
+    }
+  }
+
+  async function handleResetAllUsers() {
+    if (!confirm('Are you absolutely sure you want to RESET ALL USER ACCOUNTS? This will delete all users except the main "admin" account. This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      if (window.adminApi?.resetAllUsers) {
+        btnResetAllUsers.disabled = true;
+        btnResetAllUsers.textContent = 'Resetting...';
+        await window.adminApi.resetAllUsers();
+        showToast('All users (except admin) have been reset', 'success');
+        loadUsers();
+      }
+    } catch (error) {
+      console.error('Error resetting users:', error);
+      showToast('Error resetting users', 'danger');
+    } finally {
+      if (btnResetAllUsers) {
+        btnResetAllUsers.disabled = false;
+        btnResetAllUsers.textContent = 'Reset All Users';
+      }
     }
   }
 

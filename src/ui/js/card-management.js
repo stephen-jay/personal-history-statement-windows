@@ -738,8 +738,9 @@ function createPostSaveModalShell() {
 
   function getFilteredS2Cards() {
     const { s2Cards, s2Filter, s2Search } = modal.state;
-    return s2Cards.filter(c => {
-      const matchFilter = s2Filter === 'all' || (c.status || '').toLowerCase() === s2Filter;
+    return (s2Cards || []).filter(c => {
+      const status = String(c.status || 'available').toLowerCase();
+      const matchFilter = s2Filter === 'all' || status === s2Filter;
       const matchSearch = !s2Search || String(c.card_uid || c.uid || '').toLowerCase().includes(s2Search.toLowerCase());
       return matchFilter && matchSearch;
     });
@@ -767,11 +768,14 @@ function createPostSaveModalShell() {
     el.innerHTML = slice.map(c => {
       const uid    = escapePostSaveHtml(String(c.card_uid || c.uid || ''));
       const status = String(c.status || 'available').toLowerCase();
+      const isAssigned = status === 'assigned';
+      const isDisabled = status === 'disabled';
       const date   = c.registered_at ? new Date(c.registered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
       const checked = (modal.state.selectedCardUid === uid || modal.state.scannedCardUid === uid) ? 'checked' : '';
       const selected = checked ? 'is-selected' : '';
+      const disabledClass = (isAssigned || isDisabled) ? 'psm-s2-card-item--disabled' : '';
       return `
-        <label class="psm-s2-card-item ${selected}" data-uid="${uid}">
+        <label class="psm-s2-card-item ${selected} ${disabledClass}" data-uid="${uid}" data-status="${status}">
           <div class="psm-s2-card-item__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20" stroke-linecap="round"/></svg>
           </div>
@@ -788,6 +792,11 @@ function createPostSaveModalShell() {
     // Wire click on each item
     el.querySelectorAll('.psm-s2-card-item').forEach(item => {
       item.addEventListener('click', () => {
+        const status = item.getAttribute('data-status');
+        if (status === 'assigned' || status === 'disabled') {
+          // Do not allow selecting already assigned cards
+          return;
+        }
         const uid = item.getAttribute('data-uid');
         modal.state.selectedCardUid = uid;
         renderS2CardList();
@@ -845,7 +854,23 @@ function createPostSaveModalShell() {
       modal.modalEl.querySelector('#post-save-scan-zone') && modal.modalEl.querySelector('#post-save-scan-zone').classList.add('has-card');
       // Auto-select scanned card in the list if present
       const match = modal.state.s2Cards.find(c => String(c.card_uid || c.uid || '').toLowerCase() === uid.toLowerCase());
-      if (match) { modal.state.selectedCardUid = uid; }
+      if (match) {
+        const status = String(match.status || 'available').toLowerCase();
+        if (status === 'assigned' || status === 'disabled') {
+          if (modal.scanStatusTitle) modal.scanStatusTitle.textContent = 'Card Unavailable';
+          const owner = match.personnel_name || match.assigned_user_full_name || 'another personnel';
+          if (modal.scanStatusSub)   modal.scanStatusSub.textContent   = `This card is already ${status} to ${owner}.`;
+          if (modal.readerScanStatus)  modal.readerScanStatus.innerHTML = `<span style="color:#ef4444;font-weight:600">⚠ ${status.toUpperCase()}</span>`;
+          modal.state.scannedCardUid = '';
+          modal.state.selectedCardUid = '';
+          renderS2CardList();
+          return;
+        }
+        modal.state.selectedCardUid = uid;
+      } else {
+        // Card not in list (might be newly registered elsewhere)
+        modal.state.selectedCardUid = uid;
+      }
       renderS2CardList();
     });
     // Listen for reader connection/status updates (if main emits them)
@@ -1016,6 +1041,7 @@ function createPostSaveModalShell() {
         if (!window.authApi || typeof window.authApi.createUser !== 'function') throw new Error('User creation API not available');
         const response = await window.authApi.createUser({
           username, password,
+          fullName: getPostSaveFullName(modal.state.savedRecord),
           personnelId: modal.state.savedRecord && modal.state.savedRecord.id ? modal.state.savedRecord.id : undefined,
           role: role.toLowerCase(),
         });
@@ -1391,6 +1417,7 @@ export function createCardManagementController() {
   const registerTapLabel = document.getElementById('register-tap-label');
   const registerTapSub = document.getElementById('register-tap-sub');
   const registerStatusMsg = document.getElementById('register-status-message');
+  const resetBtn = document.getElementById('btn-reset-cards');
 
   // Personnel assign modal elements
   const assignModal = document.getElementById('assign-personnel-modal');
@@ -1445,7 +1472,7 @@ export function createCardManagementController() {
   function filterCards() {
     const filtered = currentFilter === 'all'
       ? allCards
-      : allCards.filter(c => c.status === currentFilter);
+      : allCards.filter(c => String(c.status || '').toLowerCase() === currentFilter.toLowerCase());
     return filtered;
   }
 
@@ -1643,6 +1670,7 @@ export function createCardManagementController() {
     registerTapSub.textContent = 'Tap a physical RFID/NFC card once to analyze it';
     registerStatusMsg.style.display = 'none';
     confirmRegisterBtn.disabled = true;
+    confirmRegisterBtn.textContent = 'Register';
     startListeningForCard();
   }
 
@@ -1730,6 +1758,7 @@ export function createCardManagementController() {
       await window.cardManagementApi.registerCard({ card_uid: registeredCardUid });
       
       setStatus(`Card ${registeredCardUid} registered successfully`, 'success');
+      confirmRegisterBtn.textContent = 'Register';
       closeRegisterModal();
       await loadCards();
     } catch (e) {
@@ -1784,11 +1813,44 @@ export function createCardManagementController() {
     }
   }
 
+  async function handleResetCards() {
+    const { showConfirm } = await import('./confirm.js');
+    const ok = await showConfirm('Are you absolutely sure you want to RESET ALL CARDS? This will permanently delete all card registrations and assignments. This action cannot be undone.', { 
+      confirmText: 'Yes, Reset Everything', 
+      cancelText: 'Cancel',
+      type: 'danger' 
+    });
+    if (!ok) return;
+
+    try {
+      if (!window.cardManagementApi || typeof window.cardManagementApi.resetAllCards !== 'function') {
+        setStatus('Card Management API not available', 'error');
+        return;
+      }
+      
+      resetBtn.disabled = true;
+      resetBtn.textContent = 'Resetting...';
+      
+      await window.cardManagementApi.resetAllCards();
+      setStatus('All cards have been reset successfully.', 'success');
+      await loadCards();
+    } catch (e) {
+      setStatus(`Error resetting cards: ${e && e.message ? e.message : e}`, 'error');
+      console.error('Error resetting cards:', e);
+    } finally {
+      if (resetBtn) {
+        resetBtn.disabled = false;
+        resetBtn.textContent = 'Reset All Cards';
+      }
+    }
+  }
+
   // Event listeners
   if (registerBtn) registerBtn.addEventListener('click', openRegisterModal);
   if (closeRegisterBtn) closeRegisterBtn.addEventListener('click', closeRegisterModal);
   if (cancelRegisterBtn) cancelRegisterBtn.addEventListener('click', closeRegisterModal);
   if (confirmRegisterBtn) confirmRegisterBtn.addEventListener('click', handleRegisterCard);
+  if (resetBtn) resetBtn.addEventListener('click', handleResetCards);
   if (assignModalCloseBtn) assignModalCloseBtn.addEventListener('click', closeAssignModal);
   if (assignModalCancelBtn) assignModalCancelBtn.addEventListener('click', closeAssignModal);
   if (assignModalSearch) assignModalSearch.addEventListener('input', renderPersonnelList);

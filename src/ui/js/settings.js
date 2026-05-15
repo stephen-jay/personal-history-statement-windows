@@ -9,6 +9,7 @@ export function initSettingsView(options) {
   const updateApi = opts.updateApi || null;
   const appApi = opts.appApi || null;
   const authApi = opts.authApi || null;
+  const dbSyncApi = opts.dbSyncApi || null;
 
   const tabButtons = Array.from(settingsViewEl.querySelectorAll('[data-settings-tab]'));
   const panels = Array.from(settingsViewEl.querySelectorAll('[data-settings-panel]'));
@@ -279,8 +280,76 @@ export function initSettingsView(options) {
     changelogBackdrop.addEventListener('click', closeChangelogModal);
   }
 
+  // ── Database sync row ──────────────────────────────────────────────────────
+  const syncBtn = settingsViewEl.querySelector('#settings-sync-now-btn');
+  const syncStatusEl = settingsViewEl.querySelector('#settings-sync-status');
+  const SYNC_DEFAULT_LABEL = 'Mirrors the primary database to the Supabase fallback. Runs once an hour.';
+
+  function setSyncStatus(text) {
+    if (syncStatusEl) syncStatusEl.textContent = text || SYNC_DEFAULT_LABEL;
+  }
+
+  function describeSyncStatus(s) {
+    if (!s) return SYNC_DEFAULT_LABEL;
+    if (s.running) return 'Sync running…';
+    const last = s.last;
+    if (!last) return SYNC_DEFAULT_LABEL;
+    const finished = last.finishedAt ? new Date(last.finishedAt).toLocaleString() : 'recently';
+    if (last.ok) {
+      const totalRows = (last.tables || []).reduce(function (acc, t) {
+        return acc + (typeof t.rows === 'number' ? t.rows : 0);
+      }, 0);
+      return 'Last sync: ' + finished + ' • ' + totalRows + ' rows • ' + Math.round((last.durationMs || 0) / 100) / 10 + 's';
+    }
+    return 'Last sync failed at ' + finished + ': ' + (last.error || 'unknown error');
+  }
+
+  async function refreshSyncStatus() {
+    if (!dbSyncApi || typeof dbSyncApi.status !== 'function') return;
+    try {
+      const s = await dbSyncApi.status();
+      setSyncStatus(describeSyncStatus(s));
+    } catch (_) {
+      setSyncStatus(SYNC_DEFAULT_LABEL);
+    }
+  }
+
+  if (syncBtn) {
+    if (!dbSyncApi || typeof dbSyncApi.sync !== 'function') {
+      syncBtn.disabled = true;
+      setSyncStatus('Sync is unavailable in this build.');
+    } else {
+      syncBtn.addEventListener('click', async function () {
+        syncBtn.disabled = true;
+        const prior = syncBtn.textContent;
+        syncBtn.textContent = 'Syncing…';
+        setSyncStatus('Sync running…');
+        try {
+          const result = await dbSyncApi.sync();
+          if (result && result.ok) {
+            setSyncStatus(describeSyncStatus({ last: result }));
+            if (toast && toast.success) toast.success('Database mirror synced.');
+          } else {
+            const msg = (result && result.error) || 'Sync failed';
+            setSyncStatus('Last sync failed: ' + msg);
+            if (toast && toast.error) toast.error('Sync failed: ' + msg);
+          }
+        } catch (e) {
+          const msg = (e && e.message) || String(e);
+          setSyncStatus('Last sync failed: ' + msg);
+          if (toast && toast.error) toast.error('Sync failed: ' + msg);
+        } finally {
+          syncBtn.disabled = false;
+          syncBtn.textContent = prior || 'Sync now';
+        }
+      });
+      // Populate the status row when the System tab is shown.
+      refreshSyncStatus();
+    }
+  }
+
   showTab('system');
   refreshVersion();
 
-  return { showTab, refreshVersion };
+  return { showTab, refreshVersion, refreshSyncStatus };
 }

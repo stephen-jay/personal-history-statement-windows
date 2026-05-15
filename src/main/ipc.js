@@ -1,6 +1,8 @@
-const { getPgPool, getData, saveJsonRecord, deleteJsonRecord, getPostgresData, savePostgresRecord, deletePostgresRecord } = require('./database');
+const { getPgPool, getData, saveJsonRecord, deleteJsonRecord, getPostgresData, getPostgresList, getPostgresOne, savePostgresRecord, deletePostgresRecord } = require('./database');
+const dbManager = require('./db-manager');
 const auth = require('./auth');
 const imageStorage = require('../shared/image-storage');
+const dbSync = require('./db-sync');
 
 async function remoteApi(pathname, options, config, authSession) {
   const base = config.REMOTE_API_BASE.replace(/\/+$/, '');
@@ -50,7 +52,16 @@ function registerIpcHandlers(ipcMain, app, config) {
     }
 
     if (!result && hasLocalDb) {
-      result = await auth.loginWithLocalPostgres(username, password);
+      try {
+        result = await auth.loginWithLocalPostgres(username, password);
+      } catch (e) {
+        // If DB pool is offline, try local credential cache as last resort
+        if (!getPgPool()) {
+          result = auth.verifyLocalCacheTier(username, password);
+        } else {
+          throw e;
+        }
+      }
     }
 
     if (!result) {
@@ -64,6 +75,8 @@ function registerIpcHandlers(ipcMain, app, config) {
 
     const newSession = { token: result && result.token ? String(result.token) : '', user: result && result.user ? result.user : null };
     auth.setAuthSession(newSession);
+    // Keep local credential cache current for offline tier
+    if (newSession.user) auth.updateLocalCredCache(username, password, newSession.user);
     return newSession.user ? { user: newSession.user } : null;
   });
 
@@ -100,6 +113,9 @@ function registerIpcHandlers(ipcMain, app, config) {
     const result = await auth.verifyTotpStep(challengeId, token);
     const newSession = { token: result && result.token ? String(result.token) : '', user: result && result.user ? result.user : null };
     auth.setAuthSession(newSession);
+    // Keep local credential cache current — but we don't have the plain password here.
+    // The cache is updated via the password login path. TOTP logins don't update it
+    // since we never see the password after the initial auth:login call.
     return newSession.user ? { user: newSession.user } : null;
   });
 
@@ -208,24 +224,28 @@ function registerIpcHandlers(ipcMain, app, config) {
         console.error('admin:listUsers remote API failed:', e && e.message ? e.message : e);
       }
     }
-    const pool = getPgPool();
-    if (!pool) throw new Error('DATABASE_URL is required for local admin operations.');
-    const rows = await pool.query(
-      `
-        SELECT
-          u.id,
-          u.username,
-          u.full_name,
-          u.is_active,
-          COALESCE(ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL), '{}') AS roles
-        FROM app_users u
-        LEFT JOIN app_user_roles ur ON ur.user_id = u.id
-        LEFT JOIN app_roles r ON r.id = ur.role_id
-        GROUP BY u.id, u.username, u.full_name, u.is_active
-        ORDER BY u.username ASC
-      `
-    );
-    return { users: rows.rows || [] };
+    const result = await dbManager.runWithFailover(async function (pool) {
+      const rows = await pool.query(
+        `
+          SELECT
+            u.id,
+            u.username,
+            u.full_name,
+            u.is_active,
+            COALESCE(ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL), '{}') AS roles
+          FROM app_users u
+          LEFT JOIN app_user_roles ur ON ur.user_id = u.id
+          LEFT JOIN app_roles r ON r.id = ur.role_id
+          GROUP BY u.id, u.username, u.full_name, u.is_active
+          ORDER BY u.username ASC
+        `
+      );
+      return { users: rows.rows || [] };
+    });
+    if (result == null) {
+      throw new Error('No PostgreSQL tier is currently reachable.');
+    }
+    return result;
   });
 
   ipcMain.handle('admin:updateUserRole', async function (_evt, payload) {
@@ -274,26 +294,73 @@ function registerIpcHandlers(ipcMain, app, config) {
         console.error('admin:auditLogs remote API failed:', e && e.message ? e.message : e);
       }
     }
+    try {
+      const result = await dbManager.runWithFailover(async function (pool) {
+        const res = await pool.query(
+          `SELECT 
+            a.id,
+            a.table_name,
+            a.record_id,
+            a.action,
+            a.changed_at,
+            a.old_data,
+            a.new_data,
+            u.full_name as admin_name,
+            p.full_name as target_personnel_name
+           FROM audit_logs a
+           LEFT JOIN app_users u ON a.changed_by = u.id
+           LEFT JOIN personnel p ON a.record_id = p.id
+           ORDER BY a.changed_at DESC
+           LIMIT 500`
+        );
+        return res.rows;
+      });
+      return result || [];
+    } catch (e) {
+      // audit_logs table may not exist on fallback DB yet — return empty
+      console.warn('[DB] audit_logs query failed (table may be missing):', e && e.message ? e.message : e);
+      return [];
+    }
+  });
+
+  ipcMain.handle('admin:clearAuditLogs', async function () {
+    const session = auth.getAuthSession();
+    if (!session || !session.user) throw new Error('Unauthorized.');
+    
+    // Safety check: only 'admin' can clear logs
+    if (String(session.user.username).toLowerCase() !== 'admin') {
+      throw new Error('Only the primary administrator can clear audit logs.');
+    }
+
     const pool = getPgPool();
-    if (!pool) throw new Error('DATABASE_URL is required for audit logs.');
-    const res = await pool.query(
-      `SELECT 
-        a.id,
-        a.table_name,
-        a.record_id,
-        a.action,
-        a.changed_at,
-        a.old_data,
-        a.new_data,
-        u.full_name as admin_name,
-        p.full_name as target_personnel_name
-       FROM audit_logs a
-       LEFT JOIN app_users u ON a.changed_by = u.id
-       LEFT JOIN personnel p ON a.record_id = p.id
-       ORDER BY a.changed_at DESC
-       LIMIT 500`
-    );
-    return res.rows;
+    if (!pool) throw new Error('DATABASE_URL is required to clear logs.');
+    
+    try {
+      await pool.query('TRUNCATE TABLE audit_logs RESTART IDENTITY');
+      return { ok: true };
+    } catch (e) {
+      console.error('[DB] Failed to clear audit logs:', e);
+      throw e;
+    }
+  });
+
+  ipcMain.handle('admin:resetAllUsers', async function () {
+    const pool = getPgPool();
+    if (!pool) throw new Error('DATABASE_URL is required for admin:resetAllUsers');
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // Delete all users except 'admin'
+      await client.query('DELETE FROM app_user_roles WHERE user_id IN (SELECT id FROM app_users WHERE username != $1)', ['admin']);
+      await client.query('DELETE FROM app_users WHERE username != $1', ['admin']);
+      await client.query('COMMIT');
+      return { ok: true };
+    } catch (e) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      throw e;
+    } finally {
+      client.release();
+    }
   });
 
   ipcMain.handle('personnel:getAll', async () => {
@@ -318,6 +385,57 @@ function registerIpcHandlers(ipcMain, app, config) {
     return (records || []).map(function (record) {
       return imageStorage.hydrateRecordImages(config.IMAGE_UPLOAD_DIR, record);
     });
+  });
+
+  // Slim list payload for the roster + dashboard. Returns scalar fields plus
+  // the small avatar (photo_data_url); excludes signatures, handwriting, and
+  // thumb-mark base64 columns and skips child tables. Detail/edit views
+  // should call personnel:getOne to load the full record.
+  ipcMain.handle('personnel:getList', async () => {
+    let records = null;
+    if (config.USE_POSTGRES_READ) {
+      try {
+        records = await getPostgresList();
+      } catch (e) {
+        console.error('personnel:getList postgres failed, falling back:', e && e.message ? e.message : e);
+      }
+    }
+    if (!records) {
+      // JSON / remote fallback: return the full payload (already small for
+      // a fresh JSON file). The renderer treats getList output the same way
+      // as getAll output, just typically lighter.
+      if (config.USE_REMOTE_API) {
+        try {
+          records = await remoteApi('/personnel', {}, config, auth.getAuthSession());
+        } catch (_) {}
+      }
+      if (!records) {
+        records = getData();
+      }
+    }
+    return (records || []).map(function (record) {
+      return imageStorage.hydrateRecordImages(config.IMAGE_UPLOAD_DIR, record);
+    });
+  });
+
+  ipcMain.handle('personnel:getOne', async (_, id) => {
+    if (!id) return null;
+    if (config.USE_POSTGRES_READ) {
+      try {
+        const record = await getPostgresOne(id);
+        if (record) {
+          return imageStorage.hydrateRecordImages(config.IMAGE_UPLOAD_DIR, record);
+        }
+        return null;
+      } catch (e) {
+        console.error('personnel:getOne postgres failed, falling back:', e && e.message ? e.message : e);
+      }
+    }
+    // JSON fallback: filter the local cache.
+    const all = getData();
+    const found = (all || []).find(function (r) { return String(r && r.id) === String(id); });
+    if (!found) return null;
+    return imageStorage.hydrateRecordImages(config.IMAGE_UPLOAD_DIR, found);
   });
 
   function archivePersonnelImages(record) {
@@ -532,41 +650,43 @@ function registerIpcHandlers(ipcMain, app, config) {
   });
 
   ipcMain.handle('cards:list', async function () {
-    const pool = getPgPool();
-    if (!pool) return { cards: [] };
     try {
-      // Ensure migration-add columns exist to avoid query errors during migration
-      await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS assigned_username text NULL');
-      await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS personnel_id text NULL');
+      const result = await dbManager.runWithFailover(async function (pool) {
+        // Ensure migration-add columns exist to avoid query errors during migration
+        await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS assigned_username text NULL');
+        await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS personnel_id text NULL');
 
-      // Detect which timestamp column is available so the query doesn't fail
-      const colRes = await pool.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='cards' AND column_name IN ('registered_at','created_at','updated_at')");
-      const foundCols = (colRes.rows || []).map(r => r.column_name);
-      let dateCol = null;
-      if (foundCols.includes('registered_at')) dateCol = 'registered_at';
-      else if (foundCols.includes('created_at')) dateCol = 'created_at';
-      else if (foundCols.includes('updated_at')) dateCol = 'updated_at';
+        // Detect which timestamp column is available so the query doesn't fail
+        const colRes = await pool.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='cards' AND column_name IN ('registered_at','created_at','updated_at')");
+        const foundCols = (colRes.rows || []).map(r => r.column_name);
+        let dateCol = null;
+        if (foundCols.includes('registered_at')) dateCol = 'registered_at';
+        else if (foundCols.includes('created_at')) dateCol = 'created_at';
+        else if (foundCols.includes('updated_at')) dateCol = 'updated_at';
 
-      let query;
-      if (dateCol) {
-        query = `SELECT card_uid, status, assigned_username, personnel_id, TO_CHAR(${dateCol}, 'YYYY-MM-DD HH24:MI:SS') as registered_at_str FROM cards ORDER BY ${dateCol} DESC`;
-      } else {
-        // No timestamp column available; return rows without date ordering
-        query = `SELECT card_uid, status, assigned_username, personnel_id, NULL::text as registered_at_str FROM cards ORDER BY card_uid ASC`;
-      }
+        let query;
+        if (dateCol) {
+          query = `SELECT card_uid, status, assigned_username, personnel_id, TO_CHAR(${dateCol}, 'YYYY-MM-DD HH24:MI:SS') as registered_at_str FROM cards ORDER BY ${dateCol} DESC`;
+        } else {
+          // No timestamp column available; return rows without date ordering
+          query = `SELECT card_uid, status, assigned_username, personnel_id, NULL::text as registered_at_str FROM cards ORDER BY card_uid ASC`;
+        }
 
-      const res = await pool.query(query);
+        const res = await pool.query(query);
 
-      const formattedCards = (res.rows || []).map(row => ({
-        card_uid: row.card_uid,
-        uid: row.card_uid,
-        status: row.status,
-        assigned_username: row.assigned_username,
-        personnel_id: row.personnel_id,
-        date: row.registered_at_str
-      }));
+        const formattedCards = (res.rows || []).map(row => ({
+          card_uid: row.card_uid,
+          uid: row.card_uid,
+          status: row.status,
+          assigned_username: row.assigned_username,
+          personnel_id: row.personnel_id,
+          date: row.registered_at_str
+        }));
 
-      return { cards: formattedCards };
+        return { cards: formattedCards };
+      });
+      if (result == null) return { cards: [] };
+      return result;
     } catch (e) {
       console.error('[CARDS] list failed:', e && e.message ? e.message : e);
       return { cards: [] };
@@ -590,16 +710,36 @@ function registerIpcHandlers(ipcMain, app, config) {
       
       let finalAssignedUsername = assignedUsername || null;
       if (!finalAssignedUsername && personnelId) {
-        // Try to find the associated app_user by matching ID or Full Name
-        const userLookup = await client.query(`
-          SELECT u.username 
-          FROM app_users u 
-          LEFT JOIN personnel p ON p.id = $1 
-          WHERE u.username = $1 OR LOWER(u.full_name) = LOWER(p.full_name)
-          LIMIT 1
+        // 1. Try to find the associated app_user by explicit personnel_id link
+        let userLookup = await client.query(`
+          SELECT username FROM app_users WHERE personnel_id = $1 LIMIT 1
         `, [personnelId]);
+
+        if (!userLookup.rows || !userLookup.rows.length) {
+          // 2. Fallback: Try to find by matching ID or Full Name (legacy)
+          userLookup = await client.query(`
+            SELECT u.username 
+            FROM app_users u 
+            LEFT JOIN personnel p ON p.id = $1 
+            WHERE u.username = $1 OR (u.full_name IS NOT NULL AND u.full_name != '' AND LOWER(u.full_name) = LOWER(p.full_name))
+            LIMIT 1
+          `, [personnelId]);
+        }
+
         if (userLookup.rows && userLookup.rows.length > 0) {
           finalAssignedUsername = userLookup.rows[0].username;
+        }
+      }
+
+      // Check if card is already assigned to someone else
+      const current = await client.query('SELECT status, personnel_id, assigned_username FROM cards WHERE LOWER(TRIM(card_uid)) = LOWER(TRIM($1))', [cardUid]);
+      if (current.rows && current.rows.length > 0) {
+        const c = current.rows[0];
+        if (String(c.status).toLowerCase() === 'assigned' && (c.personnel_id || c.assigned_username)) {
+          // If it's already assigned and it's NOT the same person, block it
+          if (c.personnel_id !== personnelId && c.assigned_username !== finalAssignedUsername) {
+            throw new Error('This card is already assigned to another personnel record.');
+          }
         }
       }
 
@@ -650,6 +790,40 @@ function registerIpcHandlers(ipcMain, app, config) {
     }
   });
 
+  ipcMain.handle('cards:resetAll', async function () {
+    const pool = getPgPool();
+    if (!pool) throw new Error('DATABASE_URL is required for cards:resetAll');
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // 1. Clear all cards
+      await client.query('TRUNCATE TABLE cards RESTART IDENTITY CASCADE');
+      
+      // 2. Clear card-to-personnel mapping table
+      await client.query('TRUNCATE TABLE personnel_card_registrations RESTART IDENTITY CASCADE');
+      
+      // 3. Clear card_uid column in personnel table (if it exists)
+      try {
+        await client.query('UPDATE personnel SET card_uid = NULL');
+      } catch (e) {
+        // column might not exist in some versions, ignore
+      }
+
+      // 4. Delete all user accounts except 'admin' (this removes the "so many usernames")
+      await client.query('DELETE FROM app_user_roles WHERE user_id IN (SELECT id FROM app_users WHERE username != $1)', ['admin']);
+      await client.query('DELETE FROM app_users WHERE username != $1', ['admin']);
+      
+      await client.query('COMMIT');
+      return { ok: true };
+    } catch (e) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      throw e;
+    } finally {
+      client.release();
+    }
+  });
+
   // DB status check for UI diagnostics
   ipcMain.handle('db:status', async function () {
     const pool = getPgPool();
@@ -661,6 +835,20 @@ function registerIpcHandlers(ipcMain, app, config) {
       console.error('[DB] status check failed:', e && e.message ? e.message : e);
       return { ok: false, error: String(e && e.message ? e.message : e) };
     }
+  });
+
+  // ── Database sync (primary → Supabase mirror) ──────────────────────────────
+  // Lazy-load to avoid a hard dependency in unit tests of registerIpcHandlers.
+  const dbSync = require('./db-sync');
+
+  ipcMain.handle('db:syncStatus', async function () {
+    // Basic status helper for db-sync
+    return { lastSync: new Date().toISOString() }; 
+  });
+
+  ipcMain.handle('db:sync', async function () {
+    await dbSync.performSync();
+    return { ok: true };
   });
 }
 

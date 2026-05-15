@@ -2,6 +2,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('personnelApi', {
   getAll: () => ipcRenderer.invoke('personnel:getAll'),
+  getList: () => ipcRenderer.invoke('personnel:getList'),
+  getOne: (id) => ipcRenderer.invoke('personnel:getOne', id),
   save: (record) => ipcRenderer.invoke('personnel:save', record),
   delete: (id, version) => ipcRenderer.invoke('personnel:delete', id, version),
   getHistory: (id) => ipcRenderer.invoke('personnel:getHistory', id),
@@ -29,7 +31,9 @@ contextBridge.exposeInMainWorld('adminApi', {
   updateUserRole: (userId, roleName) => ipcRenderer.invoke('admin:updateUserRole', { userId, roleName }),
   deleteUser: (userId) => ipcRenderer.invoke('admin:deleteUser', { userId }),
   getAuditLogs: () => ipcRenderer.invoke('admin:auditLogs'),
+  clearAuditLogs: () => ipcRenderer.invoke('admin:clearAuditLogs'),
   resetTotp: (targetUserId) => ipcRenderer.invoke('auth:adminResetTotp', { targetUserId }),
+  resetAllUsers: () => ipcRenderer.invoke('admin:resetAllUsers'),
 });
 
 contextBridge.exposeInMainWorld('exportApi', {
@@ -67,6 +71,7 @@ contextBridge.exposeInMainWorld('cardManagementApi', {
     });
   },
   unassignCard: (payload) => ipcRenderer.invoke('cards:unassign', payload),
+  resetAllCards: () => ipcRenderer.invoke('cards:resetAll'),
 });
 
 contextBridge.exposeInMainWorld('updateApi', {
@@ -100,4 +105,10 @@ contextBridge.exposeInMainWorld('appApi', {
       return null;
     }
   }
+});
+
+// Database sync (primary → Supabase mirror)
+contextBridge.exposeInMainWorld('dbSyncApi', {
+  status: () => ipcRenderer.invoke('db:syncStatus'),
+  sync: () => ipcRenderer.invoke('db:sync'),
 });

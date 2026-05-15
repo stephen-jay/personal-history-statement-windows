@@ -1,61 +1,15 @@
+import { initToastSystem } from './toast.js';
+
 function $(id) {
   return document.getElementById(id);
 }
 
 // ── Toast Notification System ────────────────────────────────────────────────
-var _toastTimer = null;
+const toast = initToastSystem();
 
-function showToast(message, type) {
-  if (!message) return;
-  type = type || 'error';
-
-  var container = $('toast-container');
-  if (!container) return;
-
-  // Remove any existing toast
-  var existing = container.querySelector('.login-toast');
-  if (existing) existing.remove();
-  if (_toastTimer) { clearTimeout(_toastTimer); _toastTimer = null; }
-
-  var icons = {
-    error: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
-    warning: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
-    info: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
-  };
-
-  var toast = document.createElement('div');
-  toast.className = 'login-toast toast-' + type;
-  toast.innerHTML =
-    '<div class="toast-icon">' + (icons[type] || icons.error) + '</div>' +
-    '<div class="toast-body">' +
-      '<span class="toast-msg">' + message + '</span>' +
-    '</div>' +
-    '<button class="toast-close" aria-label="Dismiss">' +
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
-    '</button>' +
-    '<div class="toast-progress"></div>';
-
-  container.appendChild(toast);
-
-  // Animate in
-  requestAnimationFrame(function() {
-    requestAnimationFrame(function() { toast.classList.add('toast-visible'); });
-  });
-
-  function dismissToast() {
-    toast.classList.remove('toast-visible');
-    toast.classList.add('toast-hiding');
-    setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300);
-    if (_toastTimer) { clearTimeout(_toastTimer); _toastTimer = null; }
-  }
-
-  toast.querySelector('.toast-close').addEventListener('click', dismissToast);
-  _toastTimer = setTimeout(dismissToast, 4500);
-}
-
-function setError(message) {
-  if (!message) return; // clear is a no-op — toasts auto-dismiss
-  showToast(message, 'error');
+function setError(message, opts) {
+  if (!message || (opts && opts.persistent)) return;
+  toast.error(message);
 }
 
 function setCardMessage(message) {
@@ -152,7 +106,7 @@ function refreshLockoutUi() {
   var remaining = getLockRemainingSeconds();
   if (remaining > 0) {
     setLoginLocked(true, remaining);
-    setError('Too many failed attempts. Please wait ' + String(remaining) + 's.');
+    setError('Too many failed attempts. Please wait ' + String(remaining) + 's.', { persistent: true });
     return true;
   }
   setLoginLocked(false, 0);
@@ -293,16 +247,8 @@ function resetToStart() {
   currentChallengeId = null;
   currentLoginUsername = '';
   currentCanUsePassword = false;
-  var adminInline = $('admin-password-inline');
-  if (adminInline) adminInline.hidden = true;
-  var adminModal = $('admin-password-modal');
-  if (adminModal) adminModal.hidden = true;
   var adminPwdInput = $('admin-password-input');
   if (adminPwdInput) adminPwdInput.value = '';
-  var adminModalInput = $('admin-password-modal-input');
-  if (adminModalInput) adminModalInput.value = '';
-  var bottomBtn = $('btn-admin-password-bottom');
-  if (bottomBtn) bottomBtn.hidden = true;
   showStep('step-username');
   var un = $('username-input');
   if (un) { un.value = ''; un.focus(); }
@@ -407,19 +353,6 @@ async function handleNextUsername() {
     
     showStep('step-card');
     startCardTapListening();
-
-    // Reveal admin password modal only if explicitly allowed by backend.
-    try {
-      var modalOverlay = $('admin-password-modal');
-      if (modalOverlay) modalOverlay.hidden = !currentCanUsePassword;
-      var bottomBtn = $('btn-admin-password-bottom');
-      // hide bottom persistent button when admin modal is shown to avoid confusion
-      if (bottomBtn) bottomBtn.hidden = currentCanUsePassword;
-      if (currentCanUsePassword) {
-        var pwd = $('admin-password-modal-input');
-        if (pwd) pwd.focus();
-      }
-    } catch (_) {}
   } catch (err) {
     if (String((err && err.message) || '').toLowerCase().includes('user not found')) {
         registerFailedAttempt();
@@ -433,24 +366,20 @@ async function handleNextUsername() {
 
 async function handleAdminPassword() {
   if (refreshLockoutUi()) return;
-  if (!currentCanUsePassword) {
-    setError('Password login is not available for this account.');
-    return;
-  }
   var username = currentLoginUsername || (($('username-input') && $('username-input').value) || '').trim();
   if (!username) {
     setError('Missing username.');
     return;
   }
-  // Read from modal input instead of inline input
-  var pwdEl = $('admin-password-modal-input') || $('admin-password-input');
+  // Read from the visible inline admin input first; fall back to the legacy modal field.
+  var pwdEl = $('admin-password-input') || $('admin-password-modal-input');
   var pwd = pwdEl && pwdEl.value ? String(pwdEl.value) : '';
   if (!pwd) {
     setError('Please enter your password.');
     return;
   }
 
-  var btn = $('btn-admin-password-modal') || $('btn-admin-password');
+  var btn = $('btn-admin-password') || $('btn-admin-password-modal');
   if (btn) { btn.disabled = true; btn.innerHTML = 'Logging in...'; }
   var bottomBtn = $('btn-admin-password-bottom');
   if (bottomBtn) { bottomBtn.disabled = true; bottomBtn.innerHTML = 'Logging in...'; }
@@ -460,6 +389,7 @@ async function handleAdminPassword() {
     var session = await window.authApi.login(username, pwd);
     if (!session) throw new Error('Login failed.');
     clearAttemptState();
+    localStorage.setItem('phs.login_success', 'true');
     window.location.href = 'index.html';
   } catch (err) {
     registerFailedAttempt();
@@ -538,6 +468,7 @@ async function handleVerifyTotp(inputId, btnId) {
     if (!session) throw new Error('Session not created.');
     
     clearAttemptState();
+    localStorage.setItem('phs.login_success', 'true');
     window.location.href = 'index.html';
   } catch (err) {
     registerFailedAttempt();
@@ -583,11 +514,15 @@ function initListeners() {
     loginForm.addEventListener('submit', function(e) {
       e.preventDefault();
       var unDiv = $('step-username');
+      var cardDiv = $('step-card');
       var enrollDiv = $('step-enroll');
       var verifyDiv = $('step-verify');
+      var adminPwdInput = $('admin-password-input');
       
       if (unDiv && !unDiv.hidden) {
         handleNextUsername();
+      } else if (cardDiv && !cardDiv.hidden && adminPwdInput && String(adminPwdInput.value || '').trim()) {
+        handleAdminPassword();
       } else if (enrollDiv && !enrollDiv.hidden) {
         handleVerifyTotp('enroll-otp', 'btn-verify-enroll');
       } else if (verifyDiv && !verifyDiv.hidden) {
