@@ -1,4 +1,4 @@
-﻿/* Card Management View Styles */
+/* Card Management View Styles */
 
 .card-management-container {
   padding: 24px;
@@ -105,6 +105,29 @@
 #btn-register-card {
   padding: 10px 16px;
   font-size: 14px;
+}
+
+.btn.danger-outline {
+  background: transparent;
+  color: #dc2626;
+  border: 1px solid #dc2626;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn.danger-outline:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #b91c1c;
+  color: #b91c1c;
+}
+
+.btn.danger-outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Table */
@@ -1781,3 +1804,20 @@ input::-ms-clear { display: none !important; visibility: hidden !important; }
 }
 .psm-s2-page-btn:hover:not(:disabled) { background: #f8fafc; color: #0f172a; }
 .psm-s2-page-btn:disabled { opacity: 0.5; cursor: not-allowed; background: #f1f5f9; }
+
+/* Disabled Card Items */
+.psm-s2-card-item--disabled {
+  opacity: 0.6;
+  cursor: not-allowed !important;
+  background-color: #f9fafb !important;
+}
+
+.psm-s2-card-item--disabled:hover {
+  border-color: #dbe5f1 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.psm-s2-card-item--disabled .psm-s2-card-radio {
+  display: none;
+}

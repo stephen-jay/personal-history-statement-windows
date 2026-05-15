@@ -244,6 +244,7 @@ app.post('/admin/users', requireAuth, requireAdmin, async function (req, res) {
   const password = String(body.password || '');
   const fullName = String(body.fullName || body.full_name || '').trim();
   const roleName = String(body.roleName || body.role || '').trim();
+  const personnelId = String(body.personnelId || body.personnel_id || '').trim();
 
   if (!username || !password || !roleName) {
     return res.status(400).json({ error: 'username, password, and roleName are required.' });
@@ -256,13 +257,17 @@ app.post('/admin/users', requireAuth, requireAdmin, async function (req, res) {
     const roleId = roleRow.rows[0].id;
 
     await client.query('BEGIN');
+    
+    // Ensure personnel_id column exists
+    await client.query('ALTER TABLE app_users ADD COLUMN IF NOT EXISTS personnel_id text NULL');
+
     const inserted = await client.query(
       `
-        INSERT INTO app_users (username, password_hash, full_name, is_active)
-        VALUES ($1, crypt($2, gen_salt('bf')), $3, TRUE)
-        RETURNING id, username, full_name
+        INSERT INTO app_users (username, password_hash, full_name, personnel_id, is_active)
+        VALUES ($1, crypt($2, gen_salt('bf')), $3, $4, TRUE)
+        RETURNING id, username, full_name, personnel_id
       `,
-      [username, password, fullName]
+      [username, password, fullName, personnelId || null]
     );
 
     const userId = inserted.rows && inserted.rows[0] ? inserted.rows[0].id : null;

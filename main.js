@@ -16,6 +16,7 @@ const { initDatabase } = require('./src/main/database');
 const { registerExportHandlers } = require('./src/main/export');
 const auth = require('./src/main/auth');
 const { registerIpcHandlers } = require('./src/main/ipc');
+const dbSync = require('./src/main/db-sync');
 
 // --- Configuration Setup ---
 dotenv.config({ override: true });
@@ -87,6 +88,13 @@ auth.initAuth(app.getPath('userData'));
 auth.loadAuthSessionFromDisk();
 registerIpcHandlers(ipcMain, app, config);
 
+// Start periodic primary→Supabase sync. Only fires when the primary tier
+// is actively reachable, so Supabase keeps a recent mirror without slowing
+// down user writes.
+if (process.env.SUPABASE_DB_URL) {
+  dbSync.startPeriodicSync();
+}
+
 // --- Electron Window Management ---
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu');
@@ -95,7 +103,9 @@ app.commandLine.appendSwitch('disable-gpu-compositing');
 app.commandLine.appendSwitch('disable-accelerated-2d-canvas');
 app.commandLine.appendSwitch('disable-accelerated-video-decode');
 app.commandLine.appendSwitch('disable-accelerated-video-encode');
-app.commandLine.appendSwitch('disable-features', 'GPU');
+app.commandLine.appendSwitch('disable-features', 'GPU,DirectComposition,DirectCompositionVideoOverlays');
+app.commandLine.appendSwitch('disable-direct-composition');
+app.commandLine.appendSwitch('disable-direct-composition-video-overlays');
 
 let mainWindow;
 let rfidWatcherProcess = null;
@@ -344,4 +354,5 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
   stopRfidWatcher();
+  try { dbSync.stopPeriodicSync(); } catch (_) {}
 });
