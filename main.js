@@ -50,6 +50,24 @@ function loadConfigFromFile(configPath, loader) {
 }
 
 function loadExternalConfig() {
+  // On first launch after install, copy the bundled default config to userData
+  // so the app has DB credentials without manual setup.
+  try {
+    const userDataDir = app.getPath('userData');
+    const userConfig = path.join(userDataDir, 'app-config.json');
+    if (!fs.existsSync(userConfig)) {
+      // Look for bundled config in extraResources
+      const bundledConfig = path.join(process.resourcesPath || '', 'config', 'app-config.json');
+      if (fs.existsSync(bundledConfig)) {
+        if (!fs.existsSync(userDataDir)) fs.mkdirSync(userDataDir, { recursive: true });
+        fs.copyFileSync(bundledConfig, userConfig);
+        console.log('[CONFIG] Copied bundled app-config.json to', userConfig);
+      }
+    }
+  } catch (e) {
+    console.warn('[CONFIG] Auto-copy failed:', e.message);
+  }
+
   const dirs = [
     process.execPath ? path.dirname(process.execPath) : null,
     process.cwd(),

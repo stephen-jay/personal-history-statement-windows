@@ -1,6 +1,6 @@
 {
   "name": "apollo-personnel-db",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Personnel database - initial input: Personnel History Statement",
   "main": "main.js",
   "scripts": {
@@ -38,6 +38,10 @@
       {
         "from": "RFID",
         "to": "RFID"
+      },
+      {
+        "from": "config/app-config.json",
+        "to": "config/app-config.json"
       }
     ],
     "win": {
