@@ -1193,10 +1193,6 @@ async function loadCardsPage() {
       showSavingOverlay();
 
       try {
-        if (typeof openPostSaveModal !== 'function') {
-          throw new Error('Post-save setup modal is unavailable.');
-        }
-
         // 1. Save the personnel record first to get the ID (especially for new records)
         const savedPersonnel = await window.personnelApi.save(data);
         if (!savedPersonnel || !savedPersonnel.id) {
@@ -1206,16 +1202,19 @@ async function loadCardsPage() {
         // Brief pause so the saving overlay is visible before transitioning
         await new Promise(function (r) { setTimeout(r, 420); });
 
-        // 2. Hide overlay then open the post-save setup modal
+        // 2. Only open the post-save account/card setup modal for NEW records.
+        //    Edits just save and return to the list.
         hideSavingOverlay();
-        const setupResult = await openPostSaveModal(savedPersonnel);
-        if (!setupResult || !setupResult.ok) {
-          // If user cancelled the setup, we still saved the personnel, so just refresh list
-          showList({ forceCloseModal: true, forceRefresh: true });
-          return;
+        if (!isUpdate && typeof openPostSaveModal === 'function') {
+          const setupResult = await openPostSaveModal(savedPersonnel);
+          if (!setupResult || !setupResult.ok) {
+            // If user cancelled the setup, we still saved the personnel, so just refresh list
+            showList({ forceCloseModal: true, forceRefresh: true });
+            return;
+          }
         }
 
-        // After saving and setup, force refresh the roster so cache is updated
+        // After saving (and setup for new records), force refresh the roster
         showList({ forceCloseModal: true, forceRefresh: true });
 
         // Fire notification and toast (via notify system)
@@ -1228,10 +1227,7 @@ async function loadCardsPage() {
           if (isUpdate) {
             window.notify('audit', 'Personnel Updated', `${savedName} record was updated successfully.`);
           } else {
-            const extra = setupResult.skipped 
-              ? 'with username (card skipped).' 
-              : 'with username and card assignment.';
-            window.notify('personnel', 'New Personnel Added', `${savedName} was added to the system ${extra}`);
+            window.notify('personnel', 'New Personnel Added', `${savedName} was added to the system.`);
           }
         }
       } catch (err) {

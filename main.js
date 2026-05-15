@@ -228,6 +228,17 @@ try {
 } catch (_) {}
 
 function setupAutoUpdates() {
+  // IPC handlers for renderer-initiated actions (always register to avoid errors in dev)
+  ipcMain.handle('update:download', async () => {
+    try { if (!app.isPackaged) return { ok: false, error: 'Not available in development' }; await autoUpdater.downloadUpdate(); return { ok: true }; } catch (e) { return { ok: false, error: String(e && e.message ? e.message : e) }; }
+  });
+  ipcMain.handle('update:install', async () => {
+    try { if (!app.isPackaged) return { ok: false, error: 'Not available in development' }; autoUpdater.quitAndInstall(); return { ok: true }; } catch (e) { return { ok: false, error: String(e && e.message ? e.message : e) }; }
+  });
+  ipcMain.handle('update:check', async () => {
+    try { if (!app.isPackaged) return { ok: false, error: 'Not available in development' }; await autoUpdater.checkForUpdates(); return { ok: true }; } catch (e) { return { ok: false, error: String(e && e.message ? e.message : e) }; }
+  });
+
   if (!app.isPackaged) return;
 
   console.log('[UPDATE] Auto-updater setup starting (packaged mode)');
@@ -265,17 +276,6 @@ function setupAutoUpdates() {
     const msg = error && error.message ? error.message : String(error);
     console.error('[UPDATE] Check failed:', msg);
     try { if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('update:error', { message: msg }); } catch (_) {}
-  });
-
-  // IPC handlers for renderer-initiated actions
-  ipcMain.handle('update:download', async () => {
-    try { await autoUpdater.downloadUpdate(); return { ok: true }; } catch (e) { return { ok: false, error: String(e && e.message ? e.message : e) }; }
-  });
-  ipcMain.handle('update:install', async () => {
-    try { autoUpdater.quitAndInstall(); return { ok: true }; } catch (e) { return { ok: false, error: String(e && e.message ? e.message : e) }; }
-  });
-  ipcMain.handle('update:check', async () => {
-    try { await autoUpdater.checkForUpdates(); return { ok: true }; } catch (e) { return { ok: false, error: String(e && e.message ? e.message : e) }; }
   });
 }
 

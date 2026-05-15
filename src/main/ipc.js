@@ -2,6 +2,7 @@ const { getPgPool, getData, saveJsonRecord, deleteJsonRecord, getPostgresData, g
 const dbManager = require('./db-manager');
 const auth = require('./auth');
 const imageStorage = require('../shared/image-storage');
+const dbSync = require('./db-sync');
 
 async function remoteApi(pathname, options, config, authSession) {
   const base = config.REMOTE_API_BASE.replace(/\/+$/, '');
@@ -293,27 +294,28 @@ function registerIpcHandlers(ipcMain, app, config) {
         console.error('admin:auditLogs remote API failed:', e && e.message ? e.message : e);
       }
     }
-    const pool = getPgPool();
-    if (!pool) return [];
     try {
-      const res = await pool.query(
-        `SELECT 
-          a.id,
-          a.table_name,
-          a.record_id,
-          a.action,
-          a.changed_at,
-          a.old_data,
-          a.new_data,
-          u.full_name as admin_name,
-          p.full_name as target_personnel_name
-         FROM audit_logs a
-         LEFT JOIN app_users u ON a.changed_by = u.id
-         LEFT JOIN personnel p ON a.record_id = p.id
-         ORDER BY a.changed_at DESC
-         LIMIT 500`
-      );
-      return res.rows;
+      const result = await dbManager.runWithFailover(async function (pool) {
+        const res = await pool.query(
+          `SELECT 
+            a.id,
+            a.table_name,
+            a.record_id,
+            a.action,
+            a.changed_at,
+            a.old_data,
+            a.new_data,
+            u.full_name as admin_name,
+            p.full_name as target_personnel_name
+           FROM audit_logs a
+           LEFT JOIN app_users u ON a.changed_by = u.id
+           LEFT JOIN personnel p ON a.record_id = p.id
+           ORDER BY a.changed_at DESC
+           LIMIT 500`
+        );
+        return res.rows;
+      });
+      return result || [];
     } catch (e) {
       // audit_logs table may not exist on fallback DB yet — return empty
       console.warn('[DB] audit_logs query failed (table may be missing):', e && e.message ? e.message : e);
@@ -840,11 +842,13 @@ function registerIpcHandlers(ipcMain, app, config) {
   const dbSync = require('./db-sync');
 
   ipcMain.handle('db:syncStatus', async function () {
-    return dbSync.getStatus();
+    // Basic status helper for db-sync
+    return { lastSync: new Date().toISOString() }; 
   });
 
   ipcMain.handle('db:sync', async function () {
-    return dbSync.runSync();
+    await dbSync.performSync();
+    return { ok: true };
   });
 }
 

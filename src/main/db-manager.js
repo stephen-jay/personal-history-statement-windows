@@ -17,10 +17,11 @@ const TIER_UBUNTU   = 'ubuntu';
 const TIER_SUPABASE = 'supabase';
 const TIER_LOCAL    = 'local';
 
-const CONNECTION_TIMEOUT_MS = 3000;         // per-tier probe / connect timeout (LAN-friendly, tolerant of slow handshakes)
+const CONNECTION_TIMEOUT_MS = 3000;         // 3s per-tier probe timeout (optimized for LAN/Fast Cloud)
 const HEALTH_CHECK_INTERVAL_MS = 30 * 1000; // 30 seconds
-const MAX_RETRIES = 2;                      // Additional attempts before downgrade
-const RETRY_DELAY_MS = 2000;                // Delay between retries
+const MAX_RETRIES = 1;                      // Reduced retries for faster failover
+const RETRY_DELAY_MS = 1000;                // Delay between retries
+const PROMOTE_THRESHOLD = 3;                // Consecutive successful probes before promoting back
 
 // Patterns that indicate the active pool's tier is unreachable (vs. a real
 // query/data error). When we see one of these on a query, we immediately mark
@@ -55,6 +56,8 @@ let supabasePool  = null;
 let activeTier    = TIER_LOCAL;
 let healthTimer   = null;
 let _initialized  = false;
+let ubuntuPromoteCount = 0;   // consecutive successful probes while not on ubuntu
+let supabasePromoteCount = 0; // consecutive successful probes while on local
 
 // ─── Internal Helpers ─────────────────────────────────────────────────────────
 
@@ -239,37 +242,50 @@ function getActiveTier() {
 }
 
 /**
- * Run a DB operation against the currently active pool with automatic
- * mid-query failover. The provided function receives the active pool. If it
- * throws a connection-class error (timeout, refused, network unreachable,
- * connection terminated), the manager marks that tier as failed, downgrades
- * to the next tier, and retries — up to once per remaining tier. Non-
- * connection errors (e.g. SQL/constraint failures) are rethrown immediately.
+ * Execute a database operation with immediate reactive failover.
+ * If the primary tier fails during the query, it immediately downgrades
+ * and retries on the next available tier.
  *
- * Returns null if no PostgreSQL tier is currently usable (caller should fall
- * back to local JSON or whatever else makes sense).
- *
- * @template T
- * @param {(pool: import('pg').Pool) => Promise<T>} fn
- * @returns {Promise<T|null>}
+ * @param {Function} queryFn - (pool) => Promise<any>
+ * @returns {Promise<any>}
  */
-async function runWithFailover(fn) {
-  // At most one attempt per remaining tier (ubuntu → supabase → local-null).
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const pool = getActivePool();
-    if (!pool) return null; // local JSON tier — caller decides
-    try {
-      return await fn(pool);
-    } catch (err) {
-      if (!isConnectionError(err)) {
-        throw err; // real SQL error, don't downgrade
+async function runWithFailover(queryFn) {
+  const startTier = activeTier;
+  
+  // 1. Attempt with currently active pool
+  let pool = getActivePool();
+  try {
+    // If pool is null (TIER_LOCAL), queryFn should handle JSON fallback
+    return await queryFn(pool);
+  } catch (err) {
+    const isConnError = err.message.includes('timeout') || 
+                        err.message.includes('terminated') || 
+                        err.code === 'ECONNREFUSED';
+
+    // 2. If it was a connection error and we were on Ubuntu, downgrade and retry immediately
+    if (isConnError && activeTier === TIER_UBUNTU) {
+      console.warn(`[DB-MANAGER] Primary (${startTier}) failed mid-query. Forcing immediate downgrade.`);
+      
+      // Proactively test Supabase
+      const supabaseOk = await testPool(supabasePool);
+      activeTier = supabaseOk ? TIER_SUPABASE : TIER_LOCAL;
+      
+      console.log(`[DB-MANAGER] New active tier: ${activeTier}`);
+      
+      pool = getActivePool();
+      if (pool) {
+        try {
+          return await queryFn(pool);
+        } catch (retryErr) {
+          console.error('[DB-MANAGER] Retry on fallback tier also failed:', retryErr.message);
+          throw retryErr;
+        }
       }
-      console.warn(`[DB-MANAGER] Query failed on ${activeTier}: ${err && err.message ? err.message : err}`);
-      markActiveTierFailed(err && err.message);
-      // loop will pick up the new active tier (or null) on the next iteration
     }
+    
+    // If we're already on local or the error wasn't a connection issue, just throw
+    throw err;
   }
-  return null;
 }
 
 /**
