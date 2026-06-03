@@ -731,13 +731,19 @@
 
 .post-save-modal__body {
   padding: 18px 22px 14px;
-  overflow: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .post-save-panel {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  flex: 1;
+  min-height: 0;
 }
 
 .post-save-panel[hidden] {
@@ -999,9 +1005,8 @@ body.post-save-modal-open #update-popup {
    ============================================= */
 .post-save-modal__stepper { gap: 40px; }
 .post-save-stepper__step { min-width: 90px; }
-.post-save-stepper__track { width: min(480px, calc(100% - 120px)); }
-.post-save-modal[data-step="2"] .post-save-stepper__track::before { width: 33.3%; }
-.post-save-modal[data-step="3"] .post-save-stepper__track::before { width: 66.6%; }
+.post-save-stepper__track { width: min(340px, calc(100% - 120px)); }
+.post-save-modal[data-step="2"] .post-save-stepper__track::before { width: 50%; }
 .post-save-modal[data-step="4"] .post-save-stepper__track::before { width: 100%; }
 
 /* =============================================
@@ -1306,7 +1311,7 @@ input::-ms-clear { display: none !important; visibility: hidden !important; }
 /* =============================================
    STEP 3 â€” Authenticator Setup
    ============================================= */
-.post-save-totp-phases { display: flex; flex-direction: column; gap: 18px; }
+.post-save-totp-phases { display: flex; flex-direction: column; gap: 18px; overflow-y: auto; }
 .post-save-totp-phase {
   background: #f8fafc; border: 1px solid #e2e8f0;
   border-radius: 12px; padding: 16px 18px;
@@ -1555,7 +1560,7 @@ input::-ms-clear { display: none !important; visibility: hidden !important; }
 
 /* LEFT: Scan Panel */
 .psm-s2-left {
-  flex: 0 0 42%; display: flex; flex-direction: column; gap: 16px;
+  flex: 0 0 42%; display: flex; flex-direction: column; gap: 10px;
   border-right: 1px solid #e2e8f0; padding-right: 24px;
 }
 .psm-s2-scan-header {
@@ -1563,6 +1568,9 @@ input::-ms-clear { display: none !important; visibility: hidden !important; }
   font-size: 14px; font-weight: 700; color: #0f172a;
 }
 .psm-s2-scan-title { font-size: 15px; }
+.psm-s2-header-right {
+  display: flex; align-items: center; gap: 8px;
+}
 .psm-s2-reader-info-header {
   display: flex; align-items: center; gap: 6px; font-size: 12px;
 }
@@ -1572,21 +1580,19 @@ input::-ms-clear { display: none !important; visibility: hidden !important; }
 
 /* Scan Zone Redesign */
 .psm-s2-scan-zone {
-  flex: 1; min-height: 180px; position: relative;
+  flex: 0 0 auto; min-height: 140px; max-height: 180px; position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   overflow: hidden;
 }
 
 .psm-s2-scan-help {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 5;
+  position: relative;
+  z-index: 20;
 }
 
 .psm-s2-scan-help-btn {
-  width: 34px;
-  height: 34px;
+  width: 26px;
+  height: 26px;
   border-radius: 999px;
   border: 1px solid #bfdbfe;
   background: #eff6ff;
@@ -1604,9 +1610,9 @@ input::-ms-clear { display: none !important; visibility: hidden !important; }
 
 .psm-s2-scan-help-tooltip {
   position: absolute;
-  top: calc(100% + 10px);
+  top: calc(100% + 8px);
   right: 0;
-  width: min(280px, 72vw);
+  width: min(260px, 72vw);
   background: #ffffff;
   border: 1px solid #dbe5f1;
   border-radius: 12px;
@@ -1616,6 +1622,7 @@ input::-ms-clear { display: none !important; visibility: hidden !important; }
   transform: translateY(-4px) scale(0.98);
   pointer-events: none;
   transition: opacity 0.16s ease, transform 0.16s ease;
+  z-index: 100;
 }
 
 .psm-s2-scan-help:hover .psm-s2-scan-help-tooltip,
@@ -1649,9 +1656,12 @@ input::-ms-clear { display: none !important; visibility: hidden !important; }
   position: absolute; border-radius: 50%;
   top: 50%; left: 50%; transform: translate(-50%, -50%);
 }
-.psm-s2-scan-ring--1 { width: 140px; height: 140px; background: #eff6ff; z-index: 1; }
-.psm-s2-scan-ring--2 { width: 190px; height: 190px; background: #f8fafc; z-index: 0; }
-.psm-s2-scan-ring--3 { width: 240px; height: 240px; background: #fcfcfd; z-index: -1; }
+.psm-s2-scan-ring--1 { width: 90px; height: 90px; background: #eff6ff; z-index: 1;
+  animation: psm-ring-pulse 2.4s ease-in-out infinite; }
+.psm-s2-scan-ring--2 { width: 124px; height: 124px; background: #f0f5ff; z-index: 0;
+  animation: psm-ring-pulse 2.4s ease-in-out 0.6s infinite; }
+.psm-s2-scan-ring--3 { width: 158px; height: 158px; background: #f8fafc; z-index: -1;
+  animation: psm-ring-pulse 2.4s ease-in-out 1.2s infinite; }
 .psm-s2-card-graphic {
   position: relative; z-index: 2;
   width: 90px; height: 60px;
@@ -1663,17 +1673,25 @@ input::-ms-clear { display: none !important; visibility: hidden !important; }
 .psm-s2-card-label { font-size: 14px; font-weight: 800; letter-spacing: 0.5px; }
 
 /* Scan Label */
-.psm-s2-scan-label { text-align: center; margin-top: -10px; z-index: 2; position: relative; }
-.psm-s2-scan-title-text { font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
-.psm-s2-scan-sub-text { font-size: 12px; color: #64748b; line-height: 1.4; }
+.psm-s2-scan-label { text-align: center; margin-top: -4px; z-index: 2; position: relative; }
+.psm-s2-scan-title-text { font-size: 14px; font-weight: 800; color: #0f172a; margin-bottom: 2px; }
+.psm-s2-scan-sub-text { font-size: 11px; color: #64748b; line-height: 1.4; }
 
 /* Info Table */
-.psm-s2-info-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
-.psm-s2-info-table td { padding: 8px 0; border-bottom: 1px solid #f1f5f9; color: #334155; }
+.psm-s2-info-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+.psm-s2-info-table td { padding: 5px 0; border-bottom: 1px solid #f1f5f9; color: #334155; }
 .psm-s2-info-table td:first-child { color: #64748b; width: 100px; font-weight: 500; }
 .psm-s2-wait-dot {
   display: inline-block; width: 6px; height: 6px; border-radius: 50%;
-  background: #3b82f6; margin-right: 6px; animation: psm-pulse 1.5s infinite;
+  background: #3b82f6; margin-right: 6px; animation: psm-pulse 1.5s ease-in-out infinite;
+}
+@keyframes psm-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.7); }
+}
+@keyframes psm-ring-pulse {
+  0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.55; transform: translate(-50%, -50%) scale(1.06); }
 }
 
 .psm-s2-info-btn {

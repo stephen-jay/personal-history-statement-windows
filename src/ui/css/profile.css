@@ -209,6 +209,7 @@ body[data-app-view="list"] .user-profile-btn,
 body[data-app-view="analytics"] .user-profile-btn,
 body[data-app-view="admin"] .user-profile-btn,
 body[data-app-view="audit"] .user-profile-btn,
+body[data-app-view="cards"] .user-profile-btn,
 body[data-app-view="settings"] .user-profile-btn {
   background: #f1f5f9;
   border-color: #e2e8f0;
@@ -219,6 +220,7 @@ body[data-app-view="list"] .user-profile-btn:hover,
 body[data-app-view="analytics"] .user-profile-btn:hover,
 body[data-app-view="admin"] .user-profile-btn:hover,
 body[data-app-view="audit"] .user-profile-btn:hover,
+body[data-app-view="cards"] .user-profile-btn:hover,
 body[data-app-view="settings"] .user-profile-btn:hover {
   background: #e2e8f0;
   border-color: #cbd5e1;
@@ -228,7 +230,150 @@ body[data-app-view="list"] .user-role,
 body[data-app-view="analytics"] .user-role,
 body[data-app-view="admin"] .user-role,
 body[data-app-view="audit"] .user-role,
+body[data-app-view="cards"] .user-role,
 body[data-app-view="settings"] .user-role {
   color: #64748b;
   opacity: 1;
 }
+
+/* =========================================================
+   My Profile Modal Details
+   ========================================================= */
+
+.profile-modal-wrap {
+  text-align: left;
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.profile-modal-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  padding: 20px;
+  border-radius: 14px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15), 0 8px 10px -6px rgba(15, 23, 42, 0.15);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.profile-modal-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.profile-modal-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25), 0 4px 10px rgba(0, 0, 0, 0.2);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.profile-modal-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-modal-name {
+  font-weight: 700;
+  color: #ffffff;
+  font-size: 1.1rem;
+  letter-spacing: -0.01em;
+}
+
+.profile-modal-username {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.profile-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.profile-modal-row {
+  background: #f8fafc;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.profile-modal-row:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px -4px rgba(15, 23, 42, 0.08);
+}
+
+.profile-modal-label-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.profile-modal-label {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.profile-modal-value {
+  font-size: 0.9rem;
+  color: #0f172a;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  transition: all 0.2s ease;
+}
+
+.profile-modal-row:hover .profile-modal-icon {
+  background: #e2e8f0;
+}
+
+.profile-modal-role-badge {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #16a34a;
+}
+

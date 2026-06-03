@@ -51,6 +51,7 @@ var currentChallengeId = null;
 var cardTapListenerActive = false;
 var currentLoginUsername = '';
 var currentCanUsePassword = false;
+var emailOtpMode = false; // when true, the verify step validates an emailed code
 
 function readAttemptState() {
   try {
@@ -224,6 +225,7 @@ function showStep(stepId) {
 function resetToStart() {
   currentChallengeId = null;
   stopCardTapListening();
+  emailOtpMode = false;
   
   var qrImg = $('totp-qr');
   var secretTxt = $('totp-secret-text');
@@ -249,6 +251,11 @@ function resetToStart() {
   currentCanUsePassword = false;
   var adminPwdInput = $('admin-password-input');
   if (adminPwdInput) adminPwdInput.value = '';
+  
+  // Clean up tab visibility on reset
+  var loginTabs = $('login-tabs');
+  if (loginTabs) loginTabs.style.display = 'none';
+  
   showStep('step-username');
   var un = $('username-input');
   if (un) { un.value = ''; un.focus(); }
@@ -258,6 +265,67 @@ function stopCardTapListening() {
   cardTapListenerActive = false;
   if (window.cardApi && typeof window.cardApi.offCardDetected === 'function') {
     try { window.cardApi.offCardDetected(); } catch (_) {}
+  }
+}
+
+function switchTab(tabType) {
+  var cardPanel = $('method-card-panel');
+  var pwdSection = $('admin-password-section');
+  var tabButtons = document.querySelectorAll('.login-tabs .tab-btn');
+  
+  tabButtons.forEach(function(btn) {
+    if (btn.getAttribute('data-tab') === tabType) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+  
+  if (tabType === 'card') {
+    if (cardPanel) cardPanel.style.display = 'flex';
+    if (pwdSection) pwdSection.style.display = 'none';
+    startCardTapListening();
+  } else {
+    if (cardPanel) cardPanel.style.display = 'none';
+    if (pwdSection) pwdSection.style.display = 'flex';
+    stopCardTapListening();
+    
+    // Focus the password input
+    var pwdInput = $('admin-password-input');
+    if (pwdInput) {
+      setTimeout(function() {
+        pwdInput.focus();
+      }, 50);
+    }
+  }
+}
+
+function initCardStepView() {
+  var loginTabs = $('login-tabs');
+  var cardTitle = $('step-card-title');
+  var cardDesc = $('step-card-desc');
+  
+  var cardPanel = $('method-card-panel');
+  var pwdSection = $('admin-password-section');
+  
+  if (currentCanUsePassword) {
+    // Admin user: show tabs
+    if (loginTabs) loginTabs.style.display = 'flex';
+    if (cardTitle) cardTitle.textContent = 'Admin Authentication';
+    if (cardDesc) cardDesc.textContent = 'Choose your login method to proceed.';
+    
+    // Default to card tab
+    switchTab('card');
+  } else {
+    // Standard user: hide tabs and show card only
+    if (loginTabs) loginTabs.style.display = 'none';
+    if (cardTitle) cardTitle.textContent = 'Tap Your Card';
+    if (cardDesc) cardDesc.textContent = 'Hold your NFC/RFID card near the reader.';
+    
+    if (cardPanel) cardPanel.style.display = 'flex';
+    if (pwdSection) pwdSection.style.display = 'none';
+    
+    startCardTapListening();
   }
 }
 
@@ -352,7 +420,7 @@ async function handleNextUsername() {
     currentCanUsePassword = !!res.canUsePassword;
     
     showStep('step-card');
-    startCardTapListening();
+    initCardStepView();
   } catch (err) {
     if (String((err && err.message) || '').toLowerCase().includes('user not found')) {
         registerFailedAttempt();
@@ -389,7 +457,6 @@ async function handleAdminPassword() {
     var session = await window.authApi.login(username, pwd);
     if (!session) throw new Error('Login failed.');
     clearAttemptState();
-    localStorage.setItem('phs.login_success', 'true');
     window.location.href = 'index.html';
   } catch (err) {
     registerFailedAttempt();
@@ -464,11 +531,15 @@ async function handleVerifyTotp(inputId, btnId) {
   setError('');
 
   try {
-    var session = await window.authApi.verifyTotp(currentChallengeId, otp);
+    var session;
+    if (emailOtpMode && inputId === 'verify-otp') {
+      session = await window.authApi.verifyEmailOtp(currentChallengeId, otp);
+    } else {
+      session = await window.authApi.verifyTotp(currentChallengeId, otp);
+    }
     if (!session) throw new Error('Session not created.');
     
     clearAttemptState();
-    localStorage.setItem('phs.login_success', 'true');
     window.location.href = 'index.html';
   } catch (err) {
     registerFailedAttempt();
@@ -478,6 +549,40 @@ async function handleVerifyTotp(inputId, btnId) {
       btn.disabled = false;
       btn.innerHTML = (inputId === 'enroll-otp' ? 'Verify & Login' : 'Login') + ' <span>&rarr;</span>';
     }
+  }
+}
+
+async function handleSendEmailOtp() {
+  if (!currentChallengeId) return;
+  if (!window.authApi || typeof window.authApi.sendEmailOtp !== 'function') return;
+
+  var btn = $('btn-email-otp');
+  var prior = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Sending code...'; }
+  setError('');
+
+  try {
+    var res = await window.authApi.sendEmailOtp(currentChallengeId);
+    if (res && res.sent) {
+      emailOtpMode = true;
+      var desc = $('verify-desc');
+      if (desc) desc.textContent = 'Enter the 6-digit code we emailed to ' + (res.maskedEmail || 'your address') + '.';
+      // Clear any typed authenticator digits so the user starts fresh.
+      document.querySelectorAll('#verify-otp-row .otp-box').forEach(function (b) { b.value = ''; });
+      var vo = $('verify-otp'); if (vo) vo.value = '';
+      var firstBox = document.querySelector('#verify-otp-row .otp-box');
+      if (firstBox) firstBox.focus();
+      toast.success('Login code sent to ' + (res.maskedEmail || 'your email') + '.');
+    } else {
+      var reason = res && res.reason ? res.reason : 'unknown';
+      if (reason === 'no-email-on-file') setError('No email is on file for this account.');
+      else if (reason === 'smtp-not-configured') setError('Email login is not configured on this system.');
+      else setError('Could not send email code: ' + reason);
+    }
+  } catch (err) {
+    setError(mapLoginError(err));
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = prior || 'Email me a code instead'; }
   }
 }
 
@@ -539,6 +644,7 @@ function initListeners() {
   if ($('btn-verify-totp')) $('btn-verify-totp').addEventListener('click', function() {
     handleVerifyTotp('verify-otp', 'btn-verify-totp');
   });
+  if ($('btn-email-otp')) $('btn-email-otp').addEventListener('click', handleSendEmailOtp);
   if ($('btn-verify-enroll')) $('btn-verify-enroll').addEventListener('click', function() {
     handleVerifyTotp('enroll-otp', 'btn-verify-enroll');
   });
@@ -546,6 +652,15 @@ function initListeners() {
   // OTP Box setups
   setupOtpBoxes('verify-otp-row', 'verify-otp');
   setupOtpBoxes('enroll-otp-row', 'enroll-otp');
+
+  // Set up tab click listeners
+  var tabButtons = document.querySelectorAll('.login-tabs .tab-btn');
+  tabButtons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var tabType = btn.getAttribute('data-tab');
+      switchTab(tabType);
+    });
+  });
 
   if (getLockRemainingSeconds() > 0) startLockoutCountdown();
 

@@ -15,12 +15,15 @@ contextBridge.exposeInMainWorld('authApi', {
   verifyCardStep: (challengeId, cardUid) => ipcRenderer.invoke('auth:verifyCard', { challengeId, cardUid }),
   enrollTotp: (challengeId) => ipcRenderer.invoke('auth:enrollTotp', { challengeId }),
   verifyTotp: (challengeId, token) => ipcRenderer.invoke('auth:verifyTotp', { challengeId, token }),
+  sendEmailOtp: (challengeId) => ipcRenderer.invoke('auth:sendEmailOtp', { challengeId }),
+  verifyEmailOtp: (challengeId, code) => ipcRenderer.invoke('auth:verifyEmailOtp', { challengeId, code }),
   getSession: () => ipcRenderer.invoke('auth:session'),
   logout: () => ipcRenderer.invoke('auth:logout'),
   changePassword: (currentPassword, newPassword) =>
     ipcRenderer.invoke('auth:changePassword', { currentPassword, newPassword }),
   createUser: (payload) => ipcRenderer.invoke('admin:createUser', payload),
   enrollTotpForUser: (userId) => ipcRenderer.invoke('admin:enrollTotpForUser', { userId }),
+  emailTotpQr: (userId, email) => ipcRenderer.invoke('admin:emailTotpQr', { userId, email }),
   verifyTotpForUser: (userId, token) => ipcRenderer.invoke('admin:verifyTotpForUser', { userId, token }),
 });
 

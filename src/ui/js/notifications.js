@@ -196,7 +196,7 @@ export function initNotifications(options) {
   // ---------------------------------------------------------------------------
   // Main notify function
   // ---------------------------------------------------------------------------
-  function notify(type, title, message) {
+  function notify(type, title, message, options) {
     const currentPrefs = getPrefs();
     if (type === 'activity' && !currentPrefs.activity) return;
     if (type === 'personnel' && !currentPrefs.personnel) return;
@@ -222,8 +222,8 @@ export function initNotifications(options) {
       setTimeout(function () { bell.classList.remove('notif-bell--ring'); }, 600);
     }
 
-    // Fire toast
-    if (toast) {
+    // Fire toast (unless silent option is passed)
+    if (toast && !(options && options.silent)) {
       if (type === 'personnel') toast.success(message, { duration: 5000 });
       else if (type === 'audit') toast.warning(message, { duration: 5000 });
       else toast.info(message, { duration: 4000 });

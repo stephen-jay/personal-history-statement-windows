@@ -62,7 +62,11 @@ export function showConfirm(message, opts) {
 
     // Set content
     titleEl.textContent   = title;
-    bodyEl.textContent    = message;
+    if (opts.html) {
+      bodyEl.innerHTML = message;
+    } else {
+      bodyEl.textContent = message;
+    }
     btnConfirm.textContent = confirmText;
 
     // Configure cancel button
@@ -134,6 +138,7 @@ export function showAlert(message, opts) {
     confirmText: opts.okText || 'OK',
     cancelText: '',
     type: opts.type || 'info',
+    html: !!opts.html,
   }).then(function () {});
 }
 

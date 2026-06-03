@@ -23,11 +23,19 @@ dotenv.config({ override: true });
 
 const CONFIG_KEYS = new Set([
   'DATABASE_URL',
+  'SUPABASE_DB_URL',
+  'AUTH_SECRET',
   'USE_REMOTE_API',
   'REMOTE_API_BASE',
   'USE_POSTGRES_READ',
   'USE_POSTGRES_WRITE',
   'ENABLE_DUAL_WRITE',
+  'SMTP_HOST',
+  'SMTP_PORT',
+  'SMTP_SECURE',
+  'SMTP_USER',
+  'SMTP_PASS',
+  'SMTP_FROM',
 ]);
 
 function applyConfigValues(values) {

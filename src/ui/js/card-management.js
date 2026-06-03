@@ -168,12 +168,8 @@ function createPostSaveModalShell() {
           <span class="post-save-stepper__circle">2</span>
           <span class="post-save-stepper__label">Assign RFID Card</span>
         </div>
-        <div class="post-save-stepper__step" data-step-dot="3">
-          <span class="post-save-stepper__circle">3</span>
-          <span class="post-save-stepper__label">Setup Authenticator</span>
-        </div>
         <div class="post-save-stepper__step" data-step-dot="4">
-          <span class="post-save-stepper__circle">✓</span>
+          <span class="post-save-stepper__circle">3</span>
           <span class="post-save-stepper__label">Complete</span>
         </div>
       </div>
@@ -301,44 +297,47 @@ function createPostSaveModalShell() {
             <div class="psm-s2-left">
               <div class="psm-s2-scan-header">
                 <span class="psm-s2-scan-title">Scan RFID Card</span>
-                <div class="psm-s2-reader-info-header">
-                  <span class="psm-reader-dot psm-reader-dot--connected" id="psm-s2-reader-dot"></span>
-                  <span class="psm-s2-reader-status-text" id="psm-s2-reader-label">Reader Status</span>
-                  <span class="psm-s2-reader-connected" id="psm-s2-reader-connected">Connected</span>
+                <div class="psm-s2-header-right">
+                  <div class="psm-s2-reader-info-header">
+                    <span class="psm-reader-dot psm-reader-dot--connected" id="psm-s2-reader-dot"></span>
+                    <span class="psm-s2-reader-status-text" id="psm-s2-reader-label">Reader Status</span>
+                    <span class="psm-s2-reader-connected" id="psm-s2-reader-connected">Connected</span>
+                  </div>
+                  <div class="psm-s2-scan-help">
+                    <button type="button" class="psm-s2-scan-help-btn" id="psm-s2-open-tips-tooltip" aria-label="Scanning tips" title="Scanning tips">
+                      <svg viewBox="0 0 20 20" fill="none" width="18" height="18"><circle cx="10" cy="10" r="9" fill="#2563eb"/><path d="M10 7v4m0 3h.01" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    </button>
+                    <div class="psm-s2-scan-help-tooltip" id="psm-s2-scan-help-tooltip" role="tooltip">
+                      <div class="psm-s2-scan-help-tooltip__title">Scanning Tips</div>
+                      <ul class="psm-s2-tips-list">
+                        <li>Place the card flat on the reader</li>
+                        <li>Hold the card steady until the system detects it</li>
+                        <li>Do not remove the card while scanning</li>
+                        <li>Make sure the card is new and not yet registered</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
-                <div class="psm-s2-reader-model" id="psm-s2-reader-model">ACR1252U-A1</div>
               </div>
 
               <!-- Scan zone (circle with card) -->
               <div class="psm-s2-scan-zone" id="post-save-scan-zone">
-                <div class="psm-s2-scan-help">
-                  <button type="button" class="psm-s2-scan-help-btn" id="psm-s2-open-tips-tooltip" aria-label="Scanning tips" title="Scanning tips">
-                    <svg viewBox="0 0 20 20" fill="none" width="18" height="18"><circle cx="10" cy="10" r="9" fill="#2563eb"/><path d="M10 7v4m0 3h.01" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
-                  </button>
-                  <div class="psm-s2-scan-help-tooltip" id="psm-s2-scan-help-tooltip" role="tooltip">
-                    <div class="psm-s2-scan-help-tooltip__title">Scanning Tips</div>
-                    <ul class="psm-s2-tips-list">
-                      <li>Place the card flat on the reader</li>
-                      <li>Hold the card steady until the system detects it</li>
-                      <li>Do not remove the card while scanning</li>
-                      <li>Make sure the card is new and not yet registered</li>
-                    </ul>
-                  </div>
-                </div>
                 <div class="psm-s2-scan-ring psm-s2-scan-ring--3"></div>
                 <div class="psm-s2-scan-ring psm-s2-scan-ring--2"></div>
                 <div class="psm-s2-scan-ring psm-s2-scan-ring--1"></div>
                 <div class="psm-s2-card-graphic">
-                  <div class="psm-s2-card-body">
-                    <span class="psm-s2-card-label">RFID</span>
-                    <div class="psm-s2-card-waves">
-                      <svg viewBox="0 0 40 40" fill="none" width="40" height="40">
-                        <path d="M10 20a12 12 0 0 1 12-12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                        <path d="M10 20a7 7 0 0 1 7-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                        <path d="M10 20a2.5 2.5 0 0 1 2.5-2.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                        <circle cx="10" cy="20" r="2" fill="currentColor"/>
-                      </svg>
-                    </div>
+                  <span class="psm-s2-card-label">RFID</span>
+                  <div class="psm-s2-card-waves">
+                    <svg viewBox="0 0 32 32" fill="none" width="32" height="32">
+                      <!-- NFC dot -->
+                      <circle cx="4" cy="16" r="2.2" fill="currentColor"/>
+                      <!-- Small arc -->
+                      <path d="M 10 10 A 8.5 8.5 0 0 1 10 22" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                      <!-- Medium arc -->
+                      <path d="M 16 6 A 14 14 0 0 1 16 26" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                      <!-- Large arc -->
+                      <path d="M 22 2 A 20 20 0 0 1 22 30" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+                    </svg>
                   </div>
                 </div>
               </div>
@@ -622,16 +621,6 @@ function createPostSaveModalShell() {
       4: { eyebrow: 'STEP 4 OF 4 — Complete', title: 'Account Created Successfully', subtitle: 'This personnel account is now ready to use.', next: 'Add Another Personnel', cancel: false },
     };
 
-  function configureStepperForTotpPolicy() {
-    if (!WIZARD_TOTP_IN_LOGIN_ONLY) return;
-    const dot3 = modal.modalEl.querySelector('[data-step-dot="3"]');
-    const dot4 = modal.modalEl.querySelector('[data-step-dot="4"]');
-    if (dot3) dot3.style.display = 'none';
-    if (dot4) {
-      const circle = dot4.querySelector('.post-save-stepper__circle');
-      if (circle) circle.textContent = '3';
-    }
-  }
 
   function updateHeader(step) {
     const displayStep = WIZARD_TOTP_IN_LOGIN_ONLY && step === 4 ? 3 : step;
@@ -646,10 +635,23 @@ function createPostSaveModalShell() {
     modal.stepPanels.forEach((panel) => {
       panel.hidden = String(panel.getAttribute('data-step-panel')) !== String(step);
     });
+    const checkSvg = '<svg viewBox="0 0 14 14" fill="none" width="13" height="13"><polyline points="2,7 6,11 12,3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     modal.stepDots.forEach((dot) => {
       const dotStep = Number(dot.getAttribute('data-step-dot'));
-      dot.classList.toggle('is-active', dotStep === step);
-      dot.classList.toggle('is-complete', dotStep < step);
+      const isActive = dotStep === step;
+      const isComplete = dotStep < step;
+      dot.classList.toggle('is-active', isActive);
+      dot.classList.toggle('is-complete', isComplete);
+      const circle = dot.querySelector('.post-save-stepper__circle');
+      if (circle) {
+        if (isComplete) {
+          circle.innerHTML = checkSvg;
+        } else {
+          // Restore original number
+          const originalNum = dot.getAttribute('data-step-dot') === '4' ? '3' : dot.getAttribute('data-step-dot');
+          circle.textContent = originalNum;
+        }
+      }
     });
     modal.modalEl.setAttribute('data-step', String(step));
   }
@@ -904,7 +906,7 @@ function createPostSaveModalShell() {
             dot.classList.toggle('psm-reader-dot--disconnected', !connected);
           }
           if (label) label.textContent = 'Reader Status';
-          if (connectedText) connectedText.textContent = connected ? (model ? ('Connected — ' + model) : 'Connected') : 'Disconnected';
+          if (connectedText) connectedText.textContent = connected ? 'Connected' : 'Disconnected';
         } catch (_) {}
       });
     }
@@ -1047,6 +1049,32 @@ function createPostSaveModalShell() {
         });
         modal.state.createdUsername = normalizePostSaveText(response && response.user && response.user.username ? response.user.username : username);
         modal.state.createdUser = response && response.user ? response.user : null;
+
+        // Email the TOTP enrollment QR to the personnel's address on file.
+        // Non-blocking: failure here never stops the wizard.
+        (function emailTotpQrToUser() {
+          var createdId = modal.state.createdUser && modal.state.createdUser.id;
+          if (!createdId || !window.authApi || typeof window.authApi.emailTotpQr !== 'function') return;
+          var record = modal.state.savedRecord || {};
+          var onFileEmail = normalizePostSaveText(record.email || (record.user && record.user.email) || '');
+          window.authApi.emailTotpQr(createdId, onFileEmail || undefined)
+            .then(function (res) {
+              if (!res) return;
+              if (res.emailed) {
+                if (window.toast && window.toast.success) window.toast.success('Authenticator QR emailed to ' + res.email);
+              } else if (res.reason === 'no-recipient') {
+                if (window.toast && window.toast.info) window.toast.info('No email on file — QR not sent. Set it up on first login.');
+              } else if (res.reason === 'smtp-not-configured') {
+                if (window.toast && window.toast.info) window.toast.info('Email not configured — QR not sent.');
+              } else if (res.reason) {
+                if (window.toast && window.toast.warning) window.toast.warning('QR email failed: ' + res.reason);
+              }
+            })
+            .catch(function (e) {
+              console.warn('[MAIL] emailTotpQr failed:', e && e.message ? e.message : e);
+            });
+        })();
+
         goToStep(2);
       } catch (err) { setStepError(1, err && err.message ? err.message : String(err)); }
       finally { modal.state.submitting = false; updateNextButtonState(); }
@@ -1322,7 +1350,6 @@ function createPostSaveModalShell() {
   });
 
   postSaveModalState = modal;
-  configureStepperForTotpPolicy();
   return modal;
 }
 

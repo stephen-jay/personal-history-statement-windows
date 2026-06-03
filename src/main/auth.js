@@ -101,7 +101,9 @@ function persistAuthSessionToDisk() {
       try { fs.unlinkSync(authSessionPath); } catch (_) {}
       return;
     }
-    fs.writeFileSync(authSessionPath, JSON.stringify(authSession, null, 2), 'utf8');
+    const toPersist = { ...authSession };
+    delete toPersist.justLoggedIn;
+    fs.writeFileSync(authSessionPath, JSON.stringify(toPersist, null, 2), 'utf8');
   } catch (_) {
     // ignore
   }
@@ -582,6 +584,65 @@ async function enrollTotpForUser(userId) {
   return { secret, qrCodeDataUrl };
 }
 
+/**
+ * Resolve the best email address for a user account by looking at the
+ * linked personnel record. Tries app_users.personnel_id first (if the
+ * column exists), then falls back to matching personnel by full_name.
+ *
+ * @param {string} userId
+ * @returns {Promise<{ email: string|null, username: string, fullName: string|null }>}
+ */
+async function getUserEmail(userId) {
+  const pool = getPgPool();
+  if (!pool) throw new Error('DATABASE_URL is required.');
+  if (!userId) throw new Error('userId is required.');
+
+  const userRes = await pool.query(
+    'SELECT id, username, full_name FROM app_users WHERE id = $1',
+    [userId]
+  );
+  if (!userRes.rows || !userRes.rows.length) throw new Error('User not found.');
+  const user = userRes.rows[0];
+  const username = String(user.username || '').trim();
+  const fullName = user.full_name ? String(user.full_name).trim() : null;
+
+  let email = null;
+
+  // 1. Via explicit personnel_id link, if the column exists.
+  const hasPersonnelIdCol = await pool.query(
+    "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='app_users' AND column_name='personnel_id'"
+  );
+  if (hasPersonnelIdCol.rowCount > 0) {
+    const linked = await pool.query(
+      `SELECT p.email
+         FROM app_users u
+         JOIN personnel p ON p.id = u.personnel_id
+        WHERE u.id = $1 AND p.deleted_at IS NULL
+        LIMIT 1`,
+      [userId]
+    );
+    if (linked.rows && linked.rows.length && linked.rows[0].email) {
+      email = String(linked.rows[0].email).trim() || null;
+    }
+  }
+
+  // 2. Fallback: match personnel by full_name.
+  if (!email && fullName) {
+    const byName = await pool.query(
+      `SELECT email FROM personnel
+        WHERE deleted_at IS NULL AND full_name IS NOT NULL
+          AND LOWER(full_name) = LOWER($1)
+        LIMIT 1`,
+      [fullName]
+    );
+    if (byName.rows && byName.rows.length && byName.rows[0].email) {
+      email = String(byName.rows[0].email).trim() || null;
+    }
+  }
+
+  return { email, username, fullName };
+}
+
 async function verifyTotpForUser(userId, token) {
   const pool = getPgPool();
   if (!pool) throw new Error('DATABASE_URL is required.');
@@ -603,6 +664,160 @@ async function verifyTotpForUser(userId, token) {
 
   await pool.query('UPDATE app_user_totp SET totp_enabled = true WHERE user_id = $1', [userId]);
   return { ok: true };
+}
+
+// ── Email-OTP login fallback ────────────────────────────────────────────────
+// A SEPARATE one-time code (not the TOTP secret) emailed to the user's address.
+// State is kept in-memory keyed by challengeId so no schema change is needed.
+const EMAIL_OTP_TTL_MS = 5 * 60 * 1000;
+const EMAIL_OTP_MAX_ATTEMPTS = 5;
+const emailOtpStore = new Map(); // challengeId -> { hash, expiresAt, attempts, userId }
+
+function hashEmailOtp(challengeId, code) {
+  return createHash('sha256').update('phs-email-otp:' + challengeId + ':' + code).digest('hex');
+}
+
+function generateNumericCode() {
+  // 6-digit, zero-padded, from crypto-strength randomness
+  const { randomInt } = require('crypto');
+  return String(randomInt(0, 1000000)).padStart(6, '0');
+}
+
+/**
+ * Generate + email a one-time login code for the given challenge.
+ * Returns { ok, sent, reason, maskedEmail }.
+ */
+async function sendLoginEmailOtp(challengeId) {
+  const pool = getPgPool();
+  if (!pool) throw new Error('Email login is unavailable while the database is offline.');
+  if (!challengeId) throw new Error('Missing challengeId.');
+
+  const challengeRes = await pool.query(
+    'SELECT user_id, status FROM auth_challenges WHERE id = $1 AND expires_at > NOW()',
+    [challengeId]
+  );
+  if (!challengeRes.rows || !challengeRes.rows.length) {
+    throw new Error('Login challenge expired or invalid.');
+  }
+  const challenge = challengeRes.rows[0];
+  // Only offer email OTP at the verify/enrollment stage (after card step).
+  if (challenge.status !== 'pending_totp' && challenge.status !== 'pending_enrollment') {
+    throw new Error('Email code is not available at this step.');
+  }
+
+  const mailer = require('./mailer');
+  if (!mailer.isConfigured()) {
+    return { ok: true, sent: false, reason: 'smtp-not-configured' };
+  }
+
+  const info = await getUserEmail(challenge.user_id);
+  if (!info.email) {
+    return { ok: true, sent: false, reason: 'no-email-on-file' };
+  }
+
+  const code = generateNumericCode();
+  emailOtpStore.set(String(challengeId), {
+    hash: hashEmailOtp(String(challengeId), code),
+    expiresAt: Date.now() + EMAIL_OTP_TTL_MS,
+    attempts: 0,
+    userId: challenge.user_id,
+  });
+
+  const sent = await mailer.sendLoginCodeEmail({
+    to: info.email,
+    code: code,
+    username: info.username,
+    fullName: info.fullName,
+    ttlMinutes: Math.round(EMAIL_OTP_TTL_MS / 60000),
+  });
+
+  if (!sent.ok) {
+    emailOtpStore.delete(String(challengeId));
+    return { ok: true, sent: false, reason: sent.reason || 'send-failed' };
+  }
+
+  return { ok: true, sent: true, maskedEmail: maskEmail(info.email) };
+}
+
+function maskEmail(email) {
+  const s = String(email || '');
+  const at = s.indexOf('@');
+  if (at <= 0) return s;
+  const local = s.slice(0, at);
+  const domain = s.slice(at);
+  const shown = local.length <= 2 ? local.slice(0, 1) : local.slice(0, 2);
+  return shown + '***' + domain;
+}
+
+/**
+ * Verify an email-OTP code and complete login if valid.
+ * Returns the same session shape as verifyTotpStep.
+ */
+async function verifyLoginEmailOtp(challengeId, code) {
+  const pool = getPgPool();
+  if (!pool) throw new Error('DATABASE_URL is required for local auth.');
+  if (!challengeId || !code) throw new Error('Missing challengeId or code.');
+
+  const entry = emailOtpStore.get(String(challengeId));
+  if (!entry) throw new Error('No email code was requested or it has expired.');
+  if (Date.now() > entry.expiresAt) {
+    emailOtpStore.delete(String(challengeId));
+    throw new Error('Email code expired. Request a new one.');
+  }
+  if (entry.attempts >= EMAIL_OTP_MAX_ATTEMPTS) {
+    emailOtpStore.delete(String(challengeId));
+    throw new Error('Too many incorrect attempts. Request a new email code.');
+  }
+
+  if (entry.hash !== hashEmailOtp(String(challengeId), String(code).trim())) {
+    entry.attempts += 1;
+    throw new Error('Invalid or expired OTP code.');
+  }
+
+  // Re-validate the challenge is still live and matches the user.
+  const challengeRes = await pool.query(
+    'SELECT user_id, status FROM auth_challenges WHERE id = $1 AND expires_at > NOW()',
+    [challengeId]
+  );
+  if (!challengeRes.rows || !challengeRes.rows.length) {
+    emailOtpStore.delete(String(challengeId));
+    throw new Error('Login challenge expired or invalid.');
+  }
+  const challenge = challengeRes.rows[0];
+  if (String(challenge.user_id) !== String(entry.userId)) {
+    emailOtpStore.delete(String(challengeId));
+    throw new Error('Challenge mismatch.');
+  }
+
+  // Success — consume the code, mark the challenge verified.
+  emailOtpStore.delete(String(challengeId));
+  await pool.query('UPDATE auth_challenges SET status = $1 WHERE id = $2', ['verified', challengeId]);
+
+  const rows = await pool.query(
+    `
+      SELECT
+        u.id,
+        u.username,
+        u.full_name,
+        ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL) AS roles
+      FROM app_users u
+      LEFT JOIN app_user_roles ur ON ur.user_id = u.id
+      LEFT JOIN app_roles r ON r.id = ur.role_id
+      WHERE u.id = $1
+      GROUP BY u.id, u.username, u.full_name
+    `,
+    [challenge.user_id]
+  );
+  const user = rows.rows[0];
+  return {
+    token: 'local-session',
+    user: {
+      id: user.id,
+      username: user.username,
+      fullName: user.full_name,
+      roles: Array.isArray(user.roles) ? user.roles : [],
+    },
+  };
 }
 
 async function adminResetTotp(adminUserId, targetUserId) {
@@ -672,7 +887,10 @@ module.exports = {
   verifyTotpStep,
   adminResetTotp,
   enrollTotpForUser,
+  getUserEmail,
   verifyTotpForUser,
+  sendLoginEmailOtp,
+  verifyLoginEmailOtp,
   verifyLocalCacheTier,
   updateLocalCredCache,
 };

@@ -17,7 +17,7 @@ import { initSettingsView } from './settings.js';
 import { openPostSaveModal, createCardManagementController } from './card-management.js';
 import { show as showLoader, hide as hideLoader } from './loader.js';
 import { initNotifications } from './notifications.js';
-import { showConfirm } from './confirm.js';
+import { showConfirm, showAlert } from './confirm.js';
 
 function showError(msg) {
   document.body.innerHTML = '<div style="padding:24px;font-family:sans-serif;max-width:500px"><h2>Error</h2><p>' + String(msg).replace(/</g, '&lt;') + '</p><p>Check the console (Ctrl+Shift+I) for details.</p></div>';
@@ -68,6 +68,23 @@ async function loadCardsPage() {
 
 (async function bootstrap() {
   try {
+    if (!window.authApi || typeof window.authApi.getSession !== 'function') {
+      showError('authApi not loaded. Preload may have failed.');
+      return;
+    }
+
+    const session = await window.authApi.getSession();
+    if (!session || !session.user) {
+      window.location.href = 'login.html';
+      return;
+    }
+
+    const roles = Array.isArray(session.roles) ? session.roles : [];
+    const isAdmin = roles.includes('admin');
+    const canEdit = roles.includes('admin') || roles.includes('encoder');
+    const canDelete = roles.includes('admin');
+    const canViewAnalytics = roles.includes('admin') || roles.includes('viewer');
+
     await loadFormPages();
     initEducationValidation();
     await loadAnalyticsPage();
@@ -77,8 +94,8 @@ async function loadCardsPage() {
     window.toast = initToastSystem();
 
     // Show success toast if just logged in
-    if (localStorage.getItem('phs.login_success') === 'true') {
-      localStorage.removeItem('phs.login_success');
+    let justLoggedIn = !!session.justLoggedIn;
+    if (justLoggedIn) {
       setTimeout(() => {
         if (window.toast) window.toast.success('Login successful. Welcome back!');
       }, 500);
@@ -261,20 +278,9 @@ async function loadCardsPage() {
       return;
     }
 
-    if (!window.authApi || typeof window.authApi.getSession !== 'function') {
-      showError('authApi not loaded. Preload may have failed.');
-      return;
-    }
-
-    const session = await window.authApi.getSession();
-    if (!session || !session.user) {
-      window.location.href = 'login.html';
-      return;
-    }
-
-    // Fire login activity notification
-    if (window.notify) {
-      window.notify('activity', 'User Signed In', (session.user.username || session.user) + ' logged in successfully.');
+    // Fire login activity notification (silent = no toast; the welcome toast above already covers visual feedback)
+    if (justLoggedIn && window.notify) {
+      window.notify('activity', 'User Signed In', (session.user.username || session.user) + ' logged in successfully.', { silent: true });
     }
 
     // --- User Profile Dropdown ---
@@ -318,11 +324,141 @@ async function loadCardsPage() {
         }
       });
 
-      // Handle logout in dropdown
-      const logoutBtn = document.getElementById('btn-logout-dropdown');
-      if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-          if (btnLogout) btnLogout.click();
+      // Handle Settings navigation from dropdown
+      const settingsBtn = document.getElementById('btn-dropdown-settings');
+      if (settingsBtn) {
+        if (!isAdmin) {
+          settingsBtn.style.display = 'none';
+        } else {
+          settingsBtn.addEventListener('click', () => {
+            dropdown.hidden = true;
+            btn.setAttribute('aria-expanded', 'false');
+            if (typeof showSettings === 'function') {
+              showSettings();
+            }
+          });
+        }
+      }
+
+      // Handle My Profile dialog
+      const profileBtn = document.getElementById('btn-dropdown-profile');
+      if (profileBtn) {
+        profileBtn.addEventListener('click', async () => {
+          dropdown.hidden = true;
+          btn.setAttribute('aria-expanded', 'false');
+          
+          if (!user) return;
+
+          // Fetch card assigned to this user
+          let cardUid = 'None Linked';
+          if (window.cardManagementApi && typeof window.cardManagementApi.listCards === 'function') {
+            try {
+              const cardListRes = await window.cardManagementApi.listCards();
+              const cards = cardListRes && cardListRes.cards ? cardListRes.cards : [];
+              const userCard = cards.find(c => String(c.assigned_username || '').toLowerCase() === String(user.username || '').toLowerCase());
+              if (userCard) {
+                cardUid = userCard.card_uid || userCard.uid || 'Assigned';
+              }
+            } catch (e) {
+              console.error('[Profile] Failed to fetch cards:', e);
+            }
+          }
+
+          // Fetch system version
+          let version = 'v1.0.11';
+          if (window.appApi && typeof window.appApi.getVersion === 'function') {
+            try {
+              const ver = await window.appApi.getVersion();
+              if (ver) version = 'v' + ver;
+            } catch (e) {
+              console.error('[Profile] Failed to get app version:', e);
+            }
+          }
+
+          const displayName = user.fullName || (user.username ? user.username.charAt(0).toUpperCase() + user.username.slice(1) : 'Kenneth Abayon');
+          const initials = displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+          
+          let roleName = 'User';
+          if (Array.isArray(session.roles) && session.roles.length > 0) {
+            const primaryRole = session.roles[0];
+            roleName = primaryRole.charAt(0).toUpperCase() + primaryRole.slice(1);
+          } else if (user.username === 'admin') {
+            roleName = 'Administrator';
+          }
+
+          const html = `
+            <div class="profile-modal-wrap">
+              <div class="profile-modal-card">
+                <div class="profile-modal-avatar">
+                  ${initials}
+                </div>
+                <div class="profile-modal-info">
+                  <div class="profile-modal-name">${displayName}</div>
+                  <div class="profile-modal-username">@${user.username || 'user'}</div>
+                </div>
+              </div>
+              
+              <div class="profile-modal-grid">
+                <div class="profile-modal-row">
+                  <div class="profile-modal-label-group">
+                    <div class="profile-modal-label">System Role</div>
+                    <div class="profile-modal-value">
+                      <span class="profile-modal-role-badge"></span>
+                      ${roleName}
+                    </div>
+                  </div>
+                  <div class="profile-modal-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; color: #3b82f6;">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                  </div>
+                </div>
+                
+                <div class="profile-modal-row">
+                  <div class="profile-modal-label-group">
+                    <div class="profile-modal-label">RFID Security Card</div>
+                    <div class="profile-modal-value" style="font-family: monospace; letter-spacing: 0.02em;">
+                      ${cardUid}
+                    </div>
+                  </div>
+                  <div class="profile-modal-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; color: #3b82f6;">
+                      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                      <line x1="1" y1="10" x2="23" y2="10"/>
+                    </svg>
+                  </div>
+                </div>
+
+                <div class="profile-modal-row">
+                  <div class="profile-modal-label-group">
+                    <div class="profile-modal-label">System Version</div>
+                    <div class="profile-modal-value">
+                      ${version}
+                    </div>
+                  </div>
+                  <div class="profile-modal-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; color: #3b82f6;">
+                      <path d="M4.5 16.5c-1.5 1.26-2 2.5-2 2.5s1.24-.5 2.5-2Z"/>
+                      <path d="m12 12 3-3"/>
+                      <path d="M8 16c.92.58 2.08.64 3.08.16L18 9c2-2 2-5 2-5s-3 0-5 2l-7.16 6.92C7.36 13.92 7.42 15.08 8 16Z"/>
+                      <path d="m16 8-3 3"/>
+                      <path d="M12 20h.01"/>
+                      <path d="M17.5 15h.01"/>
+                      <path d="M19 10h.01"/>
+                      <path d="M9.5 20.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+
+          showAlert(html, {
+            title: 'User Profile Details',
+            okText: 'Close',
+            type: 'info',
+            html: true
+          });
         });
       }
     }
@@ -355,11 +491,7 @@ async function loadCardsPage() {
     const btnLogout = document.getElementById('btn-logout');
     const btnAutoFillPhs = document.getElementById('btn-autofill-phs');
 
-    const roles = Array.isArray(session.roles) ? session.roles : [];
-    const isAdmin = roles.includes('admin');
-    const canEdit = roles.includes('admin') || roles.includes('encoder');
-    const canDelete = roles.includes('admin');
-    const canViewAnalytics = roles.includes('admin') || roles.includes('viewer');
+    // Roles and privileges are declared and initialized at the top of bootstrap()
 
     const navAdmin = document.getElementById('nav-admin');
     const navCards = document.getElementById('nav-cards');
