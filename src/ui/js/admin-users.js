@@ -17,6 +17,7 @@ export function initAdminUsersView(opts) {
   const form = adminViewEl.querySelector('#admin-user-form');
   const usernameEl = adminViewEl.querySelector('#admin-username');
   const fullNameEl = adminViewEl.querySelector('#admin-fullname');
+  const emailEl    = adminViewEl.querySelector('#admin-email');
   const passwordEl = adminViewEl.querySelector('#admin-password');
   const roleSelectEl = adminViewEl.querySelector('#admin-role');
   const statusEl = adminViewEl.querySelector('#admin-user-status');
@@ -79,7 +80,8 @@ export function initAdminUsersView(opts) {
 
   function clearForm() {
     usernameEl.value = '';
-    fullNameEl.value = '';
+    if (fullNameEl) fullNameEl.value = '';
+    if (emailEl)    emailEl.value = '';
     passwordEl.value = '';
     roleSelectEl.value = '';
     setStatus(statusEl, '');
@@ -201,6 +203,7 @@ export function initAdminUsersView(opts) {
 
     const username = String(usernameEl.value || '').trim();
     const fullName = String(fullNameEl && fullNameEl.value ? fullNameEl.value : '').trim();
+    const email    = String(emailEl    && emailEl.value    ? emailEl.value    : '').trim();
     const password = String(passwordEl.value || '');
     const roleName = String(roleSelectEl.value || '').trim();
 
@@ -214,6 +217,7 @@ export function initAdminUsersView(opts) {
         username: username,
         password: password,
         fullName: fullName,
+        email:    email || undefined,
         roleName: roleName,
       });
 

@@ -72,28 +72,52 @@
       </div>
     </div>
 
-    <!-- Assign Personnel Modal -->
+    <!-- Assign Card Modal (tabbed: System Users | Personnel Records) -->
     <div id="assign-personnel-modal" class="modal" style="display: none;">
       <div class="modal-overlay" data-assign-modal-close></div>
       <div class="modal-dialog assign-modal-dialog">
         <div class="modal-header">
           <div>
-            <h2 id="assign-personnel-title">Assign Card to Personnel</h2>
-            <p id="assign-personnel-subtitle" class="assign-modal-subtitle">Pick the personnel who should own this card</p>
+            <h2 id="assign-personnel-title">Assign Card</h2>
+            <p id="assign-personnel-subtitle" class="assign-modal-subtitle">Select a system user or personnel record</p>
           </div>
           <button class="modal-close" id="btn-close-assign-modal" data-assign-modal-close>&times;</button>
         </div>
+
+        <!-- Tab bar -->
+        <div class="assign-modal-tabs">
+          <button class="assign-tab-btn active" data-assign-tab="users" id="assign-tab-users">
+            <svg viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path d="M10 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-7 9a7 7 0 1 1 14 0H3Z"/></svg>
+            System Users
+          </button>
+          <button class="assign-tab-btn" data-assign-tab="personnel" id="assign-tab-personnel">
+            <svg viewBox="0 0 20 20" fill="currentColor" width="15" height="15" aria-hidden="true"><path d="M9 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM17.555 16.027A8.005 8.005 0 0 0 10 11a8.005 8.005 0 0 0-7.555 5.027M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm4.555 4.027A8.005 8.005 0 0 0 15 11a7.98 7.98 0 0 0-2.034.264"/></svg>
+            Personnel Records
+          </button>
+        </div>
+
         <div class="modal-body assign-modal-body">
           <div class="assign-modal-search">
-            <input id="assign-personnel-search" type="search" placeholder="Search personnel by name or ID" />
+            <input id="assign-personnel-search" type="search" placeholder="Search by name or username…" autocomplete="off" />
           </div>
-          <div id="assign-personnel-list" class="assign-personnel-list"></div>
+
+          <!-- Panel: System Users -->
+          <div id="assign-users-panel" class="assign-tab-panel">
+            <div id="assign-users-list" class="assign-personnel-list"></div>
+          </div>
+
+          <!-- Panel: Personnel Records -->
+          <div id="assign-personnel-panel" class="assign-tab-panel" hidden>
+            <div id="assign-personnel-list" class="assign-personnel-list"></div>
+          </div>
         </div>
+
         <div class="modal-footer">
           <button id="btn-cancel-assign-modal" class="btn secondary" data-assign-modal-close>Cancel</button>
         </div>
       </div>
     </div>
+
 
     <!-- Cards Table -->
     <div class="card-management-table">

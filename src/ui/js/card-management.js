@@ -1083,8 +1083,12 @@ function createPostSaveModalShell() {
 
     // --- Step 2: Assign RFID Card (or skip) ---
     if (modal.state.step === 2) {
+      // Resolve the card UID to assign.
+      // On the scan tab: prefer the physically-scanned UID but also accept a
+      // card the user manually selected from the list (selectedCardUid).
+      // On the manual tab: read the text input.
       const uid = modal.state.rfidTab === 'scan'
-        ? modal.state.scannedCardUid
+        ? (modal.state.scannedCardUid || modal.state.selectedCardUid || '')
         : (modal.manualUidEl && normalizePostSaveText(modal.manualUidEl.value));
       if (uid) {
         try {
@@ -1446,21 +1450,41 @@ export function createCardManagementController() {
   const registerStatusMsg = document.getElementById('register-status-message');
   const resetBtn = document.getElementById('btn-reset-cards');
 
-  // Personnel assign modal elements
+  // Assign modal elements
   const assignModal = document.getElementById('assign-personnel-modal');
   const assignModalTitle = document.getElementById('assign-personnel-title');
   const assignModalSubtitle = document.getElementById('assign-personnel-subtitle');
   const assignModalSearch = document.getElementById('assign-personnel-search');
-  const assignModalList = document.getElementById('assign-personnel-list');
+  const assignModalList = document.getElementById('assign-personnel-list');   // personnel panel list
+  const assignUsersList = document.getElementById('assign-users-list');       // users panel list
+  const assignUsersPanel = document.getElementById('assign-users-panel');
+  const assignPersonnelPanel = document.getElementById('assign-personnel-panel');
+  const assignTabBtns = document.querySelectorAll('.assign-tab-btn');
   const assignModalCloseBtn = document.getElementById('btn-close-assign-modal');
   const assignModalCancelBtn = document.getElementById('btn-cancel-assign-modal');
-  
+
   let currentFilter = 'all';
   let registeredCardUid = null;
   let allCards = [];
   let allPersonnel = [];
+  let allSystemUsers = [];
   let currentAssignCardUid = null;
+  let currentAssignTab = 'users'; // 'users' | 'personnel'
 
+  // Delegate clicks inside users list
+  if (assignUsersList) {
+    assignUsersList.addEventListener('click', (event) => {
+      const button = event.target.closest('.assign-personnel-item');
+      if (!button || !assignUsersList.contains(button)) return;
+      event.preventDefault();
+      const username = String(button.dataset.username || '').trim();
+      const userId   = String(button.dataset.userId   || '').trim();
+      const email    = String(button.dataset.email    || '').trim();
+      if (username) handleAssignToUser(currentAssignCardUid, username, userId, email);
+    });
+  }
+
+  // Delegate clicks inside personnel list
   if (assignModalList) {
     assignModalList.addEventListener('click', (event) => {
       const button = event.target.closest('.assign-personnel-item');
@@ -1552,6 +1576,76 @@ export function createCardManagementController() {
       .join(' ');
   }
 
+  // ── Users list ──────────────────────────────────────────────────────────────
+
+  function getRoleBadgeClass(role) {
+    const r = String(role || '').toLowerCase();
+    if (r.includes('admin'))   return 'assign-user-role-badge--admin';
+    if (r.includes('encoder')) return 'assign-user-role-badge--encoder';
+    return 'assign-user-role-badge--viewer';
+  }
+
+  function renderUsersList() {
+    if (!assignUsersList) return;
+    const query = String(assignModalSearch && assignModalSearch.value || '').trim().toLowerCase();
+    const filtered = (allSystemUsers || []).filter(u => {
+      if (!query) return true;
+      return [
+        String(u.username || ''),
+        String(u.full_name || ''),
+        ...(u.roles || []),
+      ].join(' ').toLowerCase().includes(query);
+    });
+
+    if (!filtered.length) {
+      assignUsersList.innerHTML = '<div class="assign-personnel-empty">No system users found.</div>';
+      return;
+    }
+
+    assignUsersList.innerHTML = filtered.map(u => {
+      const username  = escapeHtml(u.username  || '');
+      const fullName  = escapeHtml(u.full_name || u.username || '');
+      const userId    = escapeHtml(String(u.id || ''));
+      const email     = escapeHtml(u.email || '');
+      const roles     = Array.isArray(u.roles) ? u.roles : [];
+      const roleLabel = escapeHtml(roles.length ? roles.join(', ') : 'No role');
+      const badgeClass = getRoleBadgeClass(roles[0] || '');
+      return `
+        <button type="button" class="assign-personnel-item"
+          data-username="${username}" data-user-id="${userId}" data-email="${email}">
+          <div class="assign-personnel-item__main">
+            <div class="assign-personnel-item__name">
+              ${fullName}
+              <span class="assign-user-role-badge ${badgeClass}">${roleLabel}</span>
+            </div>
+            <div class="assign-personnel-item__meta">@${username}</div>
+          </div>
+          <span class="assign-personnel-item__action">Assign</span>
+        </button>
+      `;
+    }).join('');
+  }
+
+  async function loadUsersList() {
+    if (!assignUsersList) return;
+    assignUsersList.innerHTML = '<div class="assign-personnel-empty">Loading users…</div>';
+    try {
+      if (!window.adminApi || typeof window.adminApi.listUsers !== 'function') {
+        throw new Error('Admin API not available');
+      }
+      const result = await window.adminApi.listUsers();
+      allSystemUsers = Array.isArray(result)
+        ? result
+        : (result && result.users ? result.users : []);
+      renderUsersList();
+    } catch (err) {
+      assignUsersList.innerHTML = '<div class="assign-personnel-empty">Unable to load system users.</div>';
+      console.error('[ASSIGN] loadUsersList failed:', err);
+    }
+  }
+
+  // ── Personnel list ───────────────────────────────────────────────────────────
+
   function renderPersonnelList() {
     if (!assignModalList) return;
     const query = String(assignModalSearch && assignModalSearch.value || '').trim().toLowerCase();
@@ -1566,7 +1660,7 @@ export function createCardManagementController() {
     }
 
     assignModalList.innerHTML = filtered.map(person => {
-      const id = escapeHtml(person && person.id ? person.id : '');
+      const id   = escapeHtml(person && person.id ? person.id : '');
       const name = escapeHtml(getPersonnelDisplayName(person));
       const meta = escapeHtml(person && (person.presentJob || person.organization || person.role || 'Personnel'));
       return `
@@ -1579,35 +1673,142 @@ export function createCardManagementController() {
         </button>
       `;
     }).join('');
-
   }
 
   async function loadPersonnelList() {
     if (!window.personnelApi || typeof window.personnelApi.getAll !== 'function') {
       throw new Error('Personnel API not available');
     }
+    assignModalList.innerHTML = '<div class="assign-personnel-empty">Loading personnel…</div>';
     const result = await window.personnelApi.getAll();
     allPersonnel = Array.isArray(result) ? result : [];
     renderPersonnelList();
   }
 
+  // ── Tab switching ─────────────────────────────────────────────────────────────
+
+  function switchAssignTab(tab) {
+    currentAssignTab = tab;
+    assignTabBtns.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.assignTab === tab);
+    });
+    if (assignUsersPanel)    assignUsersPanel.hidden    = (tab !== 'users');
+    if (assignPersonnelPanel) assignPersonnelPanel.hidden = (tab !== 'personnel');
+    if (assignModalSearch) {
+      assignModalSearch.value = '';
+      assignModalSearch.placeholder = tab === 'users'
+        ? 'Search by name or username…'
+        : 'Search by name or ID…';
+    }
+    if (tab === 'users') {
+      loadUsersList();
+    } else {
+      loadPersonnelList().catch(err => {
+        if (assignModalList) assignModalList.innerHTML = '<div class="assign-personnel-empty">Unable to load personnel list.</div>';
+        console.error('[ASSIGN] loadPersonnelList failed:', err);
+      });
+    }
+  }
+
+  // ── Open / Close ─────────────────────────────────────────────────────────────
+
   function openAssignModal(cardUid) {
     currentAssignCardUid = String(cardUid || '').trim();
     if (!currentAssignCardUid) return;
-    if (assignModalTitle) assignModalTitle.textContent = 'Assign Card to Personnel';
+    if (assignModalTitle)    assignModalTitle.textContent    = 'Assign Card';
     if (assignModalSubtitle) assignModalSubtitle.textContent = `Card UID: ${currentAssignCardUid}`;
-    if (assignModalSearch) assignModalSearch.value = '';
-    if (assignModalList) assignModalList.innerHTML = '<div class="assign-personnel-empty">Loading personnel...</div>';
     if (assignModal) assignModal.style.display = 'block';
-    loadPersonnelList().catch(err => {
-      if (assignModalList) assignModalList.innerHTML = '<div class="assign-personnel-empty">Unable to load personnel list.</div>';
-      setStatus(`Error loading personnel: ${err && err.message ? err.message : err}`, 'error');
-    });
+    // Always open on the Users tab
+    switchAssignTab('users');
   }
 
   function closeAssignModal() {
     currentAssignCardUid = null;
     if (assignModal) assignModal.style.display = 'none';
+  }
+
+  // ── Assign handlers ───────────────────────────────────────────────────────────
+
+  async function handleAssignToUser(cardUid, username, userId, email) {
+    if (!cardUid || !username) return;
+    try {
+      if (!window.cardManagementApi || typeof window.cardManagementApi.assignCard !== 'function') {
+        setStatus('Card Management API not available', 'error');
+        return;
+      }
+      await window.cardManagementApi.assignCard({
+        card_uid: cardUid,
+        assigned_username: username,
+      });
+
+      setStatus(`Card assigned to @${username}`, 'success');
+      closeAssignModal();
+      await loadCards();
+
+      // Non-blocking: email TOTP QR to the user (best-effort)
+      if (userId && window.authApi && typeof window.authApi.emailTotpQr === 'function') {
+        let recipientEmail = String(email || '').trim() || undefined;
+        if (!recipientEmail) {
+          const { showConfirm } = await import('./confirm.js');
+          const promptHtml = `
+            <p style="margin-bottom: 8px;">No email is on file for @${username}.</p>
+            <p style="margin-bottom: 12px; font-size: 0.9em; opacity: 0.85;">Enter an email address to send their Authenticator QR code (optional):</p>
+            <input type="email" id="prompt-email-input" placeholder="e.g., user@example.com" style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 14px; border: 1px solid var(--border-color, #ccc); border-radius: 6px; background: var(--input-bg, #fff); color: var(--input-color, #333); outline: none; margin-top: 5px;" />
+          `;
+          
+          // Focus the input field after it renders
+          setTimeout(() => {
+            const inputEl = document.getElementById('prompt-email-input');
+            if (inputEl) {
+              inputEl.focus();
+              inputEl.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                  e.stopPropagation();
+                  const btnConfirm = document.querySelector('#app-confirm-dialog .app-dialog-confirm');
+                  if (btnConfirm) btnConfirm.click();
+                }
+              });
+            }
+          }, 50);
+
+          const confirmed = await showConfirm(promptHtml, {
+            title: 'Send Authenticator QR',
+            confirmText: 'Send QR',
+            cancelText: 'Skip Email',
+            type: 'info',
+            html: true
+          });
+
+          if (confirmed) {
+            const inputEl = document.getElementById('prompt-email-input');
+            if (inputEl && inputEl.value.trim()) {
+              recipientEmail = inputEl.value.trim();
+            }
+          } else {
+            // Cancelled or skipped, proceed without email
+            return;
+          }
+        }
+
+        window.authApi.emailTotpQr(userId, recipientEmail)
+          .then(res => {
+            if (!res) return;
+            if (res.emailed && window.toast && window.toast.success) {
+              window.toast.success(`Authenticator QR emailed to ${res.email}`);
+            } else if (res.reason === 'no-recipient' && window.toast && window.toast.info) {
+              window.toast.info(`No email on file for @${username} — QR not sent.`);
+            } else if (res.reason === 'smtp-not-configured' && window.toast && window.toast.info) {
+              window.toast.info('Email not configured — QR not sent.');
+            } else if (res.reason && window.toast && window.toast.warning) {
+              window.toast.warning(`QR email failed: ${res.reason}`);
+            }
+          })
+          .catch(e => console.warn('[ASSIGN] emailTotpQr failed:', e && e.message ? e.message : e));
+      }
+    } catch (e) {
+      setStatus(`Error assigning card: ${e && e.message ? e.message : e}`, 'error');
+      console.error('[ASSIGN] handleAssignToUser error:', e);
+    }
   }
 
   async function handleAssignPersonnel(cardUid, personnelId) {
@@ -1623,7 +1824,7 @@ export function createCardManagementController() {
       await loadCards();
     } catch (e) {
       setStatus(`Error assigning card: ${e && e.message ? e.message : e}`, 'error');
-      console.error('Error assigning card:', e);
+      console.error('[ASSIGN] handleAssignPersonnel error:', e);
     }
   }
 
@@ -1880,7 +2081,23 @@ export function createCardManagementController() {
   if (resetBtn) resetBtn.addEventListener('click', handleResetCards);
   if (assignModalCloseBtn) assignModalCloseBtn.addEventListener('click', closeAssignModal);
   if (assignModalCancelBtn) assignModalCancelBtn.addEventListener('click', closeAssignModal);
-  if (assignModalSearch) assignModalSearch.addEventListener('input', renderPersonnelList);
+
+  // Search — filter whichever list is active
+  if (assignModalSearch) {
+    assignModalSearch.addEventListener('input', () => {
+      if (currentAssignTab === 'users') {
+        renderUsersList();
+      } else {
+        renderPersonnelList();
+      }
+    });
+  }
+
+  // Tab buttons
+  assignTabBtns.forEach(btn => {
+    btn.addEventListener('click', () => switchAssignTab(btn.dataset.assignTab));
+  });
+
   if (assignModal) {
     assignModal.querySelectorAll('[data-assign-modal-close]').forEach(el => {
       el.addEventListener('click', closeAssignModal);

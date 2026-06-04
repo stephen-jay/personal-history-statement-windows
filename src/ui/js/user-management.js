@@ -12,8 +12,9 @@
   const btnCreateUser = document.getElementById('btnCreateUser');
   const inputUsername = document.getElementById('inputUsername');
   const inputFullname = document.getElementById('inputFullname');
+  const inputEmail    = document.getElementById('inputEmail');
   const inputPassword = document.getElementById('inputPassword');
-  const inputRole = document.getElementById('inputRole');
+  const inputRole     = document.getElementById('inputRole');
   const searchInput = document.getElementById('searchInput');
   const tableBody = document.getElementById('tableBody');
   const userCount = document.getElementById('userCount');
@@ -86,6 +87,7 @@
   function clearForm() {
     inputUsername.value = '';
     inputFullname.value = '';
+    if (inputEmail) inputEmail.value = '';
     inputPassword.value = '';
     inputRole.value = '';
   }
@@ -206,8 +208,9 @@
   async function createUser() {
     const username = inputUsername.value.trim();
     const fullname = inputFullname.value.trim();
+    const email    = inputEmail ? inputEmail.value.trim() : '';
     const password = inputPassword.value.trim();
-    const role = inputRole.value;
+    const role     = inputRole.value;
 
     if (!username) {
       showToast('Username is required', 'danger');
@@ -224,7 +227,7 @@
 
     try {
       if (window.adminApi?.createUser) {
-        await window.adminApi.createUser({ username, fullname, password, roleName: role.toLowerCase() });
+        await window.adminApi.createUser({ username, fullname, email: email || undefined, password, roleName: role.toLowerCase() });
       }
 
       closeFormPanel();
@@ -232,7 +235,7 @@
       loadUsers();
     } catch (error) {
       console.error('Error creating user:', error);
-      showToast('Error creating user', 'danger');
+      showToast(error && error.message ? error.message : 'Error creating user', 'danger');
     }
   }
 

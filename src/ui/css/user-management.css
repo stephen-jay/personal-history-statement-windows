@@ -79,7 +79,7 @@ body {
   pointer-events: none;
 }
 .form-panel.open {
-  max-height: 260px;
+  max-height: 340px;
   opacity: 1;
   transform: translateY(0);
   pointer-events: all;
@@ -118,7 +118,7 @@ body {
 .form-body {
   padding: 14px 22px 6px 22px;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 14px;
 }
 .form-field label {

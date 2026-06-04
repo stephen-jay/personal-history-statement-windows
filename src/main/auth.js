@@ -165,10 +165,11 @@ async function createAdminUserLocal(payload) {
   if (!pool) throw new Error('DATABASE_URL is required for local admin operations.');
 
   const body = payload || {};
-  const username = String(body.username || '').trim();
-  const password = String(body.password || '');
-  const fullName = String(body.fullName || body.full_name || '').trim();
-  const roleName = String(body.roleName || body.role || '').trim();
+  const username    = String(body.username   || '').trim();
+  const password    = String(body.password   || '');
+  const fullName    = String(body.fullName   || body.full_name  || '').trim();
+  const email       = String(body.email      || '').trim() || null;
+  const roleName    = String(body.roleName   || body.role       || '').trim();
   const personnelId = String(body.personnelId || body.personnel_id || '').trim();
   if (!username || !password || !roleName) {
     throw new Error('username, password, and roleName are required.');
@@ -184,38 +185,62 @@ async function createAdminUserLocal(payload) {
     }
     const roleId = roleRow.rows[0].id;
 
-    // Check if personnel_id column exists (may not if migration hasn't run yet)
+    // Check which optional columns exist (read-only schema query — no DDL needed)
     const colCheck = await client.query(
-      "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='app_users' AND column_name='personnel_id'"
+      `SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'app_users'
+          AND column_name IN ('personnel_id', 'email')`
     );
-    const hasPersonnelId = colCheck.rowCount > 0;
+    const existingCols = new Set((colCheck.rows || []).map(r => r.column_name));
+    const hasPersonnelId = existingCols.has('personnel_id');
+    const hasEmail       = existingCols.has('email');
 
-    let inserted;
+    // Build INSERT dynamically based on what columns exist
+    const cols   = ['username', 'password_hash', 'full_name', 'is_active'];
+    const params = [username, password, fullName];          // $1, $2, $3
+    const vals   = ['$1', `crypt($2, gen_salt('bf'))`, '$3', 'TRUE'];  // is_active = literal TRUE, no param
+    let idx = 3;
+
     if (hasPersonnelId) {
-      inserted = await client.query(
-        `
-          INSERT INTO app_users (username, password_hash, full_name, personnel_id, is_active)
-          VALUES ($1, crypt($2, gen_salt('bf')), $3, $4, TRUE)
-          RETURNING id, username, full_name, personnel_id
-        `,
-        [username, password, fullName, personnelId || null]
-      );
-    } else {
-      inserted = await client.query(
-        `
-          INSERT INTO app_users (username, password_hash, full_name, is_active)
-          VALUES ($1, crypt($2, gen_salt('bf')), $3, TRUE)
-          RETURNING id, username, full_name
-        `,
-        [username, password, fullName]
-      );
+      cols.push('personnel_id');
+      params.push(personnelId || null);
+      vals.push(`$${++idx}`);
     }
+    if (hasEmail && email) {
+      cols.push('email');
+      params.push(email);
+      vals.push(`$${++idx}`);
+    }
+
+    const insertSql = `
+      INSERT INTO app_users (${cols.join(', ')})
+      VALUES (${vals.join(', ')})
+      RETURNING id, username, full_name
+    `;
+    const inserted = await client.query(insertSql, params);
     const userId = inserted.rows && inserted.rows[0] ? inserted.rows[0].id : null;
     if (!userId) throw new Error('Failed to create user.');
 
+    if (!hasEmail && email) {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS app_user_emails (
+          user_id uuid PRIMARY KEY,
+          email text NOT NULL,
+          created_at timestamptz NOT NULL DEFAULT NOW(),
+          updated_at timestamptz NOT NULL DEFAULT NOW()
+        )
+      `);
+      await client.query(
+        `INSERT INTO app_user_emails (user_id, email)
+         VALUES ($1, $2)
+         ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, updated_at = NOW()`,
+        [userId, email]
+      );
+    }
+
     await client.query('INSERT INTO app_user_roles (user_id, role_id) VALUES ($1, $2)', [userId, roleId]);
     await client.query('COMMIT');
-    return { ok: true, user: { id: userId, username: username, fullName: fullName, roleName: roleName } };
+    return { ok: true, user: { id: userId, username, fullName, email, roleName } };
   } catch (e) {
     try { await client.query('ROLLBACK'); } catch (_) {}
     if (e && e.code === '23505') throw new Error('Username already exists.');
@@ -255,6 +280,9 @@ async function deleteAdminUserLocal(userId) {
   try {
     await client.query('BEGIN');
     await client.query('DELETE FROM app_user_roles WHERE user_id = $1', [userId]);
+    try {
+      await client.query('DELETE FROM app_user_emails WHERE user_id = $1', [userId]);
+    } catch (_) {}
     await client.query('DELETE FROM app_users WHERE id = $1', [userId]);
     await client.query('COMMIT');
     return { ok: true };
@@ -597,51 +625,43 @@ async function getUserEmail(userId) {
   if (!pool) throw new Error('DATABASE_URL is required.');
   if (!userId) throw new Error('userId is required.');
 
+  // Check if the email column exists (read-only, no DDL required)
+  const colCheck = await pool.query(
+    `SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'app_users' AND column_name = 'email'`
+  );
+  const hasEmailCol = colCheck.rowCount > 0;
+
+  const selectCols = hasEmailCol ? 'id, username, full_name, email' : 'id, username, full_name';
   const userRes = await pool.query(
-    'SELECT id, username, full_name FROM app_users WHERE id = $1',
+    `SELECT ${selectCols} FROM app_users WHERE id = $1`,
     [userId]
   );
   if (!userRes.rows || !userRes.rows.length) throw new Error('User not found.');
   const user = userRes.rows[0];
-  const username = String(user.username || '').trim();
-  const fullName = user.full_name ? String(user.full_name).trim() : null;
 
-  let email = null;
+  let email = user.email ? String(user.email).trim() || null : null;
 
-  // 1. Via explicit personnel_id link, if the column exists.
-  const hasPersonnelIdCol = await pool.query(
-    "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='app_users' AND column_name='personnel_id'"
-  );
-  if (hasPersonnelIdCol.rowCount > 0) {
-    const linked = await pool.query(
-      `SELECT p.email
-         FROM app_users u
-         JOIN personnel p ON p.id = u.personnel_id
-        WHERE u.id = $1 AND p.deleted_at IS NULL
-        LIMIT 1`,
-      [userId]
-    );
-    if (linked.rows && linked.rows.length && linked.rows[0].email) {
-      email = String(linked.rows[0].email).trim() || null;
-    }
+  if (!hasEmailCol) {
+    try {
+      const emailRes = await pool.query(
+        'SELECT email FROM app_user_emails WHERE user_id = $1',
+        [userId]
+      );
+      if (emailRes.rows && emailRes.rows.length) {
+        email = String(emailRes.rows[0].email).trim() || null;
+      }
+    } catch (_) {}
   }
 
-  // 2. Fallback: match personnel by full_name.
-  if (!email && fullName) {
-    const byName = await pool.query(
-      `SELECT email FROM personnel
-        WHERE deleted_at IS NULL AND full_name IS NOT NULL
-          AND LOWER(full_name) = LOWER($1)
-        LIMIT 1`,
-      [fullName]
-    );
-    if (byName.rows && byName.rows.length && byName.rows[0].email) {
-      email = String(byName.rows[0].email).trim() || null;
-    }
-  }
-
-  return { email, username, fullName };
+  return {
+    email:    email,
+    username: user.username ? String(user.username).trim()  || ''   : '',
+    fullName: user.full_name ? String(user.full_name).trim() || null : null,
+  };
 }
+
+
 
 async function verifyTotpForUser(userId, token) {
   const pool = getPgPool();

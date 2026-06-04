@@ -141,6 +141,7 @@ function registerIpcHandlers(ipcMain, app, config) {
     auth.setAuthSession(newSession);
     return newSession.user ? { user: newSession.user } : null;
   });
+  ipcMain.handle('auth:adminResetTotp', async function (_evt, payload) {
     const body = payload || {};
     const targetUserId = body.targetUserId;
     if (!targetUserId) throw new Error('Missing targetUserId.');
@@ -182,6 +183,38 @@ function registerIpcHandlers(ipcMain, app, config) {
       console.warn('[MAIL] getUserEmail failed:', e && e.message ? e.message : e);
     }
     const to = String(body.email || info.email || '').trim();
+
+    // If email is explicitly provided and is different from the one on file, save it.
+    if (body.email && body.email.trim() && body.email.trim() !== info.email) {
+      const pool = getPgPool();
+      if (pool) {
+        try {
+          const colCheck = await pool.query(
+            `SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = 'app_users' AND column_name = 'email'`
+          );
+          const hasEmailCol = colCheck.rowCount > 0;
+          if (hasEmailCol) {
+            await pool.query('UPDATE app_users SET email = $1 WHERE id = $2', [body.email.trim(), userId]);
+          } else {
+            await pool.query(`
+              CREATE TABLE IF NOT EXISTS app_user_emails (
+                user_id uuid PRIMARY KEY,
+                email text NOT NULL,
+                created_at timestamptz NOT NULL DEFAULT NOW(),
+                updated_at timestamptz NOT NULL DEFAULT NOW()
+              )
+            `);
+            await pool.query(`
+              INSERT INTO app_user_emails (user_id, email) VALUES ($1, $2)
+              ON CONFLICT (user_id) DO UPDATE SET email = EXCLUDED.email, updated_at = NOW()
+            `, [userId, body.email.trim()]);
+          }
+        } catch (saveErr) {
+          console.warn('[MAIL] failed to auto-save explicitly provided email:', saveErr.message);
+        }
+      }
+    }
 
     if (!mailer.isConfigured()) {
       return { ok: true, emailed: false, reason: 'smtp-not-configured', email: to || null, secret: enroll.secret, qrCodeDataUrl: enroll.qrCodeDataUrl };
@@ -299,6 +332,25 @@ function registerIpcHandlers(ipcMain, app, config) {
       }
     }
     const result = await dbManager.runWithFailover(async function (pool) {
+      const colCheck = await pool.query(
+        `SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public' AND table_name = 'app_users' AND column_name = 'email'`
+      );
+      const hasEmailCol = colCheck.rowCount > 0;
+
+      let emailSelect = 'NULL AS email';
+      if (hasEmailCol) {
+        emailSelect = 'u.email';
+      } else {
+        const tableCheck = await pool.query(
+          `SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'app_user_emails'`
+        );
+        if (tableCheck.rowCount > 0) {
+          emailSelect = '(SELECT email FROM app_user_emails WHERE user_id = u.id) AS email';
+        }
+      }
+
       const rows = await pool.query(
         `
           SELECT
@@ -306,11 +358,12 @@ function registerIpcHandlers(ipcMain, app, config) {
             u.username,
             u.full_name,
             u.is_active,
+            ${emailSelect},
             COALESCE(ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL), '{}') AS roles
           FROM app_users u
           LEFT JOIN app_user_roles ur ON ur.user_id = u.id
           LEFT JOIN app_roles r ON r.id = ur.role_id
-          GROUP BY u.id, u.username, u.full_name, u.is_active
+          GROUP BY u.id, u.username, u.full_name, u.is_active${hasEmailCol ? ', u.email' : ''}
           ORDER BY u.username ASC
         `
       );
@@ -427,6 +480,9 @@ function registerIpcHandlers(ipcMain, app, config) {
       // Delete all users except 'admin'
       await client.query('DELETE FROM app_user_roles WHERE user_id IN (SELECT id FROM app_users WHERE username != $1)', ['admin']);
       await client.query('DELETE FROM app_users WHERE username != $1', ['admin']);
+      try {
+        await client.query('DELETE FROM app_user_emails WHERE user_id NOT IN (SELECT id FROM app_users)');
+      } catch (_) {}
       await client.query('COMMIT');
       return { ok: true };
     } catch (e) {
@@ -901,16 +957,27 @@ function registerIpcHandlers(ipcMain, app, config) {
       // 2. Clear card-to-personnel mapping table
       await client.query('TRUNCATE TABLE personnel_card_registrations RESTART IDENTITY CASCADE');
       
-      // 3. Clear card_uid column in personnel table (if it exists)
+      // 3. Clear card_uid column in personnel table (if it exists).
+      // Use a savepoint so a failure (e.g. column doesn't exist) doesn't
+      // abort the whole transaction — PostgreSQL marks any transaction as
+      // aborted on the first error, so we must ROLLBACK TO SAVEPOINT rather
+      // than simply swallowing the exception.
+      await client.query('SAVEPOINT before_personnel_card_uid');
       try {
         await client.query('UPDATE personnel SET card_uid = NULL');
+        await client.query('RELEASE SAVEPOINT before_personnel_card_uid');
       } catch (e) {
-        // column might not exist in some versions, ignore
+        // column might not exist in some versions — roll back only to the
+        // savepoint so the outer transaction remains valid.
+        await client.query('ROLLBACK TO SAVEPOINT before_personnel_card_uid');
       }
 
       // 4. Delete all user accounts except 'admin' (this removes the "so many usernames")
       await client.query('DELETE FROM app_user_roles WHERE user_id IN (SELECT id FROM app_users WHERE username != $1)', ['admin']);
       await client.query('DELETE FROM app_users WHERE username != $1', ['admin']);
+      try {
+        await client.query('DELETE FROM app_user_emails WHERE user_id NOT IN (SELECT id FROM app_users)');
+      } catch (_) {}
       
       await client.query('COMMIT');
       return { ok: true };
