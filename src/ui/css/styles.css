@@ -207,6 +207,62 @@ body[data-app-view="form"] .sidebar .nav-item.active:not(:hover) {
   min-height: 64px;
 }
 
+body.viewer-mode .sidebar {
+  display: none;
+}
+
+body.encoder-mode .sidebar .nav-item[data-tab="analytics"] {
+  display: none;
+}
+
+body.encoder-mode .topbar-right {
+  display: none;
+}
+
+body.encoder-mode #btn-autofill-phs {
+  display: none;
+}
+
+body.encoder-mode .sidebar-version {
+  display: none;
+}
+
+body.encoder-mode #analytics-view,
+body.encoder-mode #cards-view,
+body.encoder-mode #admin-view,
+body.encoder-mode #audit-view,
+body.encoder-mode #settings-view {
+  display: none !important;
+}
+
+body.viewer-mode .topbar-right {
+  display: none;
+}
+
+body.viewer-mode .roster-toolbar {
+  display: none;
+}
+
+body.viewer-mode .main-area {
+  width: 100%;
+}
+
+body.viewer-mode .content {
+  padding-top: 20px;
+}
+
+body.viewer-mode .view {
+  padding-top: 0;
+}
+
+body.viewer-mode .personnel-table .table-actions-cell {
+  width: 140px;
+}
+
+body.viewer-mode .personnel-table .table-actions-cell .table-actions {
+  justify-content: flex-end;
+}
+
 /* ── Premium App Alert-Dialog ──────────────────────────────────────────────── */
 @keyframes dlg-backdrop-in  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes dlg-backdrop-out { from { opacity: 1; } to { opacity: 0; } }

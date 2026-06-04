@@ -121,12 +121,22 @@ function setAuthSession(session) {
 async function loginWithLocalPostgres(username, password) {
   const pool = getPgPool();
   if (!pool) throw new Error('DATABASE_URL is required for local auth.');
+
+  const colCheck = await pool.query(
+    `SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'app_users' AND column_name = 'personnel_id'`
+  );
+  const hasPersonnelIdCol = colCheck.rowCount > 0;
+  const personnelIdSelect = hasPersonnelIdCol ? 'u.personnel_id' : 'NULL AS personnel_id';
+  const personnelIdGroupBy = hasPersonnelIdCol ? ', u.personnel_id' : '';
+
   const rows = await pool.query(
     `
       SELECT
         u.id,
         u.username,
         u.full_name,
+        ${personnelIdSelect},
         ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL) AS roles
       FROM app_users u
       LEFT JOIN app_user_roles ur ON ur.user_id = u.id
@@ -134,7 +144,7 @@ async function loginWithLocalPostgres(username, password) {
       WHERE u.username = $1
         AND u.is_active = TRUE
         AND u.password_hash = crypt($2, u.password_hash)
-      GROUP BY u.id, u.username, u.full_name
+      GROUP BY u.id, u.username, u.full_name${personnelIdGroupBy}
     `,
     [username, password]
   );
@@ -148,7 +158,52 @@ async function loginWithLocalPostgres(username, password) {
       id: user.id,
       username: user.username,
       fullName: user.full_name,
+      personnelId: user.personnel_id || null,
       roles: Array.isArray(user.roles) ? user.roles : [],
+    },
+  };
+}
+
+async function loginViewerWithLocalPostgres(username) {
+  const pool = getPgPool();
+  if (!pool) throw new Error('DATABASE_URL is required for local auth.');
+
+  const rows = await pool.query(
+    `
+      SELECT
+        u.id,
+        u.username,
+        u.full_name,
+        u.personnel_id,
+        ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL) AS roles
+      FROM app_users u
+      LEFT JOIN app_user_roles ur ON ur.user_id = u.id
+      LEFT JOIN app_roles r ON r.id = ur.role_id
+      WHERE u.username = $1
+        AND u.is_active = TRUE
+      GROUP BY u.id, u.username, u.full_name, u.personnel_id
+    `,
+    [username]
+  );
+  if (!rows.rows || !rows.rows.length) {
+    throw new Error('User not found.');
+  }
+
+  const user = rows.rows[0];
+  const roles = Array.isArray(user.roles) ? user.roles : [];
+  const isViewerOnly = roles.includes('viewer') && !roles.includes('admin') && !roles.includes('encoder');
+  if (!isViewerOnly) {
+    throw new Error('Viewer login is only available for viewer accounts.');
+  }
+
+  return {
+    token: 'local-session',
+    user: {
+      id: user.id,
+      username: user.username,
+      fullName: user.full_name,
+      personnelId: user.personnel_id || null,
+      roles,
     },
   };
 }
@@ -896,6 +951,7 @@ module.exports = {
   getAuthSession,
   setAuthSession,
   loginWithLocalPostgres,
+  loginViewerWithLocalPostgres,
   getAdminRolesLocal,
   createAdminUserLocal,
   updateAdminUserRoleLocal,

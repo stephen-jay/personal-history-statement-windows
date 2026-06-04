@@ -26,8 +26,39 @@ async function remoteApi(pathname, options, config, authSession) {
   if (!res.ok) {
     throw new Error((body && body.error) || ('Remote API error: ' + res.status));
   }
-  return body;
-}
+    return body;
+  }
+
+  function getSessionRoles() {
+    const session = auth.getAuthSession();
+    return (session && session.user && Array.isArray(session.user.roles)) ? session.user.roles : [];
+  }
+
+  function isViewerOnlySession() {
+    const roles = getSessionRoles();
+    return roles.includes('viewer') && !roles.includes('admin') && !roles.includes('encoder');
+  }
+
+  function getViewerPersonnelId() {
+    const session = auth.getAuthSession();
+    const user = session && session.user ? session.user : null;
+    return String((user && (user.personnelId || user.personnel_id)) || '').trim();
+  }
+
+  function filterViewerRecords(records) {
+    if (!isViewerOnlySession()) return records || [];
+    const personnelId = getViewerPersonnelId();
+    if (!personnelId) return [];
+    return (records || []).filter(function (record) {
+      return String(record && record.id) === personnelId;
+    });
+  }
+
+  function assertViewerCanMutate() {
+    if (isViewerOnlySession()) {
+      throw new Error('Viewer accounts are read-only.');
+    }
+  }
 
 function registerIpcHandlers(ipcMain, app, config) {
   ipcMain.handle('auth:login', async function (_evt, creds) {
@@ -78,6 +109,40 @@ function registerIpcHandlers(ipcMain, app, config) {
     auth.setAuthSession(newSession);
     // Keep local credential cache current for offline tier
     if (newSession.user) auth.updateLocalCredCache(username, password, newSession.user);
+    return newSession.user ? { user: newSession.user } : null;
+  });
+
+  ipcMain.handle('auth:viewerLogin', async function (_evt, payload) {
+    const body = payload || {};
+    const username = String(body.username || '').trim();
+    if (!username) throw new Error('Missing username.');
+
+    let result = null;
+    const hasLocalDb = !!config.DATABASE_URL;
+    const shouldTryRemote = config.USE_REMOTE_API || !hasLocalDb;
+
+    if (shouldTryRemote) {
+      try {
+        result = await remoteApi('/auth/viewer-login', {
+          method: 'POST',
+          body: JSON.stringify({ username }),
+        }, config, null);
+      } catch (e) {
+        console.error('auth:viewerLogin remote API failed, trying local DB auth:', e && e.message ? e.message : e);
+      }
+    }
+
+    if (!result && hasLocalDb) {
+      result = await auth.loginViewerWithLocalPostgres(username);
+    }
+
+    if (!result) {
+      throw new Error('No local DATABASE_URL configured.');
+    }
+
+    const newSession = { token: result && result.token ? String(result.token) : '', user: result && result.user ? result.user : null };
+    newSession.justLoggedIn = true;
+    auth.setAuthSession(newSession);
     return newSession.user ? { user: newSession.user } : null;
   });
 
@@ -512,7 +577,7 @@ function registerIpcHandlers(ipcMain, app, config) {
     if (!records) {
       records = getData();
     }
-    return (records || []).map(function (record) {
+    return filterViewerRecords(records).map(function (record) {
       return imageStorage.hydrateRecordImages(config.IMAGE_UPLOAD_DIR, record);
     });
   });
@@ -543,13 +608,17 @@ function registerIpcHandlers(ipcMain, app, config) {
         records = getData();
       }
     }
-    return (records || []).map(function (record) {
+    return filterViewerRecords(records).map(function (record) {
       return imageStorage.hydrateRecordImages(config.IMAGE_UPLOAD_DIR, record);
     });
   });
 
   ipcMain.handle('personnel:getOne', async (_, id) => {
     if (!id) return null;
+    if (isViewerOnlySession()) {
+      const personnelId = getViewerPersonnelId();
+      if (!personnelId || String(id) !== personnelId) return null;
+    }
     if (config.USE_POSTGRES_READ) {
       try {
         const record = await getPostgresOne(id);
@@ -577,6 +646,7 @@ function registerIpcHandlers(ipcMain, app, config) {
   }
 
   ipcMain.handle('personnel:save', async (_, record) => {
+    assertViewerCanMutate();
     const recordToSave = imageStorage.processRecordImages(config.IMAGE_UPLOAD_DIR, record || {});
     let saved = null;
 
@@ -630,6 +700,7 @@ function registerIpcHandlers(ipcMain, app, config) {
   });
 
   ipcMain.handle('personnel:delete', async (_, id, version) => {
+    assertViewerCanMutate();
     if (config.USE_POSTGRES_WRITE) {
       try {
         const session = auth.getAuthSession();
@@ -661,6 +732,10 @@ function registerIpcHandlers(ipcMain, app, config) {
   });
 
   ipcMain.handle('personnel:getHistory', async (_, recordId) => {
+    if (isViewerOnlySession()) {
+      const personnelId = getViewerPersonnelId();
+      if (!personnelId || String(recordId) !== personnelId) return [];
+    }
     if (config.USE_REMOTE_API) {
       try {
         return await remoteApi('/personnel/' + encodeURIComponent(String(recordId)) + '/history', {}, config, auth.getAuthSession());

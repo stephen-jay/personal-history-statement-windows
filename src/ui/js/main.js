@@ -81,14 +81,24 @@ async function loadCardsPage() {
 
     const roles = Array.isArray(session.roles) ? session.roles : [];
     const isAdmin = roles.includes('admin');
+    const isEncoderOnly = roles.includes('encoder') && !isAdmin;
+    const isViewerOnly = roles.includes('viewer') && !isAdmin && !roles.includes('encoder');
     const canEdit = roles.includes('admin') || roles.includes('encoder');
-    const canDelete = roles.includes('admin');
-    const canViewAnalytics = roles.includes('admin') || roles.includes('viewer');
+    const canDelete = roles.includes('admin') || roles.includes('encoder');
+    const canViewAnalytics = roles.includes('admin');
+    const viewerPersonnelId = String(session.user && (session.user.personnelId || session.user.personnel_id) || '').trim();
 
-    await loadFormPages();
-    initEducationValidation();
-    await loadAnalyticsPage();
-    await loadCardsPage();
+    document.body.classList.toggle('encoder-mode', isEncoderOnly);
+    document.body.classList.toggle('viewer-mode', isViewerOnly);
+
+    if (!isViewerOnly) {
+      await loadFormPages();
+      initEducationValidation();
+      if (isAdmin) {
+        await loadAnalyticsPage();
+        await loadCardsPage();
+      }
+    }
 
     // Initialize toast system
     window.toast = initToastSystem();
@@ -463,7 +473,9 @@ async function loadCardsPage() {
       }
     }
 
-    initProfileDropdown(session.user);
+    if (!isViewerOnly) {
+      initProfileDropdown(session.user);
+    }
 
     const listView = document.getElementById('list-view');
     const analyticsView = document.getElementById('analytics-view');
@@ -493,10 +505,12 @@ async function loadCardsPage() {
 
     // Roles and privileges are declared and initialized at the top of bootstrap()
 
+    const navAnalytics = document.querySelector('.nav-item[data-tab="analytics"]');
     const navAdmin = document.getElementById('nav-admin');
     const navCards = document.getElementById('nav-cards');
     const navAudit = document.getElementById('nav-audit');
     const navSettings = document.getElementById('nav-settings');
+    if (navAnalytics) navAnalytics.hidden = !isAdmin;
     if (navAdmin) navAdmin.hidden = !isAdmin;
     if (navCards) navCards.hidden = !isAdmin;
     if (navAudit) navAudit.hidden = !isAdmin;
@@ -516,14 +530,14 @@ async function loadCardsPage() {
       initAdminUsersView({ adminViewEl: adminView, adminApi: window.adminApi });
     }
 
-    const settingsCtl = initSettingsView({
+    const settingsCtl = isAdmin ? initSettingsView({
       settingsViewEl: settingsView,
       updateApi: window.updateApi,
       appApi: window.appApi,
       authApi: window.authApi,
       dbSyncApi: window.dbSyncApi,
       toast: window.toast
-    });
+    }) : null;
 
     // Populate sidebar version text (best-effort)
     (async function setSidebarVersion() {
@@ -539,12 +553,12 @@ async function loadCardsPage() {
 
     
     let cardManagementCtl = null;
-    if (typeof createCardManagementController === 'function') {
+    if (isAdmin && typeof createCardManagementController === 'function') {
       cardManagementCtl = createCardManagementController();
     }
 
     let showAuditLogs;
-    if (initAuditLogs) {
+    if (isAdmin && initAuditLogs) {
       const auditLogCtl = initAuditLogs({
         isAdmin,
         phsModalCtl: {
@@ -584,7 +598,7 @@ async function loadCardsPage() {
       if (settingsView) settingsView.classList.remove('active');
       setActiveNav('list');
       setAppView('list');
-      setTopbarSection(topbarSection, 'Personnels');
+      setTopbarSection(topbarSection, isViewerOnly ? 'My Personnel Record' : 'Personnels');
       loadList(!!forceRefresh);
     }
 
@@ -678,8 +692,17 @@ async function loadCardsPage() {
       showForm: null,
       openSummary: openSummary,
       loadList: null,
-      permissions: { canEdit: canEdit, canDelete: canDelete }
+      permissions: { canEdit: canEdit, canDelete: canDelete, viewerOnly: isViewerOnly },
+      viewerPersonnelId: viewerPersonnelId
     };
+
+    function filterRecordsForSession(records) {
+      if (!isViewerOnly) return records || [];
+      if (!viewerPersonnelId) return [];
+      return (records || []).filter(function (record) {
+        return String(record && record.id) === viewerPersonnelId;
+      });
+    }
 
     // Roster cache: persist records after first successful fetch.
     // Only re-fetch when explicitly requested (forceRefresh) or when stale.
@@ -810,10 +833,11 @@ async function loadCardsPage() {
         return new Promise(function (resolve) {
           // Small delay to allow the browser to paint the skeleton.
           window.setTimeout(function () {
-            if (renderRoster) renderList(rosterCache.records, listDeps);
-            if (renderAnalyticsView) renderAnalytics(rosterCache.records, { openSummary: openSummary });
+            const scopedCachedRecords = filterRecordsForSession(rosterCache.records);
+            if (renderRoster) renderList(scopedCachedRecords, listDeps);
+            if (renderAnalyticsView && !isViewerOnly) renderAnalytics(scopedCachedRecords, { openSummary: openSummary });
             try { hideLoader(); } catch (_) {}
-            resolve(rosterCache.records);
+            resolve(scopedCachedRecords);
           }, 60);
         });
       }
@@ -844,10 +868,11 @@ async function loadCardsPage() {
           window.setTimeout(function () { resolve(records); }, waitMs);
         });
       }).then(function (records) {
-        rosterCache.records = records;
+        const scopedRecords = filterRecordsForSession(records);
+        rosterCache.records = scopedRecords;
         rosterCache.ts = Date.now();
-        if (renderRoster) renderList(records, listDeps);
-        if (renderAnalyticsView) renderAnalytics(records, { openSummary: openSummary });
+        if (renderRoster) renderList(scopedRecords, listDeps);
+        if (renderAnalyticsView && !isViewerOnly) renderAnalytics(scopedRecords, { openSummary: openSummary });
         // Small delay to ensure DOM updates are painted before hiding loader
         return new Promise(function (resolve) {
           window.setTimeout(function () {
@@ -866,7 +891,7 @@ async function loadCardsPage() {
           }, 60);
         });
       }).catch(function (err) {
-        hideLoader();
+            resolve(scopedRecords);
         throw err;
       });
     }
@@ -1373,7 +1398,7 @@ async function loadCardsPage() {
     ROW_SECTIONS.forEach(function (section) {
       formData.setStructuredRows(section, []);
     });
-    if (canViewAnalytics) {
+    if (isAdmin && canViewAnalytics) {
       showAnalytics();
     } else {
       showList();
