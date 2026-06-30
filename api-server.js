@@ -213,6 +213,7 @@ app.post('/auth/viewer-login', async function (req, res) {
       iss: 'phs-api',
     };
     const token = signToken(payload);
+    await auth.writeAuditLog('app_users', user.id, 'LOGIN', { login_type: 'viewer' }, user.id);
     res.json({ token, user: { id: user.id, username: user.username, fullName: user.full_name, personnelId: user.personnel_id || null, roles } });
   } catch (e) {
     res.status(401).json({ error: e.message || 'Viewer login failed.' });

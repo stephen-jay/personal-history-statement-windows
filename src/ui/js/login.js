@@ -309,9 +309,9 @@ function initCardStepView() {
   var pwdSection = $('admin-password-section');
   
   if (currentCanUsePassword) {
-    // Admin user: show tabs
+    // Privileged account: show tabs
     if (loginTabs) loginTabs.style.display = 'flex';
-    if (cardTitle) cardTitle.textContent = 'Admin Authentication';
+    if (cardTitle) cardTitle.textContent = 'Authentication';
     if (cardDesc) cardDesc.textContent = 'Choose your login method to proceed.';
     
     // Default to card tab
@@ -414,19 +414,6 @@ async function handleNextUsername() {
   setError('');
 
   try {
-    if (window.authApi && typeof window.authApi.viewerLogin === 'function') {
-      try {
-        var viewerSession = await window.authApi.viewerLogin(username);
-        if (viewerSession && viewerSession.user) {
-          clearAttemptState();
-          window.location.href = 'index.html';
-          return;
-        }
-      } catch (_) {
-        // Not a viewer account or viewer login is unavailable. Fall through to the normal flow.
-      }
-    }
-
     var res = await window.authApi.beginLogin(username);
     if (!res || !res.challengeId) throw new Error('Failed to start login challenge.');
     currentChallengeId = res.challengeId;

@@ -96,6 +96,8 @@ async function loadCardsPage() {
       initEducationValidation();
       if (isAdmin) {
         await loadAnalyticsPage();
+      }
+      if (isAdmin || isEncoderOnly) {
         await loadCardsPage();
       }
     }
@@ -294,6 +296,18 @@ async function loadCardsPage() {
     }
 
     // --- User Profile Dropdown ---
+    function getProfilePhotoUrl(record) {
+      if (!record) return '';
+      return String(
+        record.photoDataUrl ||
+        record.photo_url ||
+        record.photoUrl ||
+        record.photo ||
+        record.avatar ||
+        ''
+      ).trim();
+    }
+
     function initProfileDropdown(user) {
       const btn = document.getElementById('user-profile-btn');
       const dropdown = document.getElementById('profile-dropdown');
@@ -303,10 +317,11 @@ async function loadCardsPage() {
       const nameEls = document.querySelectorAll('.user-name, .dropdown-name');
       const roleEls = document.querySelectorAll('.user-role, .dropdown-role');
       const avatarImg = document.getElementById('user-avatar-img');
+      const avatarFallback = document.getElementById('user-avatar-fallback');
 
       if (user) {
         // Fix: session user object uses 'fullName' property, not 'full_name'
-        const displayName = user.fullName || (user.username ? user.username.charAt(0).toUpperCase() + user.username.slice(1) : 'Kenneth Abayon');
+        const displayName = user.fullName || user.username || 'User';
         nameEls.forEach(el => el.textContent = displayName);
         
         // Handle role name more gracefully
@@ -314,11 +329,51 @@ async function loadCardsPage() {
         if (Array.isArray(session.roles) && session.roles.length > 0) {
           const primaryRole = session.roles[0];
           roleName = primaryRole.charAt(0).toUpperCase() + primaryRole.slice(1);
-        } else if (user.username === 'admin') {
+        } else if (String(user.username || '').toLowerCase() === 'admin') {
           roleName = 'Administrator';
         }
         roleEls.forEach(el => el.textContent = roleName);
+
+        if (avatarFallback) {
+          const initials = displayName
+            .split(/\s+/)
+            .filter(Boolean)
+            .map(function (part) { return part.charAt(0); })
+            .join('')
+            .slice(0, 2)
+            .toUpperCase();
+          avatarFallback.textContent = initials || 'U';
+        }
       }
+
+      if (avatarImg) {
+        const displayName = user && (user.fullName || user.username) ? (user.fullName || user.username) : 'User';
+        avatarImg.alt = displayName + ' profile photo';
+      }
+
+      (async function loadProfileAvatar() {
+        if (!avatarImg || !user || !window.personnelApi || typeof window.personnelApi.getOne !== 'function') return;
+        const personnelId = String(user.personnelId || user.personnel_id || '').trim();
+        if (!personnelId) return;
+        try {
+          const profileRecord = await window.personnelApi.getOne(personnelId);
+          const photoUrl = getProfilePhotoUrl(profileRecord);
+          if (photoUrl) {
+            avatarImg.src = photoUrl;
+            avatarImg.removeAttribute('hidden');
+            if (avatarFallback) avatarFallback.hidden = true;
+          } else {
+            avatarImg.removeAttribute('src');
+            avatarImg.hidden = true;
+            if (avatarFallback) avatarFallback.hidden = false;
+          }
+        } catch (e) {
+          console.error('[Profile] Failed to load profile avatar:', e && e.message ? e.message : e);
+          avatarImg.removeAttribute('src');
+          avatarImg.hidden = true;
+          if (avatarFallback) avatarFallback.hidden = false;
+        }
+      })();
 
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -385,14 +440,14 @@ async function loadCardsPage() {
             }
           }
 
-          const displayName = user.fullName || (user.username ? user.username.charAt(0).toUpperCase() + user.username.slice(1) : 'Kenneth Abayon');
+          const displayName = user.fullName || user.username || 'User';
           const initials = displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
           
           let roleName = 'User';
           if (Array.isArray(session.roles) && session.roles.length > 0) {
             const primaryRole = session.roles[0];
             roleName = primaryRole.charAt(0).toUpperCase() + primaryRole.slice(1);
-          } else if (user.username === 'admin') {
+          } else if (String(user.username || '').toLowerCase() === 'admin') {
             roleName = 'Administrator';
           }
 
@@ -473,9 +528,7 @@ async function loadCardsPage() {
       }
     }
 
-    if (!isViewerOnly) {
-      initProfileDropdown(session.user);
-    }
+    initProfileDropdown(session.user);
 
     const listView = document.getElementById('list-view');
     const analyticsView = document.getElementById('analytics-view');
@@ -512,7 +565,7 @@ async function loadCardsPage() {
     const navSettings = document.getElementById('nav-settings');
     if (navAnalytics) navAnalytics.hidden = !isAdmin;
     if (navAdmin) navAdmin.hidden = !isAdmin;
-    if (navCards) navCards.hidden = !isAdmin;
+    if (navCards) navCards.hidden = !(isAdmin || isEncoderOnly);
     if (navAudit) navAudit.hidden = !isAdmin;
     if (navSettings) navSettings.hidden = !isAdmin;
     if (btnAutoFillPhs) btnAutoFillPhs.disabled = !canEdit;
@@ -553,7 +606,7 @@ async function loadCardsPage() {
 
     
     let cardManagementCtl = null;
-    if (isAdmin && typeof createCardManagementController === 'function') {
+    if ((isAdmin || isEncoderOnly) && typeof createCardManagementController === 'function') {
       cardManagementCtl = createCardManagementController();
     }
 
@@ -1009,8 +1062,8 @@ async function loadCardsPage() {
     }
 
     function showCards() {
-      if (!isAdmin) {
-        window.toast.error('Admin access required.');
+      if (!isAdmin && !isEncoderOnly) {
+        window.toast.error('Access denied.');
         return;
       }
       if (phsModalCtl && phsModalCtl.isOpen()) {

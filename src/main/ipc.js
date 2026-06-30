@@ -39,15 +39,29 @@ async function remoteApi(pathname, options, config, authSession) {
     return roles.includes('viewer') && !roles.includes('admin') && !roles.includes('encoder');
   }
 
-  function getViewerPersonnelId() {
+  async function getViewerPersonnelId() {
     const session = auth.getAuthSession();
     const user = session && session.user ? session.user : null;
-    return String((user && (user.personnelId || user.personnel_id)) || '').trim();
+    const directPersonnelId = String((user && (user.personnelId || user.personnel_id)) || '').trim();
+    if (directPersonnelId) return directPersonnelId;
+
+    const username = String((user && user.username) || '').trim();
+    if (!username) return '';
+
+    const pool = getPgPool();
+    if (!pool) return '';
+
+    try {
+      const res = await pool.query('SELECT personnel_id FROM app_users WHERE username = $1 LIMIT 1', [username]);
+      return String((res.rows && res.rows[0] && res.rows[0].personnel_id) || '').trim();
+    } catch (_) {
+      return '';
+    }
   }
 
-  function filterViewerRecords(records) {
+  async function filterViewerRecords(records) {
     if (!isViewerOnlySession()) return records || [];
-    const personnelId = getViewerPersonnelId();
+    const personnelId = await getViewerPersonnelId();
     if (!personnelId) return [];
     return (records || []).filter(function (record) {
       return String(record && record.id) === personnelId;
@@ -99,9 +113,10 @@ function registerIpcHandlers(ipcMain, app, config) {
       throw new Error('No local DATABASE_URL configured.');
     }
 
-    const loggedInUsername = String(result && result.user && result.user.username ? result.user.username : '').trim().toLowerCase();
-    if (loggedInUsername !== 'admin') {
-      throw new Error('Password authentication is restricted to the admin account. Use NFC card login.');
+    const loggedInRoles = Array.isArray(result && result.user && result.user.roles) ? result.user.roles : [];
+    const canUsePassword = loggedInRoles.includes('admin') || loggedInRoles.includes('viewer') || loggedInRoles.includes('encoder');
+    if (!canUsePassword) {
+      throw new Error('Password authentication is restricted to admin, viewer, and encoder accounts. Use NFC card login.');
     }
 
     const newSession = { token: result && result.token ? String(result.token) : '', user: result && result.user ? result.user : null };
@@ -577,7 +592,8 @@ function registerIpcHandlers(ipcMain, app, config) {
     if (!records) {
       records = getData();
     }
-    return filterViewerRecords(records).map(function (record) {
+    const scopedRecords = await filterViewerRecords(records);
+    return scopedRecords.map(function (record) {
       return imageStorage.hydrateRecordImages(config.IMAGE_UPLOAD_DIR, record);
     });
   });
@@ -608,7 +624,8 @@ function registerIpcHandlers(ipcMain, app, config) {
         records = getData();
       }
     }
-    return filterViewerRecords(records).map(function (record) {
+    const scopedRecords = await filterViewerRecords(records);
+    return scopedRecords.map(function (record) {
       return imageStorage.hydrateRecordImages(config.IMAGE_UPLOAD_DIR, record);
     });
   });
@@ -616,7 +633,7 @@ function registerIpcHandlers(ipcMain, app, config) {
   ipcMain.handle('personnel:getOne', async (_, id) => {
     if (!id) return null;
     if (isViewerOnlySession()) {
-      const personnelId = getViewerPersonnelId();
+      const personnelId = await getViewerPersonnelId();
       if (!personnelId || String(id) !== personnelId) return null;
     }
     if (config.USE_POSTGRES_READ) {
@@ -733,7 +750,7 @@ function registerIpcHandlers(ipcMain, app, config) {
 
   ipcMain.handle('personnel:getHistory', async (_, recordId) => {
     if (isViewerOnlySession()) {
-      const personnelId = getViewerPersonnelId();
+      const personnelId = await getViewerPersonnelId();
       if (!personnelId || String(recordId) !== personnelId) return [];
     }
     if (config.USE_REMOTE_API) {
