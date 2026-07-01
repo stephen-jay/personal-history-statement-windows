@@ -309,9 +309,9 @@ function initCardStepView() {
   var pwdSection = $('admin-password-section');
   
   if (currentCanUsePassword) {
-    // Admin user: show tabs
+    // Privileged account: show tabs
     if (loginTabs) loginTabs.style.display = 'flex';
-    if (cardTitle) cardTitle.textContent = 'Admin Authentication';
+    if (cardTitle) cardTitle.textContent = 'Authentication';
     if (cardDesc) cardDesc.textContent = 'Choose your login method to proceed.';
     
     // Default to card tab

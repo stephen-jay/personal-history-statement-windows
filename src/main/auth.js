@@ -94,6 +94,20 @@ function loadAuthSessionFromDisk() {
   }
 }
 
+async function writeAuditLog(tableName, recordId, action, newData, changedBy) {
+  const pool = getPgPool();
+  if (!pool) return;
+  try {
+    await pool.query(
+      `INSERT INTO audit_logs (table_name, record_id, action, new_data, changed_by)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [tableName, recordId, action, JSON.stringify(newData || {}), changedBy]
+    );
+  } catch (_) {
+    // Audit logging should not block authentication.
+  }
+}
+
 function persistAuthSessionToDisk() {
   if (!authSessionPath) return;
   try {
@@ -121,12 +135,22 @@ function setAuthSession(session) {
 async function loginWithLocalPostgres(username, password) {
   const pool = getPgPool();
   if (!pool) throw new Error('DATABASE_URL is required for local auth.');
+
+  const colCheck = await pool.query(
+    `SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'app_users' AND column_name = 'personnel_id'`
+  );
+  const hasPersonnelIdCol = colCheck.rowCount > 0;
+  const personnelIdSelect = hasPersonnelIdCol ? 'u.personnel_id' : 'NULL AS personnel_id';
+  const personnelIdGroupBy = hasPersonnelIdCol ? ', u.personnel_id' : '';
+
   const rows = await pool.query(
     `
       SELECT
         u.id,
         u.username,
         u.full_name,
+        ${personnelIdSelect},
         ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL) AS roles
       FROM app_users u
       LEFT JOIN app_user_roles ur ON ur.user_id = u.id
@@ -134,7 +158,7 @@ async function loginWithLocalPostgres(username, password) {
       WHERE u.username = $1
         AND u.is_active = TRUE
         AND u.password_hash = crypt($2, u.password_hash)
-      GROUP BY u.id, u.username, u.full_name
+      GROUP BY u.id, u.username, u.full_name${personnelIdGroupBy}
     `,
     [username, password]
   );
@@ -148,7 +172,62 @@ async function loginWithLocalPostgres(username, password) {
       id: user.id,
       username: user.username,
       fullName: user.full_name,
+      personnelId: user.personnel_id || null,
       roles: Array.isArray(user.roles) ? user.roles : [],
+    },
+  };
+}
+
+async function loginViewerWithLocalPostgres(username) {
+  const pool = getPgPool();
+  if (!pool) throw new Error('DATABASE_URL is required for local auth.');
+
+  const colCheck = await pool.query(
+    `SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'app_users' AND column_name = 'personnel_id'`
+  );
+  const hasPersonnelIdCol = colCheck.rowCount > 0;
+  const personnelIdSelect = hasPersonnelIdCol ? 'u.personnel_id' : 'NULL AS personnel_id';
+  const personnelIdGroupBy = hasPersonnelIdCol ? ', u.personnel_id' : '';
+
+  const rows = await pool.query(
+    `
+      SELECT
+        u.id,
+        u.username,
+        u.full_name,
+        ${personnelIdSelect},
+        ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL) AS roles
+      FROM app_users u
+      LEFT JOIN app_user_roles ur ON ur.user_id = u.id
+      LEFT JOIN app_roles r ON r.id = ur.role_id
+      WHERE u.username = $1
+        AND u.is_active = TRUE
+      GROUP BY u.id, u.username, u.full_name${personnelIdGroupBy}
+    `,
+    [username]
+  );
+  if (!rows.rows || !rows.rows.length) {
+    throw new Error('User not found.');
+  }
+
+  const user = rows.rows[0];
+  const roles = Array.isArray(user.roles) ? user.roles : [];
+  const isViewerOnly = roles.includes('viewer') && !roles.includes('admin') && !roles.includes('encoder');
+  if (!isViewerOnly) {
+    throw new Error('Viewer login is only available for viewer accounts.');
+  }
+
+  await writeAuditLog('app_users', user.id, 'LOGIN', { login_type: 'viewer' }, user.id);
+
+  return {
+    token: 'local-session',
+    user: {
+      id: user.id,
+      username: user.username,
+      fullName: user.full_name,
+      personnelId: user.personnel_id || null,
+      roles,
     },
   };
 }
@@ -352,6 +431,16 @@ async function beginLogin(username) {
   if (!user.is_active) {
     throw new Error('User account is disabled.');
   }
+
+  const roleRows = await pool.query(
+    `SELECT ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL) AS roles
+     FROM app_user_roles ur
+     LEFT JOIN app_roles r ON r.id = ur.role_id
+     WHERE ur.user_id = $1`,
+    [user.id]
+  );
+  const roles = (roleRows.rows && roleRows.rows[0] && Array.isArray(roleRows.rows[0].roles)) ? roleRows.rows[0].roles : [];
+  const canUsePassword = roles.includes('admin') || roles.includes('viewer') || roles.includes('encoder');
   
   const res = await pool.query(
     `INSERT INTO auth_challenges (user_id, status, expires_at) 
@@ -359,8 +448,6 @@ async function beginLogin(username) {
      RETURNING id`,
     [user.id]
   );
-
-  const canUsePassword = String(user.username || '').trim().toLowerCase() === 'admin';
   
   return { challengeId: res.rows[0].id, canUsePassword };
 }
@@ -558,12 +645,13 @@ async function verifyTotpStep(challengeId, token) {
         u.id,
         u.username,
         u.full_name,
+        u.personnel_id,
         ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL) AS roles
       FROM app_users u
       LEFT JOIN app_user_roles ur ON ur.user_id = u.id
       LEFT JOIN app_roles r ON r.id = ur.role_id
       WHERE u.id = $1
-      GROUP BY u.id, u.username, u.full_name
+      GROUP BY u.id, u.username, u.full_name, u.personnel_id
     `,
     [challenge.user_id]
   );
@@ -575,6 +663,7 @@ async function verifyTotpStep(challengeId, token) {
       id: user.id,
       username: user.username,
       fullName: user.full_name,
+      personnelId: user.personnel_id || null,
       roles: Array.isArray(user.roles) ? user.roles : [],
     },
   };
@@ -819,12 +908,13 @@ async function verifyLoginEmailOtp(challengeId, code) {
         u.id,
         u.username,
         u.full_name,
+        u.personnel_id,
         ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL) AS roles
       FROM app_users u
       LEFT JOIN app_user_roles ur ON ur.user_id = u.id
       LEFT JOIN app_roles r ON r.id = ur.role_id
       WHERE u.id = $1
-      GROUP BY u.id, u.username, u.full_name
+      GROUP BY u.id, u.username, u.full_name, u.personnel_id
     `,
     [challenge.user_id]
   );
@@ -835,6 +925,7 @@ async function verifyLoginEmailOtp(challengeId, code) {
       id: user.id,
       username: user.username,
       fullName: user.full_name,
+      personnelId: user.personnel_id || null,
       roles: Array.isArray(user.roles) ? user.roles : [],
     },
   };
@@ -896,6 +987,7 @@ module.exports = {
   getAuthSession,
   setAuthSession,
   loginWithLocalPostgres,
+  loginViewerWithLocalPostgres,
   getAdminRolesLocal,
   createAdminUserLocal,
   updateAdminUserRoleLocal,
@@ -913,4 +1005,5 @@ module.exports = {
   verifyLoginEmailOtp,
   verifyLocalCacheTier,
   updateLocalCredCache,
+  writeAuditLog,
 };

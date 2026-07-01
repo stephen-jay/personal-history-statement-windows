@@ -101,7 +101,12 @@ function requireAuth(req, res, next) {
   try {
     const payload = verifyToken(authHeader.slice('Bearer '.length).trim());
     if (!payload) return res.status(401).json({ error: 'Invalid token.' });
-    req.auth = { userId: payload.sub, roles: Array.isArray(payload.roles) ? payload.roles : [], username: payload.username || '' };
+    req.auth = {
+      userId: payload.sub,
+      roles: Array.isArray(payload.roles) ? payload.roles : [],
+      username: payload.username || '',
+      personnelId: payload.personnelId || ''
+    };
     next();
   } catch (e) {
     return res.status(500).json({ error: e.message || String(e) });
@@ -121,7 +126,7 @@ function requireAnyRole(allowedRoles) {
 const requireAdmin = requireAnyRole(['admin']);
 const requirePersonnelRead = requireAnyRole(['admin', 'viewer', 'encoder']);
 const requirePersonnelWrite = requireAnyRole(['admin', 'encoder']);
-const requirePersonnelDelete = requireAnyRole(['admin']);
+const requirePersonnelDelete = requireAnyRole(['admin', 'encoder']);
 
 function sanitizeRecord(record) {
   return Object.fromEntries(Object.entries(record || {}).filter(([key]) => !REMOVED_FIELDS.has(key)));
@@ -142,20 +147,81 @@ app.post('/auth/login', async function (req, res) {
     const payload = {
       sub: user.id,
       username: user.username,
+      personnelId: user.personnelId || null,
       roles: Array.isArray(user.roles) ? user.roles : [],
       iat: now,
       exp: now + ttlSeconds,
       iss: 'phs-api',
     };
     const token = signToken(payload);
-    res.json({ token: token, user: { id: user.id, username: user.username, fullName: user.fullName, roles: payload.roles } });
+    res.json({ token: token, user: { id: user.id, username: user.username, fullName: user.fullName, personnelId: user.personnelId || null, roles: payload.roles } });
   } catch (e) {
     res.status(401).json({ error: 'Invalid credentials.' });
   }
 });
 
+app.post('/auth/viewer-login', async function (req, res) {
+  try {
+    const body = req.body || {};
+    const username = String(body.username || '').trim();
+    if (!username) {
+      return res.status(400).json({ error: 'username is required.' });
+    }
+
+    const pool = getPgPool();
+    if (!pool) {
+      return res.status(503).json({ error: 'Database unavailable.' });
+    }
+
+    const rows = await pool.query(
+      `
+        SELECT
+          u.id,
+          u.username,
+          u.full_name,
+          u.personnel_id,
+          ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL) AS roles
+        FROM app_users u
+        LEFT JOIN app_user_roles ur ON ur.user_id = u.id
+        LEFT JOIN app_roles r ON r.id = ur.role_id
+        WHERE u.username = $1
+          AND u.is_active = TRUE
+        GROUP BY u.id, u.username, u.full_name, u.personnel_id
+      `,
+      [username]
+    );
+    if (!rows.rows || !rows.rows.length) {
+      return res.status(401).json({ error: 'User not found.' });
+    }
+
+    const user = rows.rows[0];
+    const roles = Array.isArray(user.roles) ? user.roles : [];
+    const isViewerOnly = roles.includes('viewer') && !roles.includes('admin') && !roles.includes('encoder');
+    if (!isViewerOnly) {
+      return res.status(403).json({ error: 'Viewer login is only available for viewer accounts.' });
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const ttlSeconds = Number(process.env.AUTH_TOKEN_TTL_SECONDS || 60 * 60 * 12);
+    const payload = {
+      sub: user.id,
+      username: user.username,
+      personnelId: user.personnel_id || null,
+      roles,
+      iat: now,
+      exp: now + ttlSeconds,
+      iss: 'phs-api',
+    };
+    const token = signToken(payload);
+    await auth.writeAuditLog('app_users', user.id, 'LOGIN', { login_type: 'viewer' }, user.id);
+    res.json({ token, user: { id: user.id, username: user.username, fullName: user.full_name, personnelId: user.personnel_id || null, roles } });
+  } catch (e) {
+    res.status(401).json({ error: e.message || 'Viewer login failed.' });
+  }
+});
+
 app.get('/auth/me', requireAuth, async function (req, res) {
-  res.json({ userId: req.auth.userId, roles: req.auth.roles, username: req.auth.username });
+  res.json({ userId: req.auth.userId, roles: req.auth.roles, username: req.auth.username, personnelId: req.auth.personnelId || null });
 });
 
 app.post('/auth/change-password', requireAuth, async function (req, res) {
@@ -347,7 +413,13 @@ app.get('/health', async function (_req, res) {
 app.get('/personnel', requireAuth, requirePersonnelRead, async function (_req, res) {
   try {
     const rows = await getPostgresData();
-    const hydrated = rows.map(function (r) {
+    const current = _req.auth || {};
+    const isViewerOnly = Array.isArray(current.roles) && current.roles.includes('viewer') && !current.roles.includes('admin') && !current.roles.includes('encoder');
+    const viewerPersonnelId = String(current.personnelId || '').trim();
+    const visibleRows = isViewerOnly && viewerPersonnelId
+      ? rows.filter(function (row) { return String(row && row.id) === viewerPersonnelId; })
+      : rows;
+    const hydrated = visibleRows.map(function (r) {
       return imageStorage.hydrateRecordImages(IMAGE_UPLOAD_DIR, r);
     });
     res.json(hydrated);
@@ -388,6 +460,12 @@ app.delete('/personnel/:id', requireAuth, requirePersonnelDelete, async function
 app.get('/personnel/:id/history', requireAuth, requirePersonnelRead, async function (req, res) {
 try {
     const id = req.params.id;
+    const current = req.auth || {};
+    const isViewerOnly = Array.isArray(current.roles) && current.roles.includes('viewer') && !current.roles.includes('admin') && !current.roles.includes('encoder');
+    const viewerPersonnelId = String(current.personnelId || '').trim();
+    if (isViewerOnly && viewerPersonnelId && String(id) !== viewerPersonnelId) {
+      return res.status(403).json({ error: 'Forbidden.' });
+    }
     const rows = await getPgPool().query(
       `SELECT a.*, u.full_name as admin_name 
        FROM audit_logs a 

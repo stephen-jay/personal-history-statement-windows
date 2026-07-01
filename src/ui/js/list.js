@@ -418,7 +418,20 @@ function rerenderRoster(records, deps) {
   });
 
   deps.personnelTbody.innerHTML = '';
-  deps.emptyState.style.display = filtered.length ? 'none' : 'block';
+  if (!filtered.length) {
+    if (deps.permissions && deps.permissions.viewerOnly) {
+      if (!deps.viewerPersonnelId) {
+        deps.emptyState.innerHTML = 'No personnel record is linked to your user account. Please contact an administrator.';
+      } else {
+        deps.emptyState.innerHTML = 'Your assigned personnel record (ID: <strong>' + escapeHtml(deps.viewerPersonnelId) + '</strong>) could not be found.';
+      }
+    } else {
+      deps.emptyState.innerHTML = 'No records yet. Select <strong>Add Personnel</strong> to create a record.';
+    }
+    deps.emptyState.style.display = 'block';
+  } else {
+    deps.emptyState.style.display = 'none';
+  }
 
   filtered.forEach(function (r) {
     const edu = formatEducationBackground(r);
