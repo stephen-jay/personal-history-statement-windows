@@ -452,6 +452,62 @@ async function beginLogin(username) {
   return { challengeId: res.rows[0].id, canUsePassword };
 }
 
+// ── verifyCredentials — credentials-first login entry point ───────────────────
+// Validates username + password before creating the auth challenge.
+// Replaces the old beginLogin() call in the UI login flow.
+async function verifyCredentials(username, password) {
+  const pool = getPgPool();
+
+  // ── Local tier fallback: no DB available ──────────────────────────────────
+  if (!pool) {
+    const key = String(username || '').toLowerCase();
+    const cached = localCredCache[key];
+    if (cached) {
+      const hash = hashForLocalCache(password);
+      if (cached.passwordHash !== hash) throw new Error('Invalid credentials.');
+      console.warn('[Auth] No DB available — using local credential cache for:', username);
+      return { challengeId: 'LOCAL_TIER:' + key, canUsePassword: true, localTier: true };
+    }
+    throw new Error('Database unavailable and no offline credentials cached for this user.');
+  }
+
+  // Verify username + password together
+  const userRow = await pool.query(
+    `SELECT id, username, is_active
+     FROM app_users
+     WHERE username = $1
+       AND is_active = TRUE
+       AND password_hash = crypt($2, password_hash)`,
+    [username, password]
+  );
+
+  if (!userRow.rows || !userRow.rows.length) {
+    // Intentionally vague — do not reveal whether the username or password is wrong
+    throw new Error('Invalid credentials.');
+  }
+
+  const user = userRow.rows[0];
+
+  const roleRows = await pool.query(
+    `SELECT ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL) AS roles
+     FROM app_user_roles ur
+     LEFT JOIN app_roles r ON r.id = ur.role_id
+     WHERE ur.user_id = $1`,
+    [user.id]
+  );
+  const roles = (roleRows.rows && roleRows.rows[0] && Array.isArray(roleRows.rows[0].roles)) ? roleRows.rows[0].roles : [];
+  const canUsePassword = roles.includes('admin') || roles.includes('viewer') || roles.includes('encoder');
+
+  const res = await pool.query(
+    `INSERT INTO auth_challenges (user_id, status, expires_at)
+     VALUES ($1, 'pending_card', NOW() + INTERVAL '10 minutes')
+     RETURNING id`,
+    [user.id]
+  );
+
+  return { challengeId: res.rows[0].id, canUsePassword };
+}
+
 async function verifyCardStep(challengeId, cardUid) {
   const pool = getPgPool();
   if (!pool) throw new Error('DATABASE_URL is required for local auth.');
@@ -994,6 +1050,7 @@ module.exports = {
   deleteAdminUserLocal,
   changePasswordLocal,
   beginLogin,
+  verifyCredentials,
   verifyCardStep,
   enrollTotp,
   verifyTotpStep,

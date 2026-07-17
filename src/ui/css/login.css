@@ -355,6 +355,50 @@ body {
   stroke: #94a3b8;
 }
 
+/* Password input — matches username input style */
+#password-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 44px 0 44px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  color: #1e293b;
+  background: #f8fafc;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+  /* extra right padding for the eye toggle */
+  padding-right: 44px;
+}
+
+#password-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  background: #fff;
+}
+
+/* Show/hide toggle button inside the password input-wrap */
+.input-toggle-pw {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.input-toggle-pw:hover {
+  color: #475569;
+}
+
+
 #username-input {
   width: 100%;
   height: 48px;

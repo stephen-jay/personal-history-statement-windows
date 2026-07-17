@@ -251,6 +251,8 @@ function resetToStart() {
   currentCanUsePassword = false;
   var adminPwdInput = $('admin-password-input');
   if (adminPwdInput) adminPwdInput.value = '';
+  var pwdInput = $('password-input');
+  if (pwdInput) pwdInput.value = '';
   
   // Clean up tab visibility on reset
   var loginTabs = $('login-tabs');
@@ -269,64 +271,19 @@ function stopCardTapListening() {
 }
 
 function switchTab(tabType) {
-  var cardPanel = $('method-card-panel');
-  var pwdSection = $('admin-password-section');
-  var tabButtons = document.querySelectorAll('.login-tabs .tab-btn');
-  
-  tabButtons.forEach(function(btn) {
-    if (btn.getAttribute('data-tab') === tabType) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
-  });
-  
-  if (tabType === 'card') {
-    if (cardPanel) cardPanel.style.display = 'flex';
-    if (pwdSection) pwdSection.style.display = 'none';
-    startCardTapListening();
-  } else {
-    if (cardPanel) cardPanel.style.display = 'none';
-    if (pwdSection) pwdSection.style.display = 'flex';
-    stopCardTapListening();
-    
-    // Focus the password input
-    var pwdInput = $('admin-password-input');
-    if (pwdInput) {
-      setTimeout(function() {
-        pwdInput.focus();
-      }, 50);
-    }
-  }
+  // Password tab removed — password is now collected in Step 1.
+  // This function is kept as a no-op to avoid reference errors from any
+  // legacy callers, but Step 2 is NFC-card-only.
 }
 
 function initCardStepView() {
-  var loginTabs = $('login-tabs');
+  // Password is now collected in Step 1, so Step 2 is always NFC card only.
+  // No tabs needed — just start listening for a card tap.
   var cardTitle = $('step-card-title');
   var cardDesc = $('step-card-desc');
-  
-  var cardPanel = $('method-card-panel');
-  var pwdSection = $('admin-password-section');
-  
-  if (currentCanUsePassword) {
-    // Privileged account: show tabs
-    if (loginTabs) loginTabs.style.display = 'flex';
-    if (cardTitle) cardTitle.textContent = 'Authentication';
-    if (cardDesc) cardDesc.textContent = 'Choose your login method to proceed.';
-    
-    // Default to card tab
-    switchTab('card');
-  } else {
-    // Standard user: hide tabs and show card only
-    if (loginTabs) loginTabs.style.display = 'none';
-    if (cardTitle) cardTitle.textContent = 'Tap Your Card';
-    if (cardDesc) cardDesc.textContent = 'Hold your NFC/RFID card near the reader.';
-    
-    if (cardPanel) cardPanel.style.display = 'flex';
-    if (pwdSection) pwdSection.style.display = 'none';
-    
-    startCardTapListening();
-  }
+  if (cardTitle) cardTitle.textContent = 'Tap Your Card';
+  if (cardDesc) cardDesc.textContent = 'Hold your NFC/RFID card near the reader.';
+  startCardTapListening();
 }
 
 // --- OTP Box Logic ---
@@ -397,12 +354,19 @@ function setupOtpBoxes(rowId, hiddenInputId) {
 
 // --- Action Handlers ---
 
-async function handleNextUsername() {
+async function handleNextCredentials() {
   if (refreshLockoutUi()) return;
   var usernameInput = $('username-input');
+  var passwordInput = $('password-input');
   var username = (usernameInput && usernameInput.value || '').trim();
+  var password = (passwordInput && passwordInput.value || '');
+
   if (!username) {
-    setError('Please enter a username.');
+    setError('Please enter your username.');
+    return;
+  }
+  if (!password) {
+    setError('Please enter your password.');
     return;
   }
 
@@ -410,60 +374,23 @@ async function handleNextUsername() {
 
   var btn = $('btn-next-username');
   btn.disabled = true;
-  btn.innerHTML = 'Checking...';
+  btn.innerHTML = 'Verifying...';
   setError('');
 
   try {
-    var res = await window.authApi.beginLogin(username);
+    var res = await window.authApi.verifyCredentials(username, password);
     if (!res || !res.challengeId) throw new Error('Failed to start login challenge.');
     currentChallengeId = res.challengeId;
     currentCanUsePassword = !!res.canUsePassword;
-    
+
     showStep('step-card');
     initCardStepView();
-  } catch (err) {
-    if (String((err && err.message) || '').toLowerCase().includes('user not found')) {
-        registerFailedAttempt();
-    }
-    setError(mapLoginError(err));
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = 'Next <span>&rarr;</span>';
-  }
-}
-
-async function handleAdminPassword() {
-  if (refreshLockoutUi()) return;
-  var username = currentLoginUsername || (($('username-input') && $('username-input').value) || '').trim();
-  if (!username) {
-    setError('Missing username.');
-    return;
-  }
-  // Read from the visible inline admin input first; fall back to the legacy modal field.
-  var pwdEl = $('admin-password-input') || $('admin-password-modal-input');
-  var pwd = pwdEl && pwdEl.value ? String(pwdEl.value) : '';
-  if (!pwd) {
-    setError('Please enter your password.');
-    return;
-  }
-
-  var btn = $('btn-admin-password') || $('btn-admin-password-modal');
-  if (btn) { btn.disabled = true; btn.innerHTML = 'Logging in...'; }
-  var bottomBtn = $('btn-admin-password-bottom');
-  if (bottomBtn) { bottomBtn.disabled = true; bottomBtn.innerHTML = 'Logging in...'; }
-  setError('');
-
-  try {
-    var session = await window.authApi.login(username, pwd);
-    if (!session) throw new Error('Login failed.');
-    clearAttemptState();
-    window.location.href = 'index.html';
   } catch (err) {
     registerFailedAttempt();
     setError(mapLoginError(err));
   } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = 'Login <span>&rarr;</span>'; }
-    if (bottomBtn) { bottomBtn.disabled = false; bottomBtn.innerHTML = 'Login <span>&rarr;</span>'; }
+    btn.disabled = false;
+    btn.innerHTML = 'Next <span>&rarr;</span>';
   }
 }
 
@@ -619,15 +546,11 @@ function initListeners() {
     loginForm.addEventListener('submit', function(e) {
       e.preventDefault();
       var unDiv = $('step-username');
-      var cardDiv = $('step-card');
       var enrollDiv = $('step-enroll');
       var verifyDiv = $('step-verify');
-      var adminPwdInput = $('admin-password-input');
-      
+
       if (unDiv && !unDiv.hidden) {
-        handleNextUsername();
-      } else if (cardDiv && !cardDiv.hidden && adminPwdInput && String(adminPwdInput.value || '').trim()) {
-        handleAdminPassword();
+        handleNextCredentials();
       } else if (enrollDiv && !enrollDiv.hidden) {
         handleVerifyTotp('enroll-otp', 'btn-verify-enroll');
       } else if (verifyDiv && !verifyDiv.hidden) {
@@ -636,11 +559,39 @@ function initListeners() {
     });
   }
   
-  if ($('btn-next-username')) $('btn-next-username').addEventListener('click', handleNextUsername);
+  if ($('btn-next-username')) $('btn-next-username').addEventListener('click', handleNextCredentials);
+
+  // Allow pressing Enter in username or password field to proceed
+  ['username-input', 'password-input'].forEach(function(id) {
+    var el = $(id);
+    if (el) {
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleNextCredentials();
+        }
+      });
+    }
+  });
+
   if ($('btn-cancel-card')) $('btn-cancel-card').addEventListener('click', resetToStart);
   if ($('btn-cancel-enroll')) $('btn-cancel-enroll').addEventListener('click', resetToStart);
   if ($('btn-cancel-totp')) $('btn-cancel-totp').addEventListener('click', resetToStart);
-  
+
+  // Show/hide password toggle on Step 1
+  var togglePwBtn = $('btn-toggle-password');
+  var pwInput = $('password-input');
+  var iconShow = $('icon-eye-show');
+  var iconHide = $('icon-eye-hide');
+  if (togglePwBtn && pwInput) {
+    togglePwBtn.addEventListener('click', function() {
+      var isHidden = pwInput.type === 'password';
+      pwInput.type = isHidden ? 'text' : 'password';
+      if (iconShow) iconShow.style.display = isHidden ? 'none' : '';
+      if (iconHide) iconHide.style.display = isHidden ? '' : 'none';
+    });
+  }
+
   if ($('btn-verify-totp')) $('btn-verify-totp').addEventListener('click', function() {
     handleVerifyTotp('verify-otp', 'btn-verify-totp');
   });
@@ -653,31 +604,10 @@ function initListeners() {
   setupOtpBoxes('verify-otp-row', 'verify-otp');
   setupOtpBoxes('enroll-otp-row', 'enroll-otp');
 
-  // Set up tab click listeners
-  var tabButtons = document.querySelectorAll('.login-tabs .tab-btn');
-  tabButtons.forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var tabType = btn.getAttribute('data-tab');
-      switchTab(tabType);
-    });
-  });
-
   if (getLockRemainingSeconds() > 0) startLockoutCountdown();
 
   if ($('btn-copy-secret')) {
     $('btn-copy-secret').addEventListener('click', copySecretToClipboard);
-  }
-
-  if ($('btn-admin-password')) $('btn-admin-password').addEventListener('click', handleAdminPassword);
-  if ($('btn-admin-password-modal')) $('btn-admin-password-modal').addEventListener('click', handleAdminPassword);
-  if ($('btn-admin-password-bottom')) $('btn-admin-password-bottom').addEventListener('click', handleAdminPassword);
-  if ($('btn-cancel-admin')) $('btn-cancel-admin').addEventListener('click', resetToStart);
-  if ($('btn-close-admin-modal')) {
-    $('btn-close-admin-modal').addEventListener('click', function() {
-      var modal = $('admin-password-modal');
-      if (modal) modal.hidden = true;
-      resetToStart();
-    });
   }
 
   resetToStart();
