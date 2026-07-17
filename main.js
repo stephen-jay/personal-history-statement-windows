@@ -124,7 +124,7 @@ if (process.env.SUPABASE_DB_URL) {
 // --- Electron Window Management ---
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu');
-app.commandLine.appendSwitch('disable-gpu-sandbox');
+// Removed disable-gpu-sandbox for security
 app.commandLine.appendSwitch('disable-gpu-compositing');
 app.commandLine.appendSwitch('disable-accelerated-2d-canvas');
 app.commandLine.appendSwitch('disable-accelerated-video-decode');
@@ -315,6 +315,8 @@ function createWindow() {
       preload: path.join(__dirname, 'src', 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
     },
     icon: fs.existsSync(path.join(__dirname, 'assets', 'icon.ico'))
       ? path.join(__dirname, 'assets', 'icon.ico')
@@ -326,6 +328,21 @@ function createWindow() {
   mainWindow.maximize();
   mainWindow.on('closed', () => { mainWindow = null; });
   mainWindow.setTitle('Personnel Database');
+
+  // Enhance security by restricting navigation and new window creation
+  mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
+    try {
+      const parsedUrl = new URL(navigationUrl);
+      if (parsedUrl.protocol !== 'file:') {
+        event.preventDefault();
+      }
+    } catch (_) {
+      event.preventDefault();
+    }
+  });
+  mainWindow.webContents.setWindowOpenHandler(() => {
+    return { action: 'deny' };
+  });
 
   // Show a native confirm dialog if the renderer's beforeunload blocks navigation.
   // This fires when the provisioning wizard is open and the user tries to reload.

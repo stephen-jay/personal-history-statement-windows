@@ -769,7 +769,7 @@ async function loadCardsPage() {
     // `ROSTER_SKELETON_MIN_MS` value when available.
     (function initAdaptiveSkeletonMs() {
       async function measureBandwidthMbps(urls) {
-        const candidates = urls || ['images/thinktech.png', 'images/ansys.png', 'images/hendexis.png'];
+        const candidates = urls || ['images/hendexis.png'];
         for (const u of candidates) {
           try {
             const controller = new AbortController();

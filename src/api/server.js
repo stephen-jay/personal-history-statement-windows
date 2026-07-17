@@ -23,10 +23,58 @@ if (!DATABASE_URL) {
 }
 
 const app = express();
+
+// Trust reverse proxies (e.g., Nginx) so req.ip is accurate for rate-limiting
+app.set('trust proxy', 1);
+
+// Security Middlewares & CORS
+app.use((req, res, next) => {
+  res.removeHeader('X-Powered-By');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+
+  // Basic CORS headers to allow remote Electron clients to connect
+  res.setHeader('Access-Control-Allow-Origin', '*'); 
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
+
 initDatabase(DATABASE_URL, path.join(__dirname, 'personnel-data.json'));
 auth.initAuth(__dirname);
 
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '50mb' }));
+
+// Basic Rate Limiting for Auth
+const loginAttempts = new Map();
+
+// Clean up old entries every hour to prevent memory leaks on long-running servers
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, attempts] of loginAttempts.entries()) {
+    const valid = attempts.filter(t => now - t < 15 * 60 * 1000);
+    if (valid.length === 0) loginAttempts.delete(ip);
+    else loginAttempts.set(ip, valid);
+  }
+}, 60 * 60 * 1000);
+
+function loginLimiter(req, res, next) {
+  const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const attempts = loginAttempts.get(ip) || [];
+  const recentAttempts = attempts.filter(t => now - t < 15 * 60 * 1000); // 15 min window
+  if (recentAttempts.length >= 5) {
+    return res.status(429).json({ error: 'Too many login attempts from this IP, please try again after 15 minutes' });
+  }
+  recentAttempts.push(now);
+  loginAttempts.set(ip, recentAttempts);
+  next();
+}
+
 
 // ---------------------------------------------------------------------------
 // Minimal auth (no extra npm deps): HMAC-signed tokens + pgcrypto password check.
@@ -132,7 +180,7 @@ function sanitizeRecord(record) {
   return Object.fromEntries(Object.entries(record || {}).filter(([key]) => !REMOVED_FIELDS.has(key)));
 }
 
-app.post('/auth/login', async function (req, res) {
+app.post('/auth/login', loginLimiter, async function (req, res) {
   const body = req.body || {};
   const username = String(body.username || '').trim();
   const password = String(body.password || '');
@@ -160,7 +208,7 @@ app.post('/auth/login', async function (req, res) {
   }
 });
 
-app.post('/auth/viewer-login', async function (req, res) {
+app.post('/auth/viewer-login', loginLimiter, async function (req, res) {
   try {
     const body = req.body || {};
     const username = String(body.username || '').trim();
