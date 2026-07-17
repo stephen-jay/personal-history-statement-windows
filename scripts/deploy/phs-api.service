@@ -6,7 +6,7 @@ After=network.target postgresql.service
 Type=simple
 User=mapdroid
 WorkingDirectory=/home/mapdroid/phs-api
-ExecStart=/usr/bin/node api-server.js
+ExecStart=/usr/bin/node src/api/server.js
 
 # Auto-restart on crash
 Restart=always

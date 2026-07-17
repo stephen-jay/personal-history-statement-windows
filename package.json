@@ -36,7 +36,7 @@
     },
     "extraResources": [
       {
-        "from": "RFID",
+        "from": "src/RFID",
         "to": "RFID"
       },
       {
