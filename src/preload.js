@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('personnelApi', {
 contextBridge.exposeInMainWorld('authApi', {
   login: (username, password) => ipcRenderer.invoke('auth:login', { username: username, password: password }),
   beginLogin: (username) => ipcRenderer.invoke('auth:beginLogin', { username }),
+  verifyCredentials: (username, password) => ipcRenderer.invoke('auth:verifyCredentials', { username, password }),
   viewerLogin: (username) => ipcRenderer.invoke('auth:viewerLogin', { username }),
   verifyCardStep: (challengeId, cardUid) => ipcRenderer.invoke('auth:verifyCard', { challengeId, cardUid }),
   enrollTotp: (challengeId) => ipcRenderer.invoke('auth:enrollTotp', { challengeId }),

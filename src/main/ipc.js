@@ -170,6 +170,15 @@ function registerIpcHandlers(ipcMain, app, config) {
     return await auth.beginLogin(username);
   });
 
+  ipcMain.handle('auth:verifyCredentials', async function (_evt, payload) {
+    const body = payload || {};
+    const username = String(body.username || '').trim();
+    const password = String(body.password || '');
+    if (!username) throw new Error('Missing username.');
+    if (!password) throw new Error('Missing password.');
+    return await auth.verifyCredentials(username, password);
+  });
+
   ipcMain.handle('auth:verifyCard', async function (_evt, payload) {
     const body = payload || {};
     const challengeId = body.challengeId;
