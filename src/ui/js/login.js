@@ -374,7 +374,7 @@ async function handleNextCredentials() {
 
   var btn = $('btn-next-username');
   btn.disabled = true;
-  btn.innerHTML = 'Verifying...';
+  btn.innerHTML = 'Logging in...';
   setError('');
 
   try {

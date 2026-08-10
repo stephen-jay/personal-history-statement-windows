@@ -508,6 +508,69 @@ async function verifyCredentials(username, password) {
   return { challengeId: res.rows[0].id, canUsePassword };
 }
 
+// ── loginWithPasswordDirect — direct login bypass for testing ─────────────────
+// Requires ENABLE_PASSWORD_DIRECT_LOGIN=true (default off).
+async function loginWithPasswordDirect(username, password) {
+  const enabled = /^(1|true|yes)$/i.test(String(process.env.ENABLE_PASSWORD_DIRECT_LOGIN || 'false'));
+  if (!enabled) {
+    throw new Error('Direct password login is disabled.');
+  }
+
+  const pool = getPgPool();
+
+  if (!pool) {
+    const key = String(username || '').toLowerCase();
+    const cached = localCredCache[key];
+    if (cached) {
+      const hash = hashForLocalCache(password);
+      if (cached.hash !== hash) throw new Error('Invalid credentials.');
+      const sessionUser = cached.user || { id: 'local', username: key, fullName: key, roles: ['admin'] };
+      const session = { token: 'local-session', user: sessionUser, justLoggedIn: true };
+      setAuthSession(session);
+      return { user: sessionUser };
+    }
+    throw new Error('Database unavailable and no offline credentials cached for this user.');
+  }
+
+  const userRow = await pool.query(
+    `SELECT u.id, u.username, u.full_name, u.personnel_id, u.is_active
+     FROM app_users u
+     WHERE u.username = $1
+       AND u.is_active = TRUE
+       AND u.password_hash = crypt($2, u.password_hash)`,
+    [username, password]
+  );
+
+  if (!userRow.rows || !userRow.rows.length) {
+    throw new Error('Invalid credentials.');
+  }
+
+  const user = userRow.rows[0];
+
+  const roleRows = await pool.query(
+    `SELECT ARRAY_REMOVE(ARRAY_AGG(r.name ORDER BY r.name), NULL) AS roles
+     FROM app_user_roles ur
+     LEFT JOIN app_roles r ON r.id = ur.role_id
+     WHERE ur.user_id = $1`,
+    [user.id]
+  );
+  const roles = (roleRows.rows && roleRows.rows[0] && Array.isArray(roleRows.rows[0].roles)) ? roleRows.rows[0].roles : [];
+
+  const sessionUser = {
+    id: user.id,
+    username: user.username,
+    fullName: user.full_name,
+    personnelId: user.personnel_id || null,
+    roles: Array.isArray(roles) ? roles : [],
+  };
+
+  updateLocalCredCache(user.username, password, sessionUser);
+  const newSession = { token: 'local-session', user: sessionUser, justLoggedIn: true };
+  setAuthSession(newSession);
+
+  return { user: sessionUser };
+}
+
 async function verifyCardStep(challengeId, cardUid) {
   const pool = getPgPool();
   if (!pool) throw new Error('DATABASE_URL is required for local auth.');
@@ -1051,6 +1114,7 @@ module.exports = {
   changePasswordLocal,
   beginLogin,
   verifyCredentials,
+  loginWithPasswordDirect,
   verifyCardStep,
   enrollTotp,
   verifyTotpStep,

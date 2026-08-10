@@ -30,6 +30,7 @@ const CONFIG_KEYS = new Set([
   'USE_POSTGRES_READ',
   'USE_POSTGRES_WRITE',
   'ENABLE_DUAL_WRITE',
+  'ENABLE_PASSWORD_DIRECT_LOGIN',
   'SMTP_HOST',
   'SMTP_PORT',
   'SMTP_SECURE',
@@ -100,6 +101,7 @@ const config = {
   USE_POSTGRES_READ: /^(1|true|yes)$/i.test(String(process.env.USE_POSTGRES_READ || 'true')),
   USE_POSTGRES_WRITE: /^(1|true|yes)$/i.test(String(process.env.USE_POSTGRES_WRITE || 'true')),
   ENABLE_DUAL_WRITE: /^(1|true|yes)$/i.test(String(process.env.ENABLE_DUAL_WRITE || 'true')),
+  ENABLE_PASSWORD_DIRECT_LOGIN: /^(1|true|yes)$/i.test(String(process.env.ENABLE_PASSWORD_DIRECT_LOGIN || 'false')),
   USE_REMOTE_API: /^(1|true|yes)$/i.test(String(process.env.USE_REMOTE_API || 'false')),
   REMOTE_API_BASE: String(process.env.REMOTE_API_BASE || 'http://localhost:3210'),
   IMAGE_UPLOAD_DIR: path.join(app.getPath('userData'), 'personnel-images')

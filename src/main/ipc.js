@@ -179,6 +179,18 @@ function registerIpcHandlers(ipcMain, app, config) {
     return await auth.verifyCredentials(username, password);
   });
 
+  ipcMain.handle('auth:loginWithPasswordDirect', async function (_evt, payload) {
+    if (!config.ENABLE_PASSWORD_DIRECT_LOGIN) {
+      throw new Error('Direct password login is disabled.');
+    }
+    const body = payload || {};
+    const username = String(body.username || '').trim();
+    const password = String(body.password || '');
+    if (!username) throw new Error('Missing username.');
+    if (!password) throw new Error('Missing password.');
+    return await auth.loginWithPasswordDirect(username, password);
+  });
+
   ipcMain.handle('auth:verifyCard', async function (_evt, payload) {
     const body = payload || {};
     const challengeId = body.challengeId;
@@ -671,6 +683,28 @@ function registerIpcHandlers(ipcMain, app, config) {
     }
   }
 
+  function cleanupPersonnelImages(record) {
+    try {
+      imageStorage.deleteRecordImages(config.IMAGE_UPLOAD_DIR, record);
+    } catch (e) {
+      console.error('personnel image cleanup failed:', e && e.message ? e.message : e);
+    }
+  }
+
+  async function loadRecordForImageCleanup(id) {
+    if (!id) return null;
+    if (config.USE_POSTGRES_READ) {
+      try {
+        const record = await getPostgresOne(id);
+        if (record) return record;
+      } catch (e) {
+        console.error('personnel image cleanup lookup failed:', e && e.message ? e.message : e);
+      }
+    }
+    const all = getData();
+    return (all || []).find(function (r) { return String(r && r.id) === String(id); }) || null;
+  }
+
   ipcMain.handle('personnel:save', async (_, record) => {
     assertViewerCanMutate();
     const recordToSave = imageStorage.processRecordImages(config.IMAGE_UPLOAD_DIR, record || {});
@@ -727,6 +761,8 @@ function registerIpcHandlers(ipcMain, app, config) {
 
   ipcMain.handle('personnel:delete', async (_, id, version) => {
     assertViewerCanMutate();
+    const recordForCleanup = await loadRecordForImageCleanup(id);
+
     if (config.USE_POSTGRES_WRITE) {
       try {
         const session = auth.getAuthSession();
@@ -738,6 +774,7 @@ function registerIpcHandlers(ipcMain, app, config) {
             console.error('personnel:delete dual-write JSON failed:', e);
           }
         }
+        if (ok) cleanupPersonnelImages(recordForCleanup);
         return ok;
       } catch (e) {
         console.error('personnel:delete postgres failed, trying remote/json fallback:', e && e.message ? e.message : e);
@@ -749,12 +786,16 @@ function registerIpcHandlers(ipcMain, app, config) {
         const result = await remoteApi('/personnel/' + encodeURIComponent(id) + qs, {
           method: 'DELETE',
         }, config, auth.getAuthSession());
-        return !!(result && result.ok);
+        const ok = !!(result && result.ok);
+        if (ok) cleanupPersonnelImages(recordForCleanup);
+        return ok;
       } catch (e) {
         console.error('personnel:delete remote API failed, falling back to JSON:', e && e.message ? e.message : e);
       }
     }
-    return deleteJsonRecord(id);
+    const ok = deleteJsonRecord(id);
+    if (ok) cleanupPersonnelImages(recordForCleanup);
+    return ok;
   });
 
   ipcMain.handle('personnel:getHistory', async (_, recordId) => {
@@ -888,6 +929,12 @@ function registerIpcHandlers(ipcMain, app, config) {
         await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS assigned_username text NULL');
         await pool.query('ALTER TABLE cards ADD COLUMN IF NOT EXISTS personnel_id text NULL');
 
+        // Detect which tables exist for joins
+        const tablesRes = await pool.query("SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('app_users', 'personnel')");
+        const existingTables = (tablesRes.rows || []).map(r => r.table_name);
+        const hasUsers = existingTables.includes('app_users');
+        const hasPersonnel = existingTables.includes('personnel');
+
         // Detect which timestamp column is available so the query doesn't fail
         const colRes = await pool.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='cards' AND column_name IN ('registered_at','created_at','updated_at')");
         const foundCols = (colRes.rows || []).map(r => r.column_name);
@@ -896,13 +943,29 @@ function registerIpcHandlers(ipcMain, app, config) {
         else if (foundCols.includes('created_at')) dateCol = 'created_at';
         else if (foundCols.includes('updated_at')) dateCol = 'updated_at';
 
-        let query;
-        if (dateCol) {
-          query = `SELECT card_uid, status, assigned_username, personnel_id, TO_CHAR(${dateCol}, 'YYYY-MM-DD HH24:MI:SS') as registered_at_str FROM cards ORDER BY ${dateCol} DESC`;
-        } else {
-          // No timestamp column available; return rows without date ordering
-          query = `SELECT card_uid, status, assigned_username, personnel_id, NULL::text as registered_at_str FROM cards ORDER BY card_uid ASC`;
-        }
+        const orderClause = dateCol ? `ORDER BY c.${dateCol} DESC` : `ORDER BY c.card_uid ASC`;
+        const dateSelect = dateCol ? `TO_CHAR(c.${dateCol}, 'YYYY-MM-DD HH24:MI:SS') as registered_at_str` : `NULL::text as registered_at_str`;
+
+        const userSelect = hasUsers ? 'u.full_name as assigned_user_full_name' : 'NULL::text as assigned_user_full_name';
+        const userJoin = hasUsers ? 'LEFT JOIN app_users u ON LOWER(TRIM(c.assigned_username)) = LOWER(TRIM(u.username))' : '';
+
+        const personnelSelect = hasPersonnel ? 'p.full_name as personnel_name' : 'NULL::text as personnel_name';
+        const personnelJoin = hasPersonnel ? 'LEFT JOIN personnel p ON LOWER(TRIM(c.personnel_id)) = LOWER(TRIM(p.id))' : '';
+
+        const query = `
+          SELECT 
+            c.card_uid, 
+            c.status, 
+            c.assigned_username, 
+            c.personnel_id, 
+            ${userSelect},
+            ${personnelSelect},
+            ${dateSelect} 
+          FROM cards c
+          ${userJoin}
+          ${personnelJoin}
+          ${orderClause}
+        `;
 
         const res = await pool.query(query);
 
@@ -911,7 +974,9 @@ function registerIpcHandlers(ipcMain, app, config) {
           uid: row.card_uid,
           status: row.status,
           assigned_username: row.assigned_username,
+          assigned_user_full_name: row.assigned_user_full_name,
           personnel_id: row.personnel_id,
+          personnel_name: row.personnel_name,
           date: row.registered_at_str
         }));
 

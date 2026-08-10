@@ -136,11 +136,12 @@ body {
 }
 
 .logo-row img {
-  height: 24px;
+  height: 36px;
   opacity: 0.85;
 }
 
 .logo-hendexis {
+  height: 40px;
   filter: invert(1) brightness(1.5);
   mix-blend-mode: screen;
   opacity: 1 !important;
@@ -282,59 +283,61 @@ body {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 20px;
-  padding: 26px 24px 20px;
+  padding: 20px 22px 18px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
+  gap: 0;
 }
 
 .username-card h2 {
-  font-size: 1.9rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: #0f172a;
-  margin-bottom: var(--space-xs);
+  margin-bottom: 4px;
 }
 
 .username-card .input-wrap {
   width: 100%;
   text-align: left;
-  margin-bottom: var(--space-sm);
+  margin-bottom: 12px;
 }
 
 .username-card .btn-primary {
   width: 100%;
+  margin-top: 4px;
 }
 
 .username-avatar {
-  width: 58px;
-  height: 58px;
+  width: 46px;
+  height: 46px;
   background: #eff6ff;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: var(--space-sm);
+  margin-bottom: 10px;
 }
 
 .username-avatar svg {
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   stroke: var(--primary);
 }
 
 .username-subtitle {
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   color: #64748b;
-  line-height: 1.6;
+  line-height: 1.5;
   max-width: 290px;
-  margin-bottom: var(--space-md);
+  margin-bottom: 16px;
 }
 
 /* INPUTS */
 .input-wrap {
   position: relative;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .input-icon {
@@ -709,7 +712,7 @@ body {
 }
 
 #step-card .step-desc {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   text-align: center;
 }
 
@@ -823,15 +826,16 @@ body {
 
 /* Card Method */
 .card-method {
-  min-height: 236px;
-  padding: 20px 24px;
+  min-height: 180px;
+  padding: 16px 20px;
+  justify-content: center;
 }
 
 /* Password Method */
 .password-method {
-  min-height: 236px;
+  min-height: 180px;
   justify-content: center;
-  padding: 20px 24px;
+  padding: 16px 20px;
 }
 
 .password-method .input-wrap {
@@ -856,7 +860,7 @@ body {
   position: relative;
   width: 120px;
   height: 120px;
-  margin: 4px auto 12px;
+  margin: 0 auto 8px;
   display: flex;
   align-items: center;
   justify-content: center;

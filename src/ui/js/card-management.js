@@ -1840,9 +1840,29 @@ export function createCardManagementController() {
       const cardType = cardUid.length > 20 ? 'Smart Card' : 'NFC Type A';
       
       // Better 'Assigned To' label logic
-      let assignedTo = 'Unassigned';
+      let assignedTo = '<span style="color: #888;">Unassigned</span>';
       if (card.status === 'assigned') {
-        assignedTo = card.personnel_name || card.assigned_user_full_name || (card.personnel_id ? `ID: ${card.personnel_id}` : 'Unknown');
+        const username = String(card.assigned_username || '').trim();
+        const userFullName = String(card.assigned_user_full_name || '').trim();
+        const personnelName = String(card.personnel_name || '').trim();
+        const personnelId = String(card.personnel_id || '').trim();
+
+        if (userFullName || username) {
+          const mainName = userFullName ? escapeHtml(userFullName) : `@${escapeHtml(username)}`;
+          const subText = userFullName && username ? `@${escapeHtml(username)}` : 'User Account';
+          assignedTo = `<div style="display: flex; flex-direction: column; gap: 2px;">
+                          <strong style="color: #2c3e50; font-size: 13px;">${mainName}</strong>
+                          <span style="font-size: 11px; color: #6b7280; font-weight: 500;">${subText}</span>
+                        </div>`;
+        } else if (personnelName || personnelId) {
+          const pName = personnelName ? escapeHtml(personnelName) : `ID: ${escapeHtml(personnelId)}`;
+          assignedTo = `<div style="display: flex; flex-direction: column; gap: 2px;">
+                          <strong style="color: #2c3e50; font-size: 13px;">${pName}</strong>
+                          <span style="font-size: 11px; color: #6b7280; font-weight: 500;">Personnel Record</span>
+                        </div>`;
+        } else {
+          assignedTo = '<span style="color: #d97706; font-weight: 500;">Assigned</span>';
+        }
       }
 
       const statusBadge = card.status === 'available'

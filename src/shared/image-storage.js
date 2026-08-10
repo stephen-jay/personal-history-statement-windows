@@ -54,23 +54,31 @@ function writeImageToDisk(baseUploadDir, record, imageType, base64DataUrl) {
   const match = String(base64DataUrl).match(/^data:(image\/[^;,]+)(?:;[^,]*)?;base64,(.+)$/);
   if (!match) return null;
 
-  const personnelId = getPersonnelId(record);
+  let personnelId = getPersonnelId(record);
   if (!personnelId) return null;
+
+  // Sanitize inputs to prevent path traversal
+  personnelId = String(personnelId).replace(/[^a-zA-Z0-9_-]/g, '');
+  const safeImageType = String(imageType).replace(/[^a-zA-Z0-9_-]/g, '');
 
   const [, mimeType, base64Data] = match;
   const format = mimeType.split('/')[1] || 'jpg';
   const ext = format === 'jpeg' ? 'jpg' : format.replace('svg+xml', 'svg');
   const personnelFolder = path.join(baseUploadDir, personnelId);
-  const imageFolder = path.join(personnelFolder, imageType);
+  const imageFolder = path.join(personnelFolder, safeImageType);
   ensureFolder(imageFolder);
 
-  const fileName = `${personnelId}-${imageType}.${ext}`;
+  const fileName = `${personnelId}-${safeImageType}.${ext}`;
   const filePath = path.join(imageFolder, fileName);
   const buffer = Buffer.from(base64Data, 'base64');
   fs.writeFileSync(filePath, buffer);
   return filePath;
 }
 
+/**
+ * Archive all image fields from a record to organized folders on disk.
+ * Runs silently after every save — does not affect DB storage.
+ */
 function archiveRecordImages(baseUploadDir, record) {
   if (!baseUploadDir || !record) return null;
 
@@ -82,6 +90,41 @@ function archiveRecordImages(baseUploadDir, record) {
   });
 
   return true;
+}
+
+function safeRemoveUnderBase(baseUploadDir, targetPath) {
+  if (!baseUploadDir || !targetPath) return false;
+  const baseResolved = path.resolve(baseUploadDir);
+  const targetResolved = path.resolve(targetPath);
+  const prefix = baseResolved.endsWith(path.sep) ? baseResolved : baseResolved + path.sep;
+  if (targetResolved !== baseResolved && !targetResolved.startsWith(prefix)) return false;
+  if (!fs.existsSync(targetResolved)) return false;
+  fs.rmSync(targetResolved, { recursive: true, force: true });
+  return true;
+}
+
+/**
+ * Remove archived image folders for a personnel record from disk.
+ * Best-effort; does not affect DB storage.
+ */
+function deleteRecordImages(baseUploadDir, record) {
+  if (!baseUploadDir || !record) return false;
+
+  let removed = false;
+  let personnelId = getPersonnelId(record);
+  if (personnelId) {
+    personnelId = String(personnelId).replace(/[^a-zA-Z0-9_-]/g, '');
+    if (personnelId) {
+      removed = safeRemoveUnderBase(baseUploadDir, path.join(baseUploadDir, personnelId)) || removed;
+    }
+  }
+
+  const legacyFolder = getLegacyPersonnelFolderName(record);
+  if (legacyFolder) {
+    removed = safeRemoveUnderBase(baseUploadDir, path.join(baseUploadDir, legacyFolder)) || removed;
+  }
+
+  return removed;
 }
 
 /**
@@ -236,6 +279,7 @@ module.exports = {
   ensureFolder,
   writeImageToDisk,
   archiveRecordImages,
+  deleteRecordImages,
   processRecordImages,
   hydrateRecordImages,
 };

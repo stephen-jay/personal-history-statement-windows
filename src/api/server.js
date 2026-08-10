@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ override: true });
 const { REMOVED_FIELDS, PERSONNEL_FIELD_MAP, CHILD_TABLES } = require('./src/shared/schema');
-const { initDatabase, getPgPool, getPostgresData, savePostgresRecord, deletePostgresRecord } = require('./src/main/database');
+const { initDatabase, getPgPool, getPostgresData, getPostgresOne, savePostgresRecord, deletePostgresRecord } = require('./src/main/database');
 const auth = require('./src/main/auth');
 
 const imageStorage = require('./src/shared/image-storage');
@@ -482,6 +482,11 @@ app.post('/personnel', requireAuth, requirePersonnelWrite, async function (req, 
     const processed = imageStorage.processRecordImages(IMAGE_UPLOAD_DIR, req.body || {});
     const saved = await savePostgresRecord(processed, req.auth.userId);
     console.log(`[${new Date().toISOString()}] Successfully saved record: ${saved.id}`);
+    try {
+      imageStorage.archiveRecordImages(IMAGE_UPLOAD_DIR, saved);
+    } catch (archiveErr) {
+      console.error('Failed to archive images to disk:', archiveErr.message);
+    }
     const hydrated = imageStorage.hydrateRecordImages(IMAGE_UPLOAD_DIR, saved);
     res.json(hydrated);
   } catch (e) {
@@ -496,7 +501,20 @@ app.delete('/personnel/:id', requireAuth, requirePersonnelDelete, async function
   try {
     const id = req.params.id;
     const version = req.query.version;
+    let recordForCleanup = null;
+    try {
+      recordForCleanup = await getPostgresOne(id);
+    } catch (lookupErr) {
+      console.error('Failed to load record for image cleanup:', lookupErr.message);
+    }
     const ok = await deletePostgresRecord(id, version, req.auth.userId);
+    if (ok && recordForCleanup) {
+      try {
+        imageStorage.deleteRecordImages(IMAGE_UPLOAD_DIR, recordForCleanup);
+      } catch (cleanupErr) {
+        console.error('Failed to cleanup archived images:', cleanupErr.message);
+      }
+    }
     res.json({ ok: ok });
   } catch (e) {
     const msg = e && e.message ? e.message : String(e);
